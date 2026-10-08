@@ -5,6 +5,7 @@ import {experimentStorage} from '../services/storage';
 import {messages} from '../infra/locales/messages';
 import {baseStyles} from '../ui/styles/shared';
 import {icon} from '../ui/components/icons';
+import {offline} from '../services/offline';
 export class ExperimentPage extends LitElement {
   static properties={catalog:{attribute:false},experimentId:{type:String},locale:{type:String},theme:{type:String},status:{state:true},error:{state:true},version:{state:true}};
   declare catalog:Catalog|null;declare experimentId:string;declare locale:Locale;declare theme:'light'|'dark';declare status:string;declare error:string;declare version:string;
@@ -21,6 +22,7 @@ export class ExperimentPage extends LitElement {
       const entry=this.catalog?.experiments.find(e=>e.id===this.experimentId);
       if(!entry)throw new Error(this.locale==='zh-CN'?'实验不存在':'Experiment not found');
       const manifest=await loadManifest(entry.manifest,entry.id);
+      await offline.ensureExperiment(entry.manifest);
       const module=await import(/* @vite-ignore */ manifest.entry) as ExperimentModule;
       if(controller.signal.aborted)return;
       const instance=await module.mount({locale:this.locale,theme:this.theme,buildId:manifest.buildId,signal:controller.signal,storage:experimentStorage(entry.id,manifest.stateVersion)});
