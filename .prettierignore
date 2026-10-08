@@ -1,0 +1,9 @@
+dist/
+.build/
+node_modules/
+coverage/
+playwright-report/
+test-results/
+**/*.svg
+bun.lock
+LICENSE

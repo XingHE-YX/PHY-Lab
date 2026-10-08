@@ -10,9 +10,18 @@
     <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
     <script>
       try {
-        const preference = JSON.parse(localStorage.getItem('phy-lab:settings') || '{}').theme || 'system';
-        document.documentElement.dataset.theme = preference === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : preference;
-      } catch { document.documentElement.dataset.theme = 'light'; }
+        const preference =
+          JSON.parse(localStorage.getItem("phy-lab:settings") || "{}").theme ||
+          "system";
+        document.documentElement.dataset.theme =
+          preference === "system"
+            ? matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light"
+            : preference;
+      } catch {
+        document.documentElement.dataset.theme = "light";
+      }
     </script>
   </head>
   <body>

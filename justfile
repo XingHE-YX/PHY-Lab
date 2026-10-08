@@ -38,3 +38,9 @@ preview:
 
 verify:
     bun scripts/verify-release.ts
+
+format:
+    bunx prettier --write .
+
+format-check:
+    bunx prettier --check .

@@ -1,5 +1,72 @@
-:root{color-scheme:light;--bg:#fafafa;--surface:#fff;--subtle:#f3f4f6;--text:#17191d;--muted:#737985;--border:#e3e5e9;--primary:#245edb;--primary-soft:#edf3ff;--blue:#245edb;--green:#25805d;--red:#cf4848;--radius:3px;--font:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC",sans-serif;--mono:"SFMono-Regular",Consolas,monospace;font-family:var(--font);background:var(--bg);color:var(--text)}
-:root[data-theme=dark]{color-scheme:dark;--bg:#101113;--surface:#17191d;--subtle:#1e2127;--text:#eff0f3;--muted:#989fac;--border:#2d3138;--primary:#7ca4ff;--primary-soft:#1a2946;--blue:#7ca4ff;--green:#62ba94;--red:#ef8585}
-*{box-sizing:border-box}body{margin:0;min-width:320px}button,input,select{font:inherit}::selection{background:var(--primary-soft);color:var(--primary)}
-::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}::view-transition-new(root){z-index:1}::view-transition-old(root){z-index:0}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+:root {
+  color-scheme: light;
+  --bg: #fafafa;
+  --surface: #fff;
+  --subtle: #f3f4f6;
+  --text: #17191d;
+  --muted: #737985;
+  --border: #e3e5e9;
+  --primary: #245edb;
+  --primary-soft: #edf3ff;
+  --blue: #245edb;
+  --green: #25805d;
+  --red: #cf4848;
+  --radius: 3px;
+  --font:
+    Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+    sans-serif;
+  --mono: "SFMono-Regular", Consolas, monospace;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #101113;
+  --surface: #17191d;
+  --subtle: #1e2127;
+  --text: #eff0f3;
+  --muted: #989fac;
+  --border: #2d3138;
+  --primary: #7ca4ff;
+  --primary-soft: #1a2946;
+  --blue: #7ca4ff;
+  --green: #62ba94;
+  --red: #ef8585;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+::selection {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-new(root) {
+  z-index: 1;
+}
+::view-transition-old(root) {
+  z-index: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
