@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fafafa" />
+    <meta name="description" content="PHY Lab — 可交互的物理实验工作台" />
+    <title>PHY Lab</title>
+    <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <script>
+      try {
+        const preference = JSON.parse(localStorage.getItem('phy-lab:settings') || '{}').theme || 'system';
+        document.documentElement.dataset.theme = preference === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : preference;
+      } catch { document.documentElement.dataset.theme = 'light'; }
+    </script>
+  </head>
+  <body>
+    <phy-app></phy-app>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
