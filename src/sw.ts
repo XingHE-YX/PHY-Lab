@@ -63,6 +63,28 @@ async function status(){
   return {state:catalog&&appReady&&complete===entries.length?'ready':lastError?'error':'loading',complete,total:entries.length,version:release.version,buildId:release.buildId,error:lastError};
 }
 async function broadcast(type:string){for(const client of await worker.clients.matchAll({type:'window',includeUncontrolled:true}))client.postMessage({type});}
+async function queryClients(type:string):Promise<string[][]>{
+  const clients=(await worker.clients.matchAll({type:'window',includeUncontrolled:true})).filter(client=>new URL(client.url).pathname.startsWith(release.base));
+  return Promise.all(clients.map(client=>new Promise<string[]>((resolve,reject)=>{
+    const channel=new MessageChannel();const timer=setTimeout(()=>{channel.port1.close();reject(new Error('Another tab did not respond; close it and retry.'));},5000);
+    channel.port1.onmessage=event=>{clearTimeout(timer);channel.port1.close();if(event.data?.ok)resolve(event.data.pins??[]);else reject(new Error('Could not prepare another tab.'));};
+    client.postMessage({type},[channel.port2]);
+  })));
+}
+async function cleanHistory(){
+  if(syncing||tasks.size)throw new Error('Resources are downloading. Please try again after completion.');
+  const pinned=(await queryClients('REPORT_PINS')).flat(),keep=new Set([appCache,registryCache]);
+  const catalogResponse=await (await caches.open(registryCache)).match(release.base+'catalog.json');
+  if(catalogResponse){const catalog=await catalogResponse.json() as Catalog;for(const e of catalog.experiments.filter(e=>e.apiVersion===1)){const {manifest}=await manifestAt(e.manifest);keep.add(expCache(manifest));}}
+  let removed=0;
+  for(const name of (await caches.keys()).filter(name=>name.startsWith(prefix))){
+    if(keep.has(name)||(name.includes(':app:')&&(worker.registration.waiting||worker.registration.installing)))continue;
+    const cache=await caches.open(name);
+    if((await Promise.all(pinned.map(url=>cache.match(url)))).some(Boolean))continue;
+    if(await caches.delete(name))removed++;
+  }
+  return removed;
+}
 worker.addEventListener('install',event=>event.waitUntil((async()=>{
   const cache=await caches.open(appCache);await cacheResources(cache,release.resources);
   await cache.put(marker,Response.json({kind:'app',release}));
@@ -75,6 +97,8 @@ worker.addEventListener('message',event=>{
       if(event.data?.type==='STATUS')reply(await status());
       else if(event.data?.type==='SYNC'){await syncCatalog();reply(await status());}
       else if(event.data?.type==='CACHE_EXPERIMENT'){await cacheExperiment(event.data.url);reply({ok:true});}
+      else if(event.data?.type==='PREPARE_UPDATE'){await queryClients('PREPARE_UPDATE');reply({ok:true});}
+      else if(event.data?.type==='CLEAN_HISTORY'){reply({removed:await cleanHistory()});}
       else if(event.data?.type==='ACTIVATE'){await worker.skipWaiting();reply({ok:true});}
     }catch(error){reply({error:error instanceof Error?error.message:String(error)});}
   };

@@ -14,7 +14,7 @@ export interface Catalog {
 export interface ExperimentContext {
   locale: Locale; theme: 'light' | 'dark'; buildId: string;
   signal: AbortSignal;
-  storage: { read<T>(fallback: T): T; write(value: unknown): void };
+  storage: { read<T>(fallback: T): T; readVersion<T>(version:number,fallback:T):T; write(value: unknown): void };
 }
 export interface ExperimentInstance {
   element: HTMLElement;

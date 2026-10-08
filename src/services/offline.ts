@@ -7,22 +7,30 @@ class OfflineService extends EventTarget {
   status:OfflineStatus={state:import.meta.env.PROD?'loading':'dev',complete:0,total:0,version:__APP_VERSION__,buildId:'',error:''};
   registration?:ServiceWorkerRegistration;
   waiting=false;
+  readonly pins=new Set<string>();
+  private reloadOnChange=false;
   private emit(){this.dispatchEvent(new Event('change'));}
   async start(){
     if(!import.meta.env.PROD)return;
     if(!('serviceWorker' in navigator)){this.status.state='unavailable';this.emit();return;}
     try{
-      navigator.serviceWorker.addEventListener('message',event=>{if(['CACHE_READY','CACHE_PROGRESS','CACHE_ERROR'].includes(event.data?.type))void this.refresh();});
+      navigator.serviceWorker.addEventListener('message',event=>{
+        if(['CACHE_READY','CACHE_PROGRESS','CACHE_ERROR'].includes(event.data?.type))void this.refresh();
+        if(event.data?.type==='CACHE_READY')this.dispatchEvent(new Event('catalog-change'));
+        if(event.data?.type==='PREPARE_UPDATE'){window.dispatchEvent(new Event('phy:prepare-update'));this.reloadOnChange=true;event.ports[0]?.postMessage({ok:true});}
+        if(event.data?.type==='REPORT_PINS')event.ports[0]?.postMessage({ok:true,pins:[...this.pins,...Array.from(document.querySelectorAll<HTMLScriptElement>('script[src]'),script=>script.src),...Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),link=>link.href)]});
+      });
       this.registration=await navigator.serviceWorker.register(base+'sw.js',{scope:base,updateViaCache:'none'});
       this.registration.addEventListener('updatefound',()=>{const installing=this.registration?.installing;installing?.addEventListener('statechange',()=>{if(installing.state==='installed'&&navigator.serviceWorker.controller){this.waiting=!!this.registration?.waiting;this.emit();}});});
       this.waiting=!!this.registration.waiting;
-      navigator.serviceWorker.addEventListener('controllerchange',()=>void this.refresh());
+      navigator.serviceWorker.addEventListener('controllerchange',()=>{if(this.reloadOnChange)location.reload();else void this.refresh();});
       await navigator.serviceWorker.ready;await this.refresh();
+      if(navigator.onLine)void this.sync().catch(()=>{});
     }catch(error){this.fail(error);}
   }
   fail(error:unknown){this.status={...this.status,state:'error',error:error instanceof Error?error.message:String(error)};this.emit();}
   async refresh(){const active=this.registration?.active;if(!active)return;try{this.status=await askWorker<OfflineStatus>(active,'STATUS');this.waiting=!!this.registration?.waiting;this.emit();}catch(error){this.fail(error);}}
-  async sync(){const active=this.registration?.active;if(!active)return;this.status={...this.status,state:'loading',error:''};this.emit();try{this.status=await askWorker<OfflineStatus>(active,'SYNC');this.emit();}catch(error){this.fail(error);}}
+  async sync(){const active=this.registration?.active;if(!active)return;this.status={...this.status,state:this.status.state==='ready'?'ready':'loading',error:''};this.emit();try{this.status=await askWorker<OfflineStatus>(active,'SYNC');this.emit();this.dispatchEvent(new Event('catalog-change'));}catch(error){if(this.status.state==='ready'){this.status={...this.status,error:error instanceof Error?error.message:String(error)};this.emit();}else this.fail(error);throw error;}}
   async ensureExperiment(url:string){if(import.meta.env.PROD&&this.registration?.active)await askWorker(this.registration.active,'CACHE_EXPERIMENT',{url});}
 }
 export const offline=new OfflineService();
