@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.vite/
+coverage/
+test-results/
+playwright-report/
+experiments/*/wasm/pkg/
+experiments/*/wasm/target/
+.DS_Store
