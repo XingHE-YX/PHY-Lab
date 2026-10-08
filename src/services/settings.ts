@@ -1,7 +1,7 @@
 import type {Locale} from '../infra/platform/contract';
 import {readStored,writeStored} from './storage';
 export interface Settings {schemaVersion:1;locale:Locale;theme:'light'|'dark'|'system';reduceMotion:boolean}
-const defaults:Settings={schemaVersion:1,locale:navigator.language.startsWith('zh')?'zh-CN':'en',theme:'system',reduceMotion:false};
+const defaults:Settings={schemaVersion:1,locale:'zh-CN',theme:'system',reduceMotion:false};
 function validate(value:unknown):Settings {
   if(!value||typeof value!=='object')return {...defaults};
   const raw=value as Partial<Settings>;
