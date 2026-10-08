@@ -4,11 +4,19 @@ import { resolve, join } from "node:path";
 import { buildExperiment } from "./build-experiment";
 import { generateCatalog } from "./generate-catalog";
 import { root, dist, base, experimentIds } from "./shared";
+import { developmentWorker } from "./dev-worker";
 for (const id of await experimentIds()) await buildExperiment(id);
 await generateCatalog();
+// Experiment builds must not turn the Vite development runtime into production.
+process.env.NODE_ENV = "development";
 const server = await createServer({
   root,
   base,
+  server: {
+    port: Number(process.env.PHY_DEV_PORT ?? 5173),
+    strictPort: true,
+    watch: { ignored: ["**/.build/**", "**/dist/**"] },
+  },
   plugins: [
     {
       name: "phy-experiment-dev",
@@ -16,6 +24,15 @@ const server = await createServer({
         server.middlewares.use(async (req, res, next) => {
           const url = new URL(req.url ?? "/", "http://localhost");
           const path = url.pathname.slice(base.length);
+          if (url.pathname === base + "sw.js") {
+            res.setHeader(
+              "Content-Type",
+              "application/javascript; charset=utf-8",
+            );
+            res.setHeader("Cache-Control", "no-store");
+            res.end(developmentWorker);
+            return;
+          }
           if (
             !url.pathname.startsWith(base) ||
             !(path.startsWith("experiments/") || path === "catalog.json")

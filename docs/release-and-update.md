@@ -28,6 +28,10 @@
 
 生产预览 `just preview` 启用缓存，开发环境 `just dev` 不注册 Worker。推荐用全新浏览器上下文测试首次安装：仅打开首页等待离线就绪，断网进入尚未打开的实验，刷新并使用全部模式。
 
+开发服务器的 sw.js 返回合法的 JavaScript 退出脚本，不进入 Vite 的 HTML 回退。旧生产 Worker 更新到该脚本时，先请求页面保存状态，再注销自身并载入开发页面。开发页面也会注销同一 scope 的 PHY Lab 注册；此过程不删除 LocalStorage 或其他项目的注册与缓存。
+
+实验预构建在 production 环境完成后还原调用进程的 NODE_ENV，开发服务器显式使用 development 环境，保证开发页面的 import.meta.env.PROD 为 false。生成的 dist 和 .build 不触发开发页面热重载。
+
 ## 更新
 
 平台：新 Worker 先安装并校验资源，保持 waiting。用户点击保存并更新时，旧 Worker 通过 MessageChannel 请求所有页面暂停并保存状态；所有页面确认后才 skipWaiting。controllerchange 后各页面刷新。任何页面未响应时取消启用，用户可关闭该标签页后重试。

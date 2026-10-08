@@ -27,22 +27,29 @@ export async function buildExperiment(id: string) {
     throw new Error("Invalid experiment metadata");
   const stage = join(root, ".build", id);
   await rm(stage, { recursive: true, force: true });
-  await build({
-    configFile: false,
-    root,
-    publicDir: false,
-    build: {
-      outDir: stage,
-      emptyOutDir: true,
-      target: "es2022",
-      lib: {
-        entry: join(source, "index.ts"),
-        formats: ["es"],
-        fileName: () => "entry.js",
+  const previousNodeEnv = process.env.NODE_ENV;
+  try {
+    process.env.NODE_ENV = "production";
+    await build({
+      configFile: false,
+      root,
+      publicDir: false,
+      build: {
+        outDir: stage,
+        emptyOutDir: true,
+        target: "es2022",
+        lib: {
+          entry: join(source, "index.ts"),
+          formats: ["es"],
+          fileName: () => "entry.js",
+        },
+        cssCodeSplit: true,
       },
-      cssCodeSplit: true,
-    },
-  });
+    });
+  } finally {
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
+  }
   await cp(join(source, "assets"), stage, { recursive: true });
   const fingerprints = await resources(stage, "");
   const buildId = hash(JSON.stringify({ metadata, fingerprints })).slice(0, 16);

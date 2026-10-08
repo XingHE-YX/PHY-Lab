@@ -1,4 +1,5 @@
 import { base } from "../infra/platform/registry";
+import { retireDevelopmentRegistration } from "./development";
 export interface OfflineStatus {
   state: "dev" | "loading" | "ready" | "error" | "unavailable";
   complete: number;
@@ -45,7 +46,11 @@ class OfflineService extends EventTarget {
     this.dispatchEvent(new Event("change"));
   }
   async start() {
-    if (!import.meta.env.PROD) return;
+    if (!import.meta.env.PROD) {
+      // Keep development usable even when browser policy blocks SW inspection.
+      await retireDevelopmentRegistration().catch(() => {});
+      return;
+    }
     if (!("serviceWorker" in navigator)) {
       this.status.state = "unavailable";
       this.emit();
