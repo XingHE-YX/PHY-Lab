@@ -517,4 +517,15 @@ export const styles = css`
       padding: 18px;
     }
   }
+  @media (max-width: 660px) {
+    .scene text {
+      font-size: 19px;
+    }
+    .scene .mass {
+      r: 50px;
+    }
+    .chart text {
+      font-size: 16px;
+    }
+  }
 `;

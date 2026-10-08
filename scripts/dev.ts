@@ -6,30 +6,40 @@ import { generateCatalog } from "./generate-catalog";
 import { root, dist, base, experimentIds } from "./shared";
 for (const id of await experimentIds()) await buildExperiment(id);
 await generateCatalog();
-const server = await createServer({ root, base });
-server.middlewares.use(async (req, res, next) => {
-  const url = new URL(req.url ?? "/", "http://localhost");
-  const path = url.pathname.slice(base.length);
-  if (
-    !url.pathname.startsWith(base) ||
-    !(path.startsWith("experiments/") || path === "catalog.json")
-  )
-    return next();
-  const target = resolve(dist, decodeURIComponent(path));
-  if (!target.startsWith(dist + "/")) {
-    res.statusCode = 403;
-    res.end();
-    return;
-  }
-  const file = Bun.file(target);
-  if (!(await file.exists())) {
-    res.statusCode = 404;
-    res.end("Not found");
-    return;
-  }
-  res.setHeader("Content-Type", file.type);
-  res.setHeader("Cache-Control", "no-store");
-  res.end(Buffer.from(await file.arrayBuffer()));
+const server = await createServer({
+  root,
+  base,
+  plugins: [
+    {
+      name: "phy-experiment-dev",
+      configureServer(server) {
+        server.middlewares.use(async (req, res, next) => {
+          const url = new URL(req.url ?? "/", "http://localhost");
+          const path = url.pathname.slice(base.length);
+          if (
+            !url.pathname.startsWith(base) ||
+            !(path.startsWith("experiments/") || path === "catalog.json")
+          )
+            return next();
+          const target = resolve(dist, decodeURIComponent(path));
+          if (!target.startsWith(dist + "/")) {
+            res.statusCode = 403;
+            res.end();
+            return;
+          }
+          const file = Bun.file(target);
+          if (!(await file.exists())) {
+            res.statusCode = 404;
+            res.end("Not found");
+            return;
+          }
+          res.setHeader("Content-Type", file.type);
+          res.setHeader("Cache-Control", "no-store");
+          res.end(Buffer.from(await file.arrayBuffer()));
+        });
+      },
+    },
+  ],
 });
 await server.listen();
 server.printUrls();

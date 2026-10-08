@@ -16,11 +16,16 @@ const colors: Record<Metric, string> = {
   total: "var(--text)",
 };
 const cache = new Map<string, ReturnType<typeof sample>>();
+const pathCache = new WeakMap<ReturnType<typeof sample>, Map<string, string>>();
 function samples(p: Parameters, start: number, end: number) {
   const key = JSON.stringify([p, start, end]);
   if (!cache.has(key)) {
     if (cache.size > 8) cache.clear();
-    cache.set(key, sample(p, start, end));
+    const count = Math.min(
+      4097,
+      Math.max(241, Math.ceil(((end - start) / stateAt(p, 0).period) * 60) + 1),
+    );
+    cache.set(key, sample(p, start, end, count));
   }
   return cache.get(key)!;
 }
@@ -39,18 +44,22 @@ export function chart(
     end = start + duration;
   const data = samples(p, start, end),
     old = previous ? samples(previous, start, end) : null;
-  const energy = metrics.some((metric) =>
-    ["kinetic", "potential", "total"].includes(metric),
-  );
+  const energy = unit === "J";
+  const peak = (params: Parameters, metric: Metric) => {
+    const state = stateAt(params, 0);
+    return metric === "x"
+      ? params.A
+      : metric === "v"
+        ? params.A * state.omega
+        : metric === "a"
+          ? params.A * state.omega ** 2
+          : state.total;
+  };
   const maximum =
     Math.max(
       energy ? 0.05 : 0.01,
-      ...data.flatMap((point) =>
-        metrics.map((metric) => Math.abs(point[metric])),
-      ),
-      ...(old?.flatMap((point) =>
-        metrics.map((metric) => Math.abs(point[metric])),
-      ) ?? []),
+      ...metrics.map((metric) => peak(p, metric)),
+      ...(previous ? metrics.map((metric) => peak(previous, metric)) : []),
     ) * 1.12;
   const left = 57,
     right = 653,
@@ -61,8 +70,15 @@ export function chart(
     energy
       ? bottom - (value / maximum) * (bottom - top)
       : (top + bottom) / 2 - ((value / maximum) * (bottom - top)) / 2;
-  const path = (points: typeof data, metric: Metric) =>
-    points
+  const path = (points: typeof data, metric: Metric) => {
+    let paths = pathCache.get(points);
+    if (!paths) {
+      paths = new Map();
+      pathCache.set(points, paths);
+    }
+    const key = JSON.stringify([metric, maximum, energy]);
+    if (paths.has(key)) return paths.get(key)!;
+    const value = points
       .map(
         (point, i) =>
           (i ? "L" : "M") +
@@ -71,6 +87,9 @@ export function chart(
           py(point[metric]).toFixed(2),
       )
       .join(" ");
+    paths.set(key, value);
+    return value;
+  };
   const seek = (event: PointerEvent) => {
     if (event.type === "pointermove" && event.buttons !== 1) return;
     const matrix = (event.currentTarget as SVGSVGElement).getScreenCTM();

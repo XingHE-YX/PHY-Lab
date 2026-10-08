@@ -195,3 +195,24 @@ test("mobile layout stays within viewport and resource 404 is not HTML", async (
   expect(response.status()).toBe(404);
   expect(await response.text()).not.toContain("<html");
 });
+
+test("observation tabs support keyboard navigation without changing time", async ({
+  page,
+}) => {
+  await openExperiment(page);
+  await page.getByRole("button", { name: "动能 = 势能", exact: true }).click();
+  const before = (await snapshot(page)).time;
+  await page.getByRole("tab", { name: "看运动" }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("tab", { name: "看变化" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(page.getByRole("tab", { name: "看变化" })).toBeFocused();
+  expect((await snapshot(page)).time).toBe(before);
+  await page.keyboard.press("End");
+  await expect(page.getByRole("tab", { name: "看能量" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+});
