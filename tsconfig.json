@@ -11,5 +11,12 @@
     "allowImportingTsExtensions": true,
     "useDefineForClassFields": true
   },
-  "include": ["src", "experiments", "scripts", "tests", "vite.config.ts"]
+  "include": [
+    "src",
+    "experiments",
+    "scripts",
+    "tests",
+    "vite.config.ts",
+    "playwright.config.ts"
+  ]
 }

@@ -30,6 +30,8 @@ PHY Lab 使用 Apache License 2.0。提交贡献即表示你有权提供该代�
 
 ## 检查与提交
 
-提交前运行 `just check`、`just test` 和 `just build`。涉及离线或资源加载的修改还需验证生产预览中的首次缓存、断网刷新和更新失败回退。
+提交前运行 `just check`、`just test`、`just format-check` 和 `just build`。首次运行浏览器测试需 `bunx playwright install chromium`，随后使用 `just test-browser`。涉及离线或资源加载的修改还需验证生产预览中的首次缓存、断网刷新和更新失败回退。
+
+界面只支持至少 1280px 的桌面窗口。请遵循三栏实验台的分工，避免为移动端重新排列实验控件。科学显示必须保留物理意义，运动轨迹等效果使用模型数据，不能用装饰性动画模拟物理结果。
 
 每个功能单独 commit，使用 `feat:`、`fix:`、`docs:`、`test:` 或 `chore:` 前缀。避免混合多个无关功能。PR 描述说明最终行为、验证结果及实际限制。
