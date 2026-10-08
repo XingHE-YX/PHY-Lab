@@ -37,9 +37,9 @@ export class ExperimentPage extends LitElement {
     css`
       :host {
         display: block;
-        max-width: 1240px;
+        max-width: 1600px;
         margin: auto;
-        padding: 25px 32px 50px;
+        padding: 20px 28px 32px;
       }
       .top {
         display: flex;
@@ -61,11 +61,6 @@ export class ExperimentPage extends LitElement {
       .status p {
         font-size: 13px;
         color: var(--muted);
-      }
-      @media (max-width: 560px) {
-        :host {
-          padding: 20px 16px 36px;
-        }
       }
     `,
   ];

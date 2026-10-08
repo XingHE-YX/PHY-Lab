@@ -37,6 +37,7 @@ export function chart(
   label: string,
   unit: string,
   onSeek: (time: number) => void,
+  height = 177,
 ) {
   const state = stateAt(p, time),
     duration = 2 * state.period,
@@ -61,10 +62,10 @@ export function chart(
       ...metrics.map((metric) => peak(p, metric)),
       ...(previous ? metrics.map((metric) => peak(previous, metric)) : []),
     ) * 1.12;
-  const left = 57,
-    right = 653,
+  const left = 45,
+    right = 391,
     top = 30,
-    bottom = 142;
+    bottom = height - 30;
   const px = (t: number) => left + ((t - start) / duration) * (right - left);
   const py = (value: number) =>
     energy
@@ -76,7 +77,7 @@ export function chart(
       paths = new Map();
       pathCache.set(points, paths);
     }
-    const key = JSON.stringify([metric, maximum, energy]);
+    const key = JSON.stringify([metric, maximum, energy, height]);
     if (paths.has(key)) return paths.get(key)!;
     const value = points
       .map(
@@ -102,10 +103,10 @@ export function chart(
         Math.min(1, Math.max(0, (point.x - left) / (right - left))) * duration,
     );
   };
-  return svg`<svg class="chart" viewBox="0 0 680 177" role="img" aria-label=${label + " (" + unit + ")"} @pointerdown=${(
+  return svg`<svg class="chart" viewBox=${"0 0 420 " + height} role="img" aria-label=${label + " (" + unit + ")"} @pointerdown=${(
     event: PointerEvent,
   ) => {
     (event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
     seek(event);
-  }} @pointermove=${seek}><text x="8" y="16" fill="var(--muted)" font-size="10" font-family="var(--font)">${label} (${unit})</text>${(energy ? [0, maximum / 2, maximum] : [-maximum, 0, maximum]).map((value) => svg`<path d=${"M" + left + " " + py(value) + "H" + right} stroke="var(--border)" stroke-dasharray=${value === 0 ? "0" : "3 5"} stroke-width=".7"/><text x=${left - 9} y=${py(value) + 3} text-anchor="end" fill="var(--muted)" font-size="9" font-family="var(--mono)">${format(value, Math.abs(value) < 0.1 ? 3 : 2)}</text>`)}${[0, 0.25, 0.5, 0.75, 1].map((fraction) => svg`<path d=${"M" + (left + (right - left) * fraction) + " " + top + "V" + bottom} stroke="var(--border)" stroke-width=".7"/><text x=${left + (right - left) * fraction} y="164" text-anchor="middle" fill="var(--muted)" font-size="9" font-family="var(--mono)">${format(start + duration * fraction, 2)}</text>`)}<text x="671" y="164" fill="var(--muted)" font-size="9">s</text>${old ? metrics.map((metric) => svg`<path d=${path(old, metric)} fill="none" stroke=${colors[metric]} stroke-width="1.3" stroke-dasharray="4 4" opacity=".3"/>`) : ""}${metrics.map((metric) => svg`<path d=${path(data, metric)} fill="none" stroke=${colors[metric]} stroke-width="1.7" stroke-dasharray=${metric === "total" ? "5 4" : "0"}/>`)}<path d=${"M" + px(time) + " " + top + "V" + bottom} stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3"/>${metrics.map((metric) => svg`<circle cx=${px(time)} cy=${py(state[metric])} r="3.2" fill=${colors[metric]} stroke="var(--surface)" stroke-width="1.5"/>`)}</svg>`;
+  }} @pointermove=${seek}><text x="8" y="16" fill="var(--muted)" font-size="16" font-family="var(--font)">${label} (${unit})</text>${(energy ? [0, maximum / 2, maximum] : [-maximum, 0, maximum]).map((value) => svg`<path d=${"M" + left + " " + py(value) + "H" + right} stroke="var(--border)" stroke-dasharray=${value === 0 ? "0" : "3 5"} stroke-width=".7"/><text x=${left - 9} y=${py(value) + 3} text-anchor="end" fill="var(--muted)" font-size="11" font-family="var(--mono)">${format(value, Math.abs(value) < 0.1 ? 3 : 2)}</text>`)}${[0, 0.25, 0.5, 0.75, 1].map((fraction) => svg`<path d=${"M" + (left + (right - left) * fraction) + " " + top + "V" + bottom} stroke="var(--border)" stroke-width=".7"/><text x=${left + (right - left) * fraction} y=${height - 10} text-anchor="middle" fill="var(--muted)" font-size="11" font-family="var(--mono)">${format(start + duration * fraction, 2)}</text>`)}<text x="409" y=${height - 10} fill="var(--muted)" font-size="11">s</text>${old ? metrics.map((metric) => svg`<path d=${path(old, metric)} fill="none" stroke=${colors[metric]} stroke-width="1.3" stroke-dasharray="4 4" opacity=".3"/>`) : ""}${metrics.map((metric) => svg`<path d=${path(data, metric)} fill="none" stroke=${colors[metric]} stroke-width="1.7" stroke-dasharray=${metric === "total" ? "5 4" : "0"}/>`)}<path d=${"M" + px(time) + " " + top + "V" + bottom} stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3"/>${metrics.map((metric) => svg`<circle cx=${px(time)} cy=${py(state[metric])} r="3.2" fill=${colors[metric]} stroke="var(--surface)" stroke-width="1.5"/>`)}</svg>`;
 }

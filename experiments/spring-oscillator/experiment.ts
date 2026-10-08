@@ -17,7 +17,7 @@ import {
 import { chart, type Metric } from "./components/chart";
 import { renderScene } from "./components/scene";
 import { texts } from "./locales/messages";
-import { styles } from "./styles/styles";
+import { styles } from "./styles/desktop";
 export interface Snapshot {
   params: Parameters;
   time: number;
@@ -247,6 +247,7 @@ export class SpringExperiment extends LitElement {
   scene() {
     return renderScene({
       params: this.effectiveParameters,
+      time: this.dragging ? 0 : this.time,
       state: this.state,
       locale: this.locale,
       velocity: this.velocity,
@@ -340,15 +341,15 @@ export class SpringExperiment extends LitElement {
     this.moment = "";
     this.persist();
   };
-  analysis() {
+  plotPanel() {
     const t = texts(this.locale),
       p = this.effectiveParameters,
       s = this.state,
       time = this.dragging ? 0 : this.time;
     const labels: Record<Metric, string> = {
       x: t.position,
-      v: t.velocity.replace("箭头", "").replace(" arrow", ""),
-      a: t.acceleration.replace("箭头", "").replace(" arrow", ""),
+      v: this.locale === "zh-CN" ? "速度" : "Velocity",
+      a: this.locale === "zh-CN" ? "加速度" : "Acceleration",
       kinetic: t.kinetic,
       potential: t.potential,
       total: t.total,
@@ -359,245 +360,272 @@ export class SpringExperiment extends LitElement {
         : this.mode === "changes"
           ? ["x", "v", "a"]
           : ["kinetic", "potential", "total"];
-    const ratio = s.total > 0 ? s.kinetic / s.total : 0;
     const plot = (metrics: Metric[], label: string, unit: string) =>
-      chart(p, this.previous, time, metrics, label, unit, this.seek);
-    return html`<div class="plot-layout">
-        <section class="panel plot">
-          <div class="plot-top">
-            <span>${t.zoom}</span
-            ><span class="mono">t = ${format(time)} s</span>
-          </div>
-          ${
-            this.mode !== "motion"
-              ? html`<div class="toggles" style="padding:10px 0;border:0">
-                  ${keys.map(
-                    (key) =>
-                      html`<label
-                        ><input
-                          type="checkbox"
-                          .checked=${this.curves[key]}
-                          @change=${(event: Event) => {
-                            this.curves = {
-                              ...this.curves,
-                              [key]: (event.target as HTMLInputElement).checked,
-                            };
-                            this.persist();
-                          }}
-                        />${labels[key]}</label
-                      >`,
-                  )}
-                </div>`
-              : ""
-          }${
-            this.mode === "motion"
-              ? plot(["x"], t.position, "m")
-              : this.mode === "changes"
-                ? html`${this.curves.x ? plot(["x"], t.position, "m") : ""}${this.curves.v ? plot(["v"], labels.v, "m/s") : ""}${this.curves.a ? plot(["a"], labels.a, "m/s²") : ""}`
-                : html`${plot(
-                      keys.filter((key) => this.curves[key]),
-                      t.energy,
-                      "J",
-                    )}
-                    <div class="energy-values">
-                      ${[
-                        ["kinetic", s.kinetic, "var(--green)"],
-                        ["potential", s.potential, "var(--blue)"],
-                        ["total", s.total, "var(--text)"],
-                      ].map(
-                        ([key, value, color]) =>
-                          html`<div>
-                            <small>${labels[key as Metric]}</small
-                            ><strong style=${"color:" + color}
-                              >${format(Number(value), 3)}
-                              <span class="unit">J</span></strong
-                            >
-                          </div>`,
-                      )}
-                    </div>
-                    <div class="energy-bar" aria-label=${t.energy}>
-                      <div
-                        style=${"width:" + ratio * 100 + "%;background:var(--green)"}
-                      ></div>
-                      <div
-                        style=${"width:" + (s.total > 0 ? (1 - ratio) * 100 : 0) + "%;background:var(--blue)"}
-                      ></div>
-                    </div>
-                    <div class="energy-caption">
-                      <span
-                        >${t.kinetic}
-                        ${s.total > 0 ? format(ratio * 100, 0) : "0"}%</span
-                      ><span
-                        >${t.potential}
-                        ${s.total > 0 ? format((1 - ratio) * 100, 0) : "0"}%</span
-                      >
-                    </div>`
-          }${
-            this.previous
-              ? html`<div class="compare">
-                  <span
-                    >┄ ${t.previous} · A=${format(this.previous.A)} m ·
-                    m=${format(this.previous.m, 1)} kg ·
-                    k=${format(this.previous.k, 0)} N/m</span
-                  ><button
-                    @click=${() => {
-                      this.previous = null;
-                      this.persist();
-                    }}
-                  >
-                    ${t.clearCompare}
-                  </button>
-                </div>`
-              : ""
-          }
-        </section>
-        <aside class="panel equations">
-          <div class="section-title">${t.formula}</div>
-          ${
-            this.mode === "motion"
-              ? html`<div class="equation" style="color:var(--blue)">
-                    x = A cos(ωt + φ)
-                  </div>
-                  <div class="subtle-box mono">
-                    x = ${format(p.A)} cos(${format(s.omega)} × ${format(time)}
-                    + ${format(p.phi)})<br />= ${format(s.x, 3)} m
-                  </div>
-                  <p class="explanation">${t.positionExplain}</p>`
-              : this.mode === "changes"
-                ? html`<div class="equation" style="color:var(--green)">
-                      v = −Aω sin(ωt + φ)
-                    </div>
-                    <div class="equation" style="color:var(--red)">
-                      a = −ω²x
-                    </div>
-                    <div class="subtle-box mono">
-                      v = ${format(s.v, 3)} m/s<br />a = ${format(s.a, 3)} m/s²
-                    </div>
-                    <p class="explanation">${t.velocityExplain}</p>`
-                : html`<div class="equation" style="color:var(--green)">
-                      E<sub>k</sub> = ½mv²
-                    </div>
-                    <div class="equation" style="color:var(--blue)">
-                      E<sub>p</sub> = ½kx²
-                    </div>
-                    <div class="equation">
-                      E = E<sub>k</sub> + E<sub>p</sub> = ½kA²
-                    </div>
-                    <div class="subtle-box mono">
-                      ${format(s.kinetic, 3)} + ${format(s.potential, 3)}<br />=
-                      ${format(s.total, 3)} J
-                    </div>
-                    <p class="explanation">${t.energyExplain}</p>`
-          }
-          <details class="derivation">
-            <summary>${t.derive}</summary>
-            <p>
-              F = −kx<br />a = F/m = −(k/m)x<br />ω = √(k/m)<br />T = 2π√(m/k)
-            </p>
-            <div class="subtle-box mono">
-              T = ${format(s.period, 3)} s<br />ω = ${format(s.omega, 3)} rad/s
-            </div>
-          </details>
-        </aside>
+      chart(
+        p,
+        this.previous,
+        time,
+        metrics,
+        label,
+        unit,
+        this.seek,
+        this.mode === "changes" ? 146 : 210,
+      );
+    const ratio = s.total > 0 ? s.kinetic / s.total : 0;
+    return html`<div class="plot-top">
+        <span>${t.zoom}</span><span class="mono">t = ${format(time)} s</span>
       </div>
-      <section class="panel moments">
-        <h2 class="section-title">${t.moments}</h2>
-        <div class="moment-buttons">
-          ${[
-            ["right", t.right],
-            ["equilibrium", t.center],
-            ["left", t.left],
-            ["equal", t.equal],
-          ].map(
-            ([key, label]) =>
-              html`<button
-                class=${this.moment === key ? "selected" : ""}
-                @click=${() => this.locate(key as "right" | "equilibrium" | "left" | "equal")}
+      ${
+        this.mode !== "motion"
+          ? html`<div class="toggles">
+              ${keys.map(
+                (key) =>
+                  html`<label
+                    ><input
+                      type="checkbox"
+                      .checked=${this.curves[key]}
+                      @change=${(event: Event) => {
+                        this.curves = {
+                          ...this.curves,
+                          [key]: (event.target as HTMLInputElement).checked,
+                        };
+                        this.persist();
+                      }}
+                    />${labels[key]}</label
+                  >`,
+              )}
+            </div>`
+          : ""
+      }
+      ${
+        this.mode === "motion"
+          ? html`${plot(["x"], t.position, "m")}
+              <div class="mini-stats">
+                <div class="mini-stat">
+                  <small>${t.amplitude} A</small
+                  ><strong>${format(p.A)} <span class="unit">m</span></strong>
+                </div>
+                <div class="mini-stat">
+                  <small>${t.period} T</small
+                  ><strong
+                    >${format(s.period)} <span class="unit">s</span></strong
+                  >
+                </div>
+              </div>`
+          : this.mode === "changes"
+            ? html`${this.curves.x ? plot(["x"], t.position, "m") : ""}${this.curves.v ? plot(["v"], labels.v, "m/s") : ""}${this.curves.a ? plot(["a"], labels.a, "m/s²") : ""}`
+            : html`${plot(
+                  keys.filter((key) => this.curves[key]),
+                  this.locale === "zh-CN" ? "能量" : "Energy",
+                  "J",
+                )}
+                <div class="energy-values">
+                  ${[
+                    ["kinetic", s.kinetic, "var(--green)"],
+                    ["potential", s.potential, "var(--blue)"],
+                    ["total", s.total, "var(--text)"],
+                  ].map(
+                    ([key, value, color]) =>
+                      html`<div>
+                        <small>${labels[key as Metric]}</small
+                        ><strong style=${"color:" + color}
+                          >${format(Number(value), 3)}
+                          <span class="unit">J</span></strong
+                        >
+                      </div>`,
+                  )}
+                </div>
+                <div class="energy-bar" aria-label=${t.energy}>
+                  <div
+                    style=${"width:" + ratio * 100 + "%;background:var(--green)"}
+                  ></div>
+                  <div
+                    style=${"width:" + (s.total > 0 ? (1 - ratio) * 100 : 0) + "%;background:var(--blue)"}
+                  ></div>
+                </div>
+                <div class="energy-caption">
+                  <span
+                    >${t.kinetic}
+                    ${s.total > 0 ? format(ratio * 100, 0) : "0"}%</span
+                  ><span
+                    >${t.potential}
+                    ${s.total > 0 ? format((1 - ratio) * 100, 0) : "0"}%</span
+                  >
+                </div>`
+      }
+      ${
+        this.previous
+          ? html`<div class="compare">
+              <button
+                @click=${() => {
+                  this.previous = null;
+                  this.persist();
+                }}
               >
-                ${label}
-              </button>`,
-          )}
-        </div>
-        <p class="moment-hint">
-          ${this.moment === "right" ? t.rightHint : this.moment === "left" ? t.leftHint : this.moment === "equilibrium" ? t.centerHint : this.moment === "equal" ? t.equalHint : t.hint}
-        </p>
-      </section>
-      <section class="tasks">
-        <h2 class="section-title">${t.tasks}</h2>
-        <div class="task-grid">
-          ${[
-            [t.task1, t.answer1, t.double],
-            [t.task2, t.answer2, t.locate],
-            [t.task3, t.answer3, t.resetTask],
-          ].map(
-            ([question, answer, action], i) =>
-              html`<details class="panel task">
-                <span class="task-number">0${i + 1}</span>
-                <summary>${question}</summary>
-                <p>${answer}</p>
-                <button
-                  ?disabled=${i === 0 && (p.A > 0.4 || p.A === 0)}
-                  @click=${() => {
-                    if (i === 0) this.setParameter("A", this.params.A * 2);
-                    if (i === 1) {
-                      this.mode = "changes";
-                      this.locate("right");
-                    }
-                    if (i === 2) {
-                      this.mode = "energy";
-                      this.restart();
-                    }
-                  }}
-                >
-                  ${action}
-                </button>
-              </details>`,
-          )}
-        </div>
-      </section>`;
+                ${t.clearCompare}</button
+              >┄ ${t.previous}<br /><span class="mono"
+                >A ${format(this.previous.A)} m · m
+                ${format(this.previous.m, 1)} kg · k
+                ${format(this.previous.k, 0)} N/m</span
+              >
+            </div>`
+          : ""
+      }`;
+  }
+  equations() {
+    const t = texts(this.locale),
+      p = this.effectiveParameters,
+      s = this.state,
+      time = this.dragging ? 0 : this.time;
+    return html`<section class="panel theory">
+      <div class="equation">
+        ${this.mode === "motion" ? html`<span style="color:var(--blue)">x = A cos(ωt + φ)</span><small>x = ${format(p.A)} cos(${format(s.omega)} × ${format(time)} + ${format(p.phi)}) = ${format(s.x, 3)} m</small>` : this.mode === "changes" ? html`<span style="color:var(--green)">v = −Aω sin(ωt + φ)</span><br /><span style="color:var(--red)">a = −ω²x</span>` : html`<span style="color:var(--green)">E<sub>k</sub> = ½mv²</span> &nbsp; <span style="color:var(--blue)">E<sub>p</sub> = ½kx²</span><small>E = E<sub>k</sub> + E<sub>p</sub> = ½kA² = ${format(s.total, 3)} J</small>`}
+      </div>
+      <p class="explanation">
+        ${this.mode === "motion" ? t.positionExplain : this.mode === "changes" ? t.velocityExplain : t.energyExplain}
+      </p>
+      <details class="derivation">
+        <summary>${t.derive}</summary>
+        <p>F = −kx<br />a = −(k/m)x<br />ω = √(k/m)<br />T = 2π√(m/k)</p>
+      </details>
+    </section>`;
+  }
+  moments() {
+    const t = texts(this.locale);
+    return html`<section class="panel moments">
+      <h2 class="section-title">${t.moments}</h2>
+      <div class="moment-buttons">
+        ${[
+          ["right", t.right],
+          ["equilibrium", t.center],
+          ["left", t.left],
+          ["equal", t.equal],
+        ].map(
+          ([key, label]) =>
+            html`<button
+              class=${this.moment === key ? "selected" : ""}
+              @click=${() => this.locate(key as "right" | "equilibrium" | "left" | "equal")}
+            >
+              ${label}
+            </button>`,
+        )}
+      </div>
+      <p class="moment-hint">
+        ${this.params.A === 0 ? t.zero : this.moment === "right" ? t.rightHint : this.moment === "left" ? t.leftHint : this.moment === "equilibrium" ? t.centerHint : this.moment === "equal" ? t.equalHint : t.hint}
+      </p>
+    </section>`;
+  }
+  tasks() {
+    const t = texts(this.locale);
+    return html`<details class="explore">
+      <summary>
+        ${t.tasks} ·
+        ${this.locale === "zh-CN" ? "三个问题，亲手验证" : "Three questions. Test them yourself."}
+      </summary>
+      <div class="task-grid">
+        ${[
+          [t.task1, t.answer1, t.double],
+          [t.task2, t.answer2, t.locate],
+          [t.task3, t.answer3, t.resetTask],
+        ].map(
+          ([question, answer, action], i) =>
+            html`<details class="panel task">
+              <span class="task-number">0${i + 1}</span>
+              <summary>${question}</summary>
+              <p>${answer}</p>
+              <button
+                ?disabled=${i === 0 && (this.params.A > 0.4 || this.params.A === 0)}
+                @click=${() => {
+                  if (i === 0) this.setParameter("A", this.params.A * 2);
+                  if (i === 1) {
+                    this.mode = "changes";
+                    this.locate("right");
+                  }
+                  if (i === 2) {
+                    this.mode = "energy";
+                    this.restart();
+                  }
+                }}
+              >
+                ${action}
+              </button>
+            </details>`,
+        )}
+      </div>
+    </details>`;
   }
   render() {
     const t = texts(this.locale),
+      zh = this.locale === "zh-CN",
       s = this.state,
-      p = this.params,
-      window = 2 * s.period,
-      start = Math.floor(Math.max(0, this.time - 1e-9) / window) * window;
+      p = this.effectiveParameters,
+      duration = 2 * s.period;
+    const start =
+      Math.floor(Math.max(0, this.time - 1e-9) / duration) * duration;
     return html`<div class="heading">
         <div>
+          <div class="eyebrow">EXPERIMENT 01 / SIMPLE HARMONIC MOTION</div>
           <h1>${t.title}</h1>
           <p class="intro">${t.subtitle}</p>
         </div>
-        <div class="model">${t.model}</div>
+        <div class="lab-meta">
+          <span class="model">${t.model}</span
+          ><span class=${"status " + (this.playing ? "running" : "")}
+            ><i class="status-dot"></i
+            >${this.dragging ? (zh ? "拖动中" : "HOLDING") : this.playing ? (zh ? "运行中" : "RUNNING") : zh ? "已暂停" : "PAUSED"}</span
+          >
+        </div>
       </div>
-      <div class="bench">
-        <section class="panel">
+      <div class="lab-grid bench">
+        <aside class="panel parameters">
+          <div class="panel-heading">${t.parameters}<span>INPUT</span></div>
+          <div class="parameter-body">
+            ${this.parameter("A", t.amplitude, 0, 0.8, 0.01, "m")}${this.parameter("m", t.mass, 0.2, 5, 0.1, "kg")}${this.parameter("k", t.stiffness, 1, 50, 1, "N/m")}
+            <div class="derived">
+              ${[
+                [t.omega, format(s.omega) + " rad/s"],
+                [t.period, format(s.period) + " s"],
+                [t.total, format(s.total, 3) + " J"],
+              ].map(
+                ([label, value]) =>
+                  html`<div class="derived-row">
+                    <span class="muted">${label}</span><span>${value}</span>
+                  </div>`,
+              )}
+            </div>
+            <details class="advanced">
+              <summary>${t.advanced}</summary>
+              ${this.parameter("phi", t.phase, 0, TAU, 0.01, "rad")}
+            </details>
+          </div>
+        </aside>
+        <section class="panel stage">
           <div class="scene-header">
             <span>${this.dragging ? t.holding : t.drag}</span
             ><span class="mono"
-              >${this.params.A === 0 ? t.zero : "ω = " + format(s.omega) + " rad/s"}</span
+              >θ =
+              ${format((((s.omega * (this.dragging ? 0 : this.time) + p.phi) % TAU) / TAU) * 360, 1)}°</span
             >
           </div>
-          ${this.scene()}
+          <div class="scene-wrap">
+            <div class="scene-stamp mono">
+              SPRING / MASS SYSTEM<br />${zh ? "位移标尺 · SI 单位" : "POSITION SCALE · SI UNITS"}
+            </div>
+            ${this.scene()}
+            <div class="scene-scale mono">
+              ${p.A === 0 ? t.zero : "−A ← 0 → +A"}
+            </div>
+          </div>
           <div class="readouts">
             ${[
               [t.position, s.x, "m", "var(--blue)"],
-              [
-                t.velocity.replace("箭头", "").replace(" arrow", ""),
-                s.v,
-                "m/s",
-                "var(--green)",
-              ],
-              [
-                t.acceleration.replace("箭头", "").replace(" arrow", ""),
-                s.a,
-                "m/s²",
-                "var(--red)",
-              ],
+              [zh ? "速度" : "Velocity", s.v, "m/s", "var(--green)"],
+              [zh ? "加速度" : "Acceleration", s.a, "m/s²", "var(--red)"],
             ].map(
               ([label, value, unit, color]) =>
                 html`<div class="readout">
                   <div class="label">${label}</div>
-                  <span class="value mono" style=${"color:" + color}
+                  <span class="value" style=${"color:" + color}
                     >${format(Number(value), 3)}</span
                   ><span class="unit">${unit}</span>
                 </div>`,
@@ -623,104 +651,88 @@ export class SpringExperiment extends LitElement {
               <option value="1">1×</option>
               <option value="0.5">0.5×</option>
               <option value="0.25">0.25×</option></select
-            ><span class="time-label mono">t = ${format(this.time)} s</span>
+            ><span class="time-label">t = ${format(this.time)} s</span>
           </div>
           <div class="timeline">
-            <span class="mono">${format(start, 1)}s</span
+            <span>${format(start, 1)}s</span
             ><input
               type="range"
               min=${start}
-              max=${start + window}
-              step="0.001"
+              max=${start + duration}
+              step=".001"
               .value=${String(this.time)}
               aria-label=${t.timeline}
-              @input=${(e: Event) => {
-                this.pause();
-                this.dragging = false;
-                this.time = Number((e.target as HTMLInputElement).value);
-                this.moment = "";
-                this.persist();
-              }}
-            /><span class="mono">${format(start + window, 1)}s</span>
+              @input=${(e: Event) => this.seek(Number((e.target as HTMLInputElement).value))}
+            /><span>${format(start + duration, 1)}s</span>
           </div>
           <div class="toggles">
-            <label
-              ><input
-                type="checkbox"
-                .checked=${this.velocity}
-                @change=${(e: Event) => {
-                  this.velocity = (e.target as HTMLInputElement).checked;
-                  this.persist();
-                }}
-              />${t.velocity}</label
-            ><label
-              ><input
-                type="checkbox"
-                .checked=${this.acceleration}
-                @change=${(e: Event) => {
-                  this.acceleration = (e.target as HTMLInputElement).checked;
-                  this.persist();
-                }}
-              />${t.acceleration}</label
+            <div class="toggle-group">
+              <label
+                ><input
+                  type="checkbox"
+                  .checked=${this.velocity}
+                  @change=${(e: Event) => {
+                    this.velocity = (e.target as HTMLInputElement).checked;
+                    this.persist();
+                  }}
+                />${t.velocity}</label
+              ><label
+                ><input
+                  type="checkbox"
+                  .checked=${this.acceleration}
+                  @change=${(e: Event) => {
+                    this.acceleration = (e.target as HTMLInputElement).checked;
+                    this.persist();
+                  }}
+                />${t.acceleration}</label
+              >
+            </div>
+            <span class="arrow-note"
+              >${zh ? "各箭头按自身峰值缩放" : "Arrows scaled to their own peak"}</span
             >
           </div>
         </section>
-        <aside class="panel parameters">
-          <h2 class="section-title">${t.parameters}</h2>
-          ${this.parameter("A", t.amplitude, 0, 0.8, 0.01, "m")}${this.parameter("m", t.mass, 0.2, 5, 0.1, "kg")}${this.parameter("k", t.stiffness, 1, 50, 1, "N/m")}
-          <div class="derived">
+        <aside class="panel observation">
+          <div
+            class="tabs"
+            role="tablist"
+            aria-label=${zh ? "观察模式" : "Observation mode"}
+            @keydown=${this.tabKeys}
+          >
             ${[
-              [t.omega, format(s.omega) + " rad/s"],
-              [t.period, format(s.period) + " s"],
-              [t.total, format(s.total, 3) + " J"],
+              ["motion", t.motion],
+              ["changes", t.changes],
+              ["energy", t.energy],
             ].map(
-              ([label, value]) =>
-                html`<div class="derived-row">
-                  <span class="muted">${label}</span><span>${value}</span>
-                </div>`,
+              ([mode, label]) =>
+                html`<button
+                  role="tab"
+                  tabindex=${mode === this.mode ? 0 : -1}
+                  aria-controls="observations"
+                  aria-selected=${mode === this.mode}
+                  class=${mode === this.mode ? "active" : ""}
+                  @click=${() => {
+                    this.mode = mode;
+                    this.persist();
+                  }}
+                >
+                  ${label}
+                </button>`,
             )}
           </div>
-          <details class="advanced">
-            <summary>${t.advanced}</summary>
-            ${this.parameter("phi", t.phase, 0, TAU, 0.01, "rad")}
-          </details>
+          <div
+            class="plot"
+            id="observations"
+            role="tabpanel"
+            aria-label=${this.mode === "motion" ? t.motion : this.mode === "changes" ? t.changes : t.energy}
+          >
+            ${this.plotPanel()}
+          </div>
+          <div class="observation-note">
+            ${this.mode === "motion" ? (zh ? "曲线记录小球的位置。拖动时间游标，回到任意一个瞬间。" : "The curve records position. Scrub time to inspect any instant.") : this.mode === "changes" ? (zh ? "三个量共享同一时刻。端点速度为零，加速度指向平衡位置。" : "All three quantities share one instant. At endpoints velocity is zero; acceleration points toward equilibrium.") : zh ? "两种能量此消彼长。一个完整振动中，动能两次达到最大。" : "Energy changes form. Kinetic energy reaches a maximum twice in each full cycle."}
+          </div>
         </aside>
       </div>
-      <section class="analysis">
-        <div
-          class="tabs"
-          role="tablist"
-          aria-label=${t.show}
-          @keydown=${this.tabKeys}
-        >
-          ${[
-            ["motion", t.motion],
-            ["changes", t.changes],
-            ["energy", t.energy],
-          ].map(
-            ([mode, label]) =>
-              html`<button
-                role="tab"
-                tabindex=${mode === this.mode ? 0 : -1}
-                aria-controls="observations"
-                aria-selected=${mode === this.mode}
-                class=${mode === this.mode ? "active" : ""}
-                @click=${() => {
-                  this.mode = mode;
-                  this.persist();
-                }}
-              >
-                ${label}
-              </button>`,
-          )}
-        </div>
-        <div
-          id="observations"
-          role="tabpanel"
-          aria-label=${this.mode === "motion" ? t.motion : this.mode === "changes" ? t.changes : t.energy}
-        >
-          ${this.analysis()}
-        </div>
-      </section>`;
+      ${this.moments()}${this.equations()}${this.tasks()}`;
   }
 }

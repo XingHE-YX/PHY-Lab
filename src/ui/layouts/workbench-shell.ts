@@ -262,26 +262,40 @@ export class App extends LitElement {
         font-size: 13px;
         color: var(--muted);
       }
-      @media (max-width: 680px) {
-        .toolbar {
-          height: auto;
-          min-height: 62px;
-          grid-template-columns: 1fr 1fr;
-          padding: 12px 16px;
-          gap: 12px;
-        }
-        .search {
-          grid-row: 2;
-          grid-column: 1/-1;
-        }
-        .left {
-          gap: 8px;
-        }
+
+      .viewport-warning {
+        display: none;
+      }
+      @media (max-width: 1279px) {
+        .toolbar,
+        main,
         .footer {
-          width: calc(100% - 40px);
-        }
-        .key {
           display: none;
+        }
+        .viewport-warning {
+          position: fixed;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: var(--bg);
+          padding: 30px;
+          text-align: center;
+          gap: 14px;
+        }
+        .viewport-warning h1 {
+          font-size: 22px;
+          margin: 0;
+        }
+        .viewport-warning p {
+          font-size: 13px;
+          color: var(--muted);
+          line-height: 1.8;
+          margin: 0;
+        }
+        .viewport-warning .brand {
+          margin-bottom: 24px;
         }
       }
     `,
@@ -390,7 +404,16 @@ export class App extends LitElement {
     const s = settings.value,
       t = messages(s.locale),
       id = this.route.match(/^#\/experiments\/([a-z][a-z0-9-]*)$/)?.[1];
-    return html`<header class="toolbar">
+    return html`<div class="viewport-warning">
+        <div class="brand">PHY<span> Lab</span></div>
+        <h1>
+          ${s.locale === "zh-CN" ? "请使用桌面大小的窗口" : "A desktop-sized window is required"}
+        </h1>
+        <p>
+          ${s.locale === "zh-CN" ? "PHY Lab 的实验台需要至少 1280 px 的窗口宽度。" : "PHY Lab requires a window width of at least 1280 px."}
+        </p>
+      </div>
+      <header class="toolbar">
         <div class="left">
           <div class="navigation">
             <button

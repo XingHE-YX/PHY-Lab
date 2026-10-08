@@ -195,41 +195,6 @@ export class Workbench extends LitElement {
         font-size: 13px;
         color: var(--muted);
       }
-      @media (max-width: 800px) {
-        .grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-        .hero {
-          padding-top: 50px;
-        }
-        .diagram {
-          width: 120px;
-        }
-      }
-      @media (max-width: 560px) {
-        :host {
-          padding: 0 20px;
-        }
-        .hero {
-          padding: 42px 0 35px;
-        }
-        .diagram {
-          display: none;
-        }
-        .grid {
-          grid-template-columns: 1fr;
-        }
-        .steps {
-          grid-template-columns: 1fr;
-          gap: 22px;
-        }
-        .method {
-          margin-top: 40px;
-        }
-        h1 {
-          letter-spacing: -1px;
-        }
-      }
     `,
   ];
   render() {

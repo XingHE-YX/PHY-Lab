@@ -1,6 +1,11 @@
 import { svg } from "lit";
 import type { Locale } from "../../../src/infra/platform/contract";
-import { format, type Parameters, type PhysicsState } from "../model/physics";
+import {
+  format,
+  stateAt,
+  type Parameters,
+  type PhysicsState,
+} from "../model/physics";
 import { texts } from "../locales/messages";
 interface SceneOptions {
   params: Parameters;
@@ -8,6 +13,7 @@ interface SceneOptions {
   locale: Locale;
   velocity: boolean;
   acceleration: boolean;
+  time: number;
   pointerDown: (event: PointerEvent) => void;
   pointerMove: (event: PointerEvent) => void;
   release: () => void;
@@ -28,22 +34,32 @@ export function renderScene(options: SceneOptions) {
   return svg`
     <svg class="scene" viewBox="0 0 800 285" role="group" aria-label=${t.title}>
       <defs>
+        <pattern id="lab-grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="var(--border)" stroke-width=".5"/></pattern>
+        <radialGradient id="mass-light" cx="30%" cy="25%" r="85%"><stop offset="0" stop-color="#bed5ff"/><stop offset=".35" stop-color="#568bfd"/><stop offset="1" stop-color="#1747b9"/></radialGradient>
+        <linearGradient id="spring-metal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--muted)"/><stop offset=".5" stop-color="var(--text)"/><stop offset="1" stop-color="var(--muted)"/></linearGradient>
+        <linearGradient id="wall-metal"><stop stop-color="var(--subtle)"/><stop offset="1" stop-color="var(--border)"/></linearGradient>
+        <filter id="ball-glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="10"/></filter>
         <marker id="v-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 7 3.5 0 7" fill="var(--green)"/></marker>
         <marker id="a-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 7 3.5 0 7" fill="var(--red)"/></marker>
       </defs>
-      <path d="M48 91h26v92H48z" fill="var(--subtle)" stroke="var(--border)"/>
+      <rect x="20" y="20" width="760" height="244" fill="url(#lab-grid)" opacity=".5"/>
+      <path d="M48 91h26v92H48z" fill="url(#wall-metal)" stroke="var(--border)"/>
+      <circle cx="61" cy="105" r="3" fill="var(--muted)"/><circle cx="61" cy="169" r="3" fill="var(--muted)"/>
       <path d="M48 92 36 104m12 3-12 12m12 3-12 12m12 3-12 12m12 3-12 12m12 3-12 12M74 137h12" stroke="var(--muted)" fill="none" stroke-width="1.5"/>
       <path d="M390 42v163" stroke="var(--border)" stroke-dasharray="4 5"/>
       <path d="M90 185h640" stroke="var(--border)"/>
-      <polyline points=${points} fill="none" stroke="var(--text)" stroke-width="2" stroke-linejoin="round"/>
-      <circle cx=${x} cy="137" r="25" fill="var(--blue)" opacity=".12"/>
-      <circle cx=${x} cy="137" r="22" fill="var(--blue)"/>
+      ${options.time > 0.03 ? Array.from({ length: 8 }, (_, i) => svg`<circle cx=${390 + stateAt(p, Math.max(0, options.time - (8 - i) * 0.025)).x * 300} cy="137" r=${9 + i} fill="var(--blue)" opacity=${0.025 + i * 0.018}/>`) : ""}
+      <polyline points=${points} fill="none" stroke="var(--border)" stroke-width="5" stroke-linejoin="round"/>
+      <polyline points=${points} fill="none" stroke="url(#spring-metal)" stroke-width="2.5" stroke-linejoin="round"/>
+      <ellipse cx=${x} cy="177" rx="26" ry="4" fill="var(--text)" opacity=".09"/>
+      <circle cx=${x} cy="137" r="27" fill="var(--blue)" opacity=".22" filter="url(#ball-glow)"/>
+      <circle cx=${x} cy="137" r="24" fill="url(#mass-light)" stroke="#5185ec" stroke-width="1"/>
       <circle class="mass" cx=${x} cy="137" r="46" fill="transparent" tabindex="0" role="slider"
         aria-label=${t.drag} aria-valuemin="-0.8" aria-valuemax="0.8" aria-valuenow=${Number(format(s.x, 3))}
         aria-valuetext=${format(s.x, 3) + " m. " + t.keyHelp}
         @pointerdown=${options.pointerDown} @pointermove=${options.pointerMove}
         @pointerup=${options.release} @pointercancel=${options.cancel} @keydown=${options.keyboard}/>
-      <text x=${x} y="142" text-anchor="middle" fill="var(--surface)" font-family="var(--mono)" font-size="15" pointer-events="none">m</text>
+      <text x=${x} y="142" text-anchor="middle" fill="white" font-family="var(--mono)" font-size="15" pointer-events="none">m</text>
       ${
         velocity && Math.abs(s.v) > 1e-7
           ? svg`

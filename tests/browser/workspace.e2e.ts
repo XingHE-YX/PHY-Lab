@@ -180,17 +180,18 @@ test("first home visit preloads an unopened experiment for offline refresh", asy
   await page.getByRole("tab", { name: "看能量" }).click();
   await expect(page.locator(".energy-values")).toBeVisible();
 });
-test("mobile layout stays within viewport and resource 404 is not HTML", async ({
+test("small windows show a desktop requirement instead of a mobile layout", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await openExperiment(page);
-  await page.getByRole("tab", { name: "看能量" }).click();
-  const bounds = await page.locator(".bench").boundingBox();
-  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
-  const plot = await page.locator(".plot-layout").boundingBox();
-  expect(plot!.x + plot!.width).toBeLessThanOrEqual(390);
-  await page.screenshot({ path: ".build/mobile.png", fullPage: true });
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "请使用桌面大小的窗口" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("PHY Lab 的实验台需要至少 1280 px 的窗口宽度。"),
+  ).toBeVisible();
+  await expect(page.locator(".toolbar")).toBeHidden();
   const response = await page.request.get("/experiments/missing.js");
   expect(response.status()).toBe(404);
   expect(await response.text()).not.toContain("<html");
