@@ -480,19 +480,34 @@ export const styles = css`
     border-left: 1px solid var(--border);
     padding-left: 18px;
   }
-  .theory {
+  .support {
     margin-top: 14px;
-    display: grid;
-    grid-template-columns: minmax(380px, 1fr) 1fr 220px;
-    align-items: center;
+  }
+  .support-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .support-tabs button {
+    background: transparent;
+    border-color: transparent;
+  }
+  .support-tabs button.selected {
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+  .theory {
     padding: 18px 20px;
-    gap: 25px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px 28px;
+    align-items: start;
   }
   .equation {
     font-family: var(--mono);
     font-size: 16px;
     line-height: 1.8;
-    margin: 0;
   }
   .equation small {
     display: block;
@@ -501,51 +516,57 @@ export const styles = css`
     margin-top: 7px;
   }
   .explanation {
+    grid-column: 1;
     font-size: 12px;
     line-height: 1.9;
     color: var(--muted);
     margin: 0;
   }
   .derivation {
-    border-left: 1px solid var(--border);
-    padding-left: 20px;
+    grid-column: 2;
+    grid-row: 1 / 3;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+  .derivation summary {
+    color: var(--text);
   }
   .derivation p {
     font-family: var(--mono);
     font-size: 12px;
     line-height: 2;
-  }
-  .explore {
-    margin-top: 16px;
     border-top: 1px solid var(--border);
-    padding-top: 15px;
-  }
-  .explore > summary {
-    font-size: 12px;
-    letter-spacing: 0.4px;
+    padding-top: 12px;
+    margin-bottom: 0;
   }
   .task-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-    margin-top: 14px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 18px 20px;
+    gap: 18px;
   }
   .task {
-    padding: 17px;
+    padding: 4px 18px 4px 0;
+    border-right: 1px solid var(--border);
   }
-  .task-number {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
+  .task:last-child {
+    border-right: 0;
   }
-  .task summary {
-    margin: 10px 0;
-    color: var(--text);
-    font-size: 12px;
+  .task h3 {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.7;
+    min-height: 44px;
+    margin: 0 0 12px;
+  }
+  .task-answer {
+    margin-top: 14px;
   }
   .task p {
     font-size: 12px;
     color: var(--muted);
     line-height: 1.8;
+    margin-bottom: 0;
   }
 `;

@@ -240,7 +240,11 @@ test("console content aligns with toolbar and experiment navigation is minimal",
   await expect(page.getByRole("button", { name: "打开导航" })).toHaveCount(0);
   await expect(page.locator(".toolbar .brand")).toHaveCount(0);
   await expect(page.locator("phy-experiment-page .top")).toHaveCount(0);
-  await expect(page.locator(".experiment-controls")).toBeEmpty();
+  await expect(
+    page
+      .locator(".experiment-controls")
+      .getByRole("button", { name: "▷ 播放", exact: true }),
+  ).toBeVisible();
   await page.getByRole("link", { name: "返回控制台" }).click();
   await expect(page.getByRole("textbox")).toHaveValue("energy");
 });
@@ -298,4 +302,43 @@ test.describe("toolbar API", () => {
     ).toHaveCount(0);
     await expect(control).toHaveCount(0);
   });
+});
+
+test("spring toolbar and exploration preserve experiment actions", async ({
+  page,
+}) => {
+  await openExperiment(page);
+  await expect(
+    page
+      .locator(".toolbar")
+      .getByRole("button", { name: "▷ 播放", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".controls phy-button")).toHaveCount(0);
+  await expect(page.locator(".eyebrow, .model, .scene-stamp")).toHaveCount(0);
+  await expect(page.getByText("两周期观察窗口", { exact: true })).toHaveCount(
+    0,
+  );
+  await page.getByText("查看推导", { exact: true }).click();
+  await expect(page.locator(".derivation p")).toBeVisible();
+  await page.getByRole("tab", { name: "探索任务", exact: true }).click();
+  await expect(page.locator(".task")).toHaveCount(3);
+  const amplitude = (await snapshot(page)).params.A;
+  await page.getByRole("button", { name: "振幅 × 2", exact: true }).click();
+  expect((await snapshot(page)).params.A).toBe(amplitude * 2);
+  await page.getByText("查看结论", { exact: true }).first().click();
+  await expect(page.locator(".task-answer p").first()).toBeVisible();
+  await page.getByRole("button", { name: "定位端点", exact: true }).click();
+  await expect(
+    page.getByRole("tab", { name: "看变化", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("button", { name: "回到起点", exact: true }).click();
+  expect((await snapshot(page)).time).toBe(0);
+  await page.getByRole("tab", { name: "公式", exact: true }).click();
+  await expect(page.locator(".equation")).toContainText("E");
+  await page.getByRole("button", { name: "切换语言", exact: true }).click();
+  await expect(
+    page
+      .locator(".toolbar")
+      .getByRole("button", { name: "▷ Play", exact: true }),
+  ).toBeVisible();
 });

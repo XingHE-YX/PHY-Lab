@@ -43,8 +43,10 @@ export class SpringExperiment extends LitElement {
     previous: { state: true },
     moment: { state: true },
     curves: { state: true },
+    supportTab: { state: true },
   };
   static styles = styles;
+  declare supportTab: "formula" | "tasks";
   declare locale: Locale;
   declare params: Parameters;
   declare time: number;
@@ -65,6 +67,7 @@ export class SpringExperiment extends LitElement {
   private editing = false;
   constructor() {
     super();
+    this.supportTab = "formula";
     this.locale = "zh-CN";
     this.params = { ...defaults };
     this.time = 0;
@@ -505,7 +508,7 @@ export class SpringExperiment extends LitElement {
       p = this.effectiveParameters,
       s = this.state,
       time = this.dragging ? 0 : this.time;
-    return html`<section class="panel theory">
+    return html`<section class="theory">
       <div class="equation">
         ${this.mode === "motion" ? html`<span style="color:var(--blue)">x = A cos(ωt + φ)</span><small>x = ${format(p.A)} cos(${format(s.omega)} × ${format(time)} + ${format(p.phi)}) = ${format(s.x, 3)} m</small>` : this.mode === "changes" ? html`<span style="color:var(--green)">v = −Aω sin(ωt + φ)</span><br /><span style="color:var(--red)">a = −ω²x</span>` : html`<span style="color:var(--green)">E<sub>k</sub> = ½mv²</span> &nbsp; <span style="color:var(--blue)">E<sub>p</sub> = ½kx²</span><small>E = E<sub>k</sub> + E<sub>p</sub> = ½kA² = ${format(s.total, 3)} J</small>`}
       </div>
@@ -513,7 +516,9 @@ export class SpringExperiment extends LitElement {
         ${this.mode === "motion" ? t.positionExplain : this.mode === "changes" ? t.velocityExplain : t.energyExplain}
       </p>
       <details class="derivation">
-        <summary>${t.derive}</summary>
+        <summary>
+          ${this.locale === "zh-CN" ? "查看推导" : "View derivation"}
+        </summary>
         <p>F = −kx<br />a = −(k/m)x<br />ω = √(k/m)<br />T = 2π√(m/k)</p>
       </details>
     </section>`;
@@ -545,11 +550,7 @@ export class SpringExperiment extends LitElement {
   }
   tasks() {
     const t = texts(this.locale);
-    return html`<details class="explore">
-      <summary>
-        ${t.tasks} ·
-        ${this.locale === "zh-CN" ? "三个问题，亲手验证" : "Three questions. Test them yourself."}
-      </summary>
+    return html`
       <div class="task-grid">
         ${[
           [t.task1, t.answer1, t.double],
@@ -557,10 +558,8 @@ export class SpringExperiment extends LitElement {
           [t.task3, t.answer3, t.resetTask],
         ].map(
           ([question, answer, action], i) =>
-            html`<details class="panel task">
-              <span class="task-number">0${i + 1}</span>
-              <summary>${question}</summary>
-              <p>${answer}</p>
+            html`<article class="task">
+              <h3>${question}</h3>
               <button
                 ?disabled=${i === 0 && (this.params.A > 0.4 || this.params.A === 0)}
                 @click=${() => {
@@ -577,10 +576,67 @@ export class SpringExperiment extends LitElement {
               >
                 ${action}
               </button>
-            </details>`,
+              <details class="task-answer">
+                <summary>
+                  ${this.locale === "zh-CN" ? "查看结论" : "View conclusion"}
+                </summary>
+                <p>${answer}</p>
+              </details>
+            </article>`,
         )}
       </div>
-    </details>`;
+    `;
+  }
+  supportPanel() {
+    const zh = this.locale === "zh-CN";
+    return html`<section class="panel support">
+      <div
+        class="support-tabs"
+        role="tablist"
+        aria-label=${zh ? "公式与探索" : "Equations and exploration"}
+        @keydown=${(event: KeyboardEvent) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
+            return;
+          event.preventDefault();
+          this.supportTab =
+            event.key === "Home"
+              ? "formula"
+              : event.key === "End"
+                ? "tasks"
+                : this.supportTab === "formula"
+                  ? "tasks"
+                  : "formula";
+          void this.updateComplete.then(() =>
+            this.renderRoot
+              .querySelector<HTMLButtonElement>(
+                ".support-tabs [aria-selected=true]",
+              )
+              ?.focus(),
+          );
+        }}
+      >
+        ${(["formula", "tasks"] as const).map(
+          (tab) =>
+            html`<button
+              role="tab"
+              aria-selected=${this.supportTab === tab}
+              tabindex=${this.supportTab === tab ? 0 : -1}
+              aria-controls="support-content"
+              class=${this.supportTab === tab ? "selected" : ""}
+              @click=${() => (this.supportTab = tab)}
+            >
+              ${tab === "formula" ? (zh ? "公式" : "Equations") : texts(this.locale).tasks}
+            </button>`,
+        )}
+      </div>
+      <div
+        id="support-content"
+        role="tabpanel"
+        aria-label=${this.supportTab === "formula" ? (zh ? "公式" : "Equations") : texts(this.locale).tasks}
+      >
+        ${this.supportTab === "formula" ? this.equations() : this.tasks()}
+      </div>
+    </section>`;
   }
   render() {
     const t = texts(this.locale),
@@ -750,6 +806,6 @@ export class SpringExperiment extends LitElement {
           </div>
         </aside>
       </div>
-      ${this.moments()}${this.equations()}${this.tasks()}`;
+      ${this.moments()}${this.supportPanel()}`;
   }
 }
