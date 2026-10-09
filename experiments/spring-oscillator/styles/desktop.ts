@@ -642,42 +642,53 @@ export const styles = css`
   }
   .task-grid {
     display: grid;
+    grid-template-rows: auto auto auto auto;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    padding: 18px 20px;
-    gap: 18px;
+    padding: 12px 20px;
+    gap: 10px 18px;
   }
   .task {
-    padding: 4px 18px 4px 0;
+    padding: 0 18px 0 0;
     border-right: 1px solid var(--border);
+    display: grid;
+    grid-row: 1 / span 4;
+    grid-template-rows: subgrid;
+    gap: 10px;
+    align-content: start;
   }
   .task:last-child {
     border-right: 0;
   }
-  .task h3 {
+  .task-title {
     font-size: 13px;
     font-weight: 500;
-    line-height: 1.7;
-    min-height: 44px;
-    margin: 0 0 12px;
+    line-height: 1.2;
+    margin: 0;
   }
-  .task-result strong {
+  .task-check,
+  .task.completed .task-title {
     color: var(--green);
-    font-size: 12px;
   }
-  .task-result p,
-  .task-requirement {
-    margin: 8px 0 12px;
-  }
-  .task-progress {
-    display: inline-block;
-    margin-left: 10px;
-    color: var(--muted);
-    font-size: 11px;
-  }
-  .task p {
+  .task-description {
     font-size: 12px;
     color: var(--muted);
-    line-height: 1.8;
-    margin-bottom: 0;
+    line-height: 1.7;
+    margin: 0;
+  }
+  .task-status {
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.6;
+    min-height: 1.6em;
+  }
+  .task-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 10px;
+    color: var(--primary);
+  }
+  .task-actions button {
+    justify-self: start;
   }
 `;

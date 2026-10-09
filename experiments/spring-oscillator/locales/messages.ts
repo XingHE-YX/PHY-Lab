@@ -43,12 +43,18 @@ const zh = {
   previous: "上一轮",
   clearCompare: "清除对比",
   tasks: "探索任务",
-  task1: "把振幅加倍，周期会改变吗？",
-  task2: "小球速度为零时，加速度也为零吗？",
-  task3: "一次完整振动中，动能最大出现几次？",
-  answer1: "周期不变，总能量变为四倍。试着对比两轮曲线。",
-  answer2: "在端点，速度为零，但加速度最大，并指向平衡位置。",
-  answer3: "两次。动能与势能变化的周期都是 T/2。",
+  task1: "让周期变为原来的两倍",
+  task2: "让动能与势能各占一半",
+  task3: "让小球从平衡位置开始运动",
+  challenge1Hint: "保持振幅和劲度系数不变，调整质量。周期接近目标即可完成。",
+  challenge2Hint:
+    "保持参数不变，播放、暂停或拖动时间，找到两种能量接近相等的时刻。",
+  challenge3Hint:
+    "保持振幅、质量和劲度系数不变，在 t = 0 调整初相位，让位移接近零、速率接近最大。",
+  answer1: "质量变为约四倍，周期变为两倍：T 与质量的平方根成正比。",
+  answer2: "两种能量相等时，|x| = A/√2，约为振幅的 0.707 倍，并不是一半。",
+  answer3:
+    "初相位接近 π/2 或 3π/2 时，初始位移为零、速率最大；两个相位对应相反的运动方向。",
   positionExplain: "振幅 A 决定范围，ω 决定快慢，φ 决定初始状态。",
   velocityExplain: "位移变化越快，速率越大。加速度方向始终指向平衡位置。",
   energyExplain: "动能与势能相互转换，总机械能保持不变。",
@@ -109,14 +115,21 @@ const en: typeof zh = {
   previous: "Previous run",
   clearCompare: "Clear comparison",
   tasks: "EXPLORE",
-  task1: "Does doubling amplitude change the period?",
-  task2: "When velocity is zero, is acceleration also zero?",
-  task3: "How often is kinetic energy maximal in one cycle?",
+  task1: "Make the period twice as long",
+  task2: "Split energy equally between kinetic and potential",
+  task3: "Start the mass at equilibrium",
+  challenge1Hint:
+    "Keep amplitude and stiffness fixed. Adjust mass until the period is close to the target.",
+  challenge2Hint:
+    "Keep parameters fixed. Play, pause or scrub time to find approximately equal energies.",
+  challenge3Hint:
+    "Keep amplitude, mass and stiffness fixed. At t = 0, adjust phase for near-zero position and maximum speed.",
   answer1:
-    "The period stays the same. Total energy becomes four times greater.",
+    "Approximately four times the mass gives twice the period: T is proportional to the square root of mass.",
   answer2:
-    "At an endpoint, velocity is zero but acceleration is maximal, toward equilibrium.",
-  answer3: "Twice. Both energy curves have period T/2.",
+    "Equal energies occur at |x| = A/√2, approximately 0.707 of the amplitude, not one half.",
+  answer3:
+    "At phases near π/2 or 3π/2, initial position is zero and speed is maximal. The two phases give opposite directions.",
   positionExplain:
     "A sets the range, ω sets the pace, and φ sets the initial state.",
   velocityExplain:

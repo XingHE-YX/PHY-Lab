@@ -321,23 +321,56 @@ test("spring toolbar and exploration preserve experiment actions", async ({
   await expect(page.locator(".derivation-steps")).toBeVisible();
   await page.getByRole("tab", { name: "探索任务", exact: true }).click();
   await expect(page.locator(".task")).toHaveCount(3);
-  const amplitude = (await snapshot(page)).params.A;
-  await page.getByRole("button", { name: "振幅 × 2", exact: true }).click();
-  expect((await snapshot(page)).params.A).toBe(amplitude * 2);
-  await expect(page.locator(".task.completed")).toHaveCount(1);
-  await expect(page.locator(".task").first()).toContainText(
-    "周期不变，总能量变为四倍",
-  );
-  await expect(page.locator(".task").first().locator("h3")).toHaveCount(0);
-  await page.getByRole("button", { name: "定位端点", exact: true }).click();
-  await expect(
-    page.getByRole("tab", { name: "看变化", exact: true }),
-  ).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator(".task.completed")).toHaveCount(2);
-  await page.getByRole("button", { name: "观察一周期", exact: true }).click();
-  await expect(page.locator(".task-progress")).toBeVisible();
+  const tasks = page.locator(".task");
+  const gapBefore = await tasks
+    .first()
+    .evaluate((el) => getComputedStyle(el).rowGap);
+  await tasks
+    .nth(0)
+    .getByRole("button", { name: "开始探索", exact: true })
+    .click();
+  await expect(tasks.nth(0)).toContainText("目标 T");
+  await expect(page.locator(".task.completed")).toHaveCount(0);
+  await range(page, "质量", "4");
+  await expect(tasks.nth(0)).toHaveClass(/completed/);
+  await expect(tasks.nth(0)).toContainText("质量变为约四倍");
+  expect(
+    await tasks.first().evaluate((el) => getComputedStyle(el).rowGap),
+  ).toBe(gapBefore);
+  await tasks
+    .nth(1)
+    .getByRole("button", { name: "开始探索", exact: true })
+    .click();
+  await page.getByRole("button", { name: "动能 = 势能", exact: true }).click();
+  await expect(tasks.nth(1)).toHaveClass(/completed/);
+  await expect(tasks.nth(1)).toContainText("0.707");
+  await tasks
+    .nth(2)
+    .getByRole("button", { name: "开始探索", exact: true })
+    .click();
+  await range(page, "初相位", "1.57");
+  await expect(tasks.nth(2)).toHaveClass(/completed/);
   await expect(page.locator(".task.completed")).toHaveCount(3);
-  await expect(page.locator(".task").nth(2)).toContainText("两次");
+  for (const selector of [
+    ".task-title",
+    ".task-description",
+    ".task-status",
+    ".task-actions",
+  ]) {
+    const positions = await page
+      .locator(".task " + selector)
+      .evaluateAll((nodes) =>
+        nodes.map((node) => node.getBoundingClientRect().y),
+      );
+    expect(new Set(positions).size).toBe(1);
+  }
+  await page.screenshot({
+    path: "/tmp/phy-lab-challenges-completed.png",
+    fullPage: true,
+  });
+
+  await expect(tasks.nth(2)).toContainText("相反的运动方向");
+  await page.getByRole("tab", { name: "看能量", exact: true }).click();
   await page.getByRole("tab", { name: "公式", exact: true }).click();
   await expect(page.locator(".equation")).toContainText("E");
   await page.getByRole("button", { name: "切换语言", exact: true }).click();
@@ -449,7 +482,10 @@ test("workspace scrollbar stays below toolbar and spring remains inside viewport
     }
     await page.getByRole("tab", { name: "探索任务", exact: true }).click();
     await expect(
-      page.getByRole("button", { name: "观察一周期", exact: true }),
+      page
+        .locator(".task")
+        .nth(2)
+        .getByRole("button", { name: "开始探索", exact: true }),
     ).toBeVisible();
   }
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -461,28 +497,55 @@ test("workspace scrollbar stays below toolbar and spring remains inside viewport
   });
 });
 
-test("energy exploration requires playback and resets after seeking", async ({
+test("challenges reject changed baseline parameters and restore progress", async ({
   page,
 }) => {
   await openExperiment(page);
   await range(page, "振幅", "0");
   await page.getByRole("tab", { name: "探索任务", exact: true }).click();
+  const tasks = page.locator(".task");
   await expect(
-    page.getByRole("button", { name: "观察一周期", exact: true }),
+    tasks.nth(1).getByRole("button", { name: "开始探索", exact: true }),
   ).toBeDisabled();
   await range(page, "振幅", "0.3");
-  await page.getByRole("button", { name: "观察一周期", exact: true }).click();
-  await range(page, "拖动时间游标", "1");
+  await tasks
+    .nth(0)
+    .getByRole("button", { name: "开始探索", exact: true })
+    .click();
+  await range(page, "劲度系数", "20");
+  await range(page, "质量", "4");
   await expect(page.locator(".task.completed")).toHaveCount(0);
-  await expect(page.locator(".task-progress")).toHaveCount(0);
-  await page.getByRole("button", { name: "观察一周期", exact: true }).click();
-  await expect(page.locator(".task.completed")).toHaveCount(1);
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "弹簧振子", exact: true }),
   ).toBeVisible();
   await page.getByRole("tab", { name: "探索任务", exact: true }).click();
-  await expect(page.locator(".task.completed")).toHaveCount(1);
+  await expect(tasks.nth(0)).toContainText("目标 T = 3.97 s");
+  await range(page, "劲度系数", "10");
+  await expect(tasks.nth(0)).toHaveClass(/completed/);
+  await tasks
+    .nth(0)
+    .getByRole("button", { name: "重新探索", exact: true })
+    .click();
+  await expect(tasks.nth(0)).not.toHaveClass(/completed/);
+  await expect(tasks.nth(0)).toContainText("1.25 kg");
+  await expect(
+    tasks.nth(0).getByRole("button", { name: "开始探索", exact: true }),
+  ).toBeDisabled();
+  await tasks
+    .nth(1)
+    .getByRole("button", { name: "开始探索", exact: true })
+    .click();
+  await range(page, "拖动时间游标", "0");
+  await expect(tasks.nth(1)).not.toHaveClass(/completed/);
+  await range(page, "拖动时间游标", "0.497");
+  await expect(tasks.nth(1)).toHaveClass(/completed/);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "弹簧振子", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "探索任务", exact: true }).click();
+  await expect(tasks.nth(1)).toHaveClass(/completed/);
 });
 
 test("TeX formulas render with local fonts, live values and accessible math", async ({

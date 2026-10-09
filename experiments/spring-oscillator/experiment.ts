@@ -18,6 +18,11 @@ import { chart, type Metric } from "./components/chart";
 import { renderScene } from "./components/scene";
 import { texts } from "./locales/messages";
 import { styles } from "./styles/desktop";
+import {
+  meetsChallenge,
+  type Challenge,
+  type ChallengeIndex,
+} from "./model/exploration";
 import { math, mathStyles } from "./components/math";
 export interface Snapshot {
   params: Parameters;
@@ -28,7 +33,11 @@ export interface Snapshot {
   acceleration: boolean;
   previous: Parameters | null;
   curves: Record<Metric, boolean>;
-  completedTasks?: boolean[];
+  exploration?: {
+    version: 1;
+    completed: boolean[];
+    active: Challenge | null;
+  };
 }
 export class SpringExperiment extends LitElement {
   static properties = {
@@ -47,14 +56,11 @@ export class SpringExperiment extends LitElement {
     curves: { state: true },
     supportTab: { state: true },
     completedTasks: { state: true },
-    energyPeaks: { state: true },
-    observingEnergy: { state: true },
+    activeChallenge: { state: true },
   };
   static styles = [mathStyles, styles];
   declare completedTasks: boolean[];
-  declare energyPeaks: number;
-  declare observingEnergy: boolean;
-  private energyRun?: Parameters;
+  declare activeChallenge: Challenge | null;
   declare supportTab: "formula" | "tasks";
   declare locale: Locale;
   declare params: Parameters;
@@ -77,8 +83,7 @@ export class SpringExperiment extends LitElement {
   constructor() {
     super();
     this.completedTasks = [false, false, false];
-    this.energyPeaks = 0;
-    this.observingEnergy = false;
+    this.activeChallenge = null;
     this.supportTab = "formula";
     this.locale = "zh-CN";
     this.params = { ...defaults };
@@ -105,9 +110,22 @@ export class SpringExperiment extends LitElement {
     this.context = context;
     this.locale = context.locale;
     const saved = context.storage.read<Partial<Snapshot>>({});
-    this.completedTasks = [0, 1, 2].map(
-      (index) => saved.completedTasks?.[index] === true,
-    );
+    if (saved.exploration?.version === 1) {
+      this.completedTasks = [0, 1, 2].map(
+        (index) => saved.exploration?.completed?.[index] === true,
+      );
+      const active = saved.exploration.active;
+      if (
+        active &&
+        [0, 1, 2].includes(active.index) &&
+        active.baseline &&
+        !this.completedTasks[active.index]
+      )
+        this.activeChallenge = {
+          index: active.index,
+          baseline: parameters(active.baseline),
+        };
+    }
     this.params = parameters(saved?.params);
     this.time =
       typeof saved?.time === "number" && Number.isFinite(saved.time)
@@ -128,6 +146,26 @@ export class SpringExperiment extends LitElement {
         this.curves[key] = saved.curves[key] !== false;
   }
   updated(changed: Map<PropertyKey, unknown>) {
+    if (
+      this.activeChallenge &&
+      !changed.has("activeChallenge") &&
+      (changed.has("params") ||
+        changed.has("time") ||
+        changed.has("dragging")) &&
+      meetsChallenge(
+        this.activeChallenge,
+        this.params,
+        this.time,
+        this.dragging,
+      )
+    ) {
+      const index = this.activeChallenge.index;
+      this.activeChallenge = null;
+      this.completedTasks = this.completedTasks.map(
+        (done, i) => i === index || done,
+      );
+      this.pause();
+    }
     if (!this.context?.toolbar) return;
     if (!this.toolbarControls) {
       this.toolbarControls = document.createElement("div");
@@ -189,7 +227,16 @@ export class SpringExperiment extends LitElement {
       acceleration: this.acceleration,
       previous: this.previous,
       curves: this.curves,
-      completedTasks: [...this.completedTasks],
+      exploration: {
+        version: 1,
+        completed: [...this.completedTasks],
+        active: this.activeChallenge
+          ? {
+              index: this.activeChallenge.index,
+              baseline: { ...this.activeChallenge.baseline },
+            }
+          : null,
+      },
     };
   }
   persist() {
@@ -230,33 +277,17 @@ export class SpringExperiment extends LitElement {
   }
   private tick = (now: number) => {
     if (!this.playing) return;
-    const before = this.time;
     if (this.last) this.time += ((now - this.last) / 1000) * this.speed;
-    if (this.observingEnergy && this.energyRun) {
-      const p = this.energyRun;
-      const omega = Math.sqrt(p.k / p.m);
-      const count = (time: number) =>
-        Math.floor((omega * time + p.phi - Math.PI / 2) / Math.PI);
-      this.energyPeaks += Math.max(0, count(this.time) - count(before));
-      if (this.time >= stateAt(p, 0).period && this.energyPeaks >= 2) {
-        this.completeTask(2);
-        this.observingEnergy = false;
-        this.pause();
-        return;
-      }
-    }
     this.last = now;
     this.frame = requestAnimationFrame(this.tick);
   };
   restart() {
-    this.cancelEnergyTask();
     this.pause();
     this.time = 0;
     this.moment = "";
     this.persist();
   }
   setParameter(name: keyof Parameters, value: number) {
-    this.cancelEnergyTask();
     this.pause();
     this.previous = { ...this.params };
     this.params = parameters({ ...this.params, [name]: value });
@@ -265,7 +296,6 @@ export class SpringExperiment extends LitElement {
     this.persist();
   }
   private beginDrag(event: PointerEvent) {
-    this.cancelEnergyTask();
     const x = this.state.x;
     this.pause();
     this.dragX = x;
@@ -301,7 +331,6 @@ export class SpringExperiment extends LitElement {
     if (this.params.A > 0) this.play();
   }
   private keyDrag(event: KeyboardEvent) {
-    this.cancelEnergyTask();
     if (["ArrowLeft", "ArrowRight", "Home"].includes(event.key)) {
       event.preventDefault();
       const x = this.state.x;
@@ -385,7 +414,6 @@ export class SpringExperiment extends LitElement {
         step=${step}
         .value=${String(this.params[name])}
         @input=${(e: Event) => {
-          this.cancelEnergyTask();
           if (!this.editing) {
             this.pause();
             this.previous = { ...this.params };
@@ -410,7 +438,6 @@ export class SpringExperiment extends LitElement {
     </div>`;
   }
   locate(moment: "right" | "left" | "equilibrium" | "equal") {
-    this.cancelEnergyTask();
     this.pause();
     this.dragging = false;
     this.time = keyTime(this.params, moment);
@@ -418,7 +445,6 @@ export class SpringExperiment extends LitElement {
     this.persist();
   }
   seek = (time: number) => {
-    this.cancelEnergyTask();
     this.pause();
     this.dragging = false;
     this.time = time;
@@ -709,106 +735,92 @@ export class SpringExperiment extends LitElement {
       </div>
     </section>`;
   }
-  private cancelEnergyTask() {
-    this.observingEnergy = false;
-    this.energyRun = undefined;
-    this.energyPeaks = 0;
-  }
-  private completeTask(index: number) {
-    this.completedTasks = this.completedTasks.map(
-      (done, i) => i === index || done,
+  private startChallenge(index: ChallengeIndex) {
+    this.pause();
+    this.dragging = false;
+    if (index === 2) this.restart();
+    this.mode = index === 1 ? "energy" : "motion";
+    this.completedTasks = this.completedTasks.map((done, i) =>
+      i === index ? false : done,
     );
+    this.activeChallenge = { index, baseline: { ...this.params } };
     this.persist();
-  }
-  private explore(index: number) {
-    if (index === 0) {
-      const before = stateAt(this.params, 0);
-      const amplitude = this.params.A;
-      this.setParameter("A", amplitude * 2);
-      const after = this.state;
-      if (
-        amplitude > 0 &&
-        amplitude <= 0.4 &&
-        Math.abs(this.params.A - amplitude * 2) < 1e-9 &&
-        Math.abs(after.period - before.period) < 1e-9 &&
-        Math.abs(after.total - before.total * 4) < 1e-9
-      )
-        this.completeTask(0);
-    } else if (index === 1) {
-      this.mode = "changes";
-      this.locate("right");
-      const state = this.state;
-      if (
-        this.params.A > 0 &&
-        Math.abs(state.v) < 1e-8 &&
-        Math.abs(Math.abs(state.a) - this.params.A * state.omega ** 2) < 1e-8
-      )
-        this.completeTask(1);
-    } else {
-      this.mode = "energy";
-      this.restart();
-      this.energyRun = { ...this.params };
-      this.observingEnergy = true;
-      this.play();
-    }
   }
   tasks() {
     const t = texts(this.locale),
       zh = this.locale === "zh-CN";
-    const requirements = zh
-      ? [
-          "将振幅加倍，验证周期不变、总能量变为四倍。",
-          "定位端点，验证速度为零、加速度大小最大。",
-          "播放一个完整周期，观察两次动能峰值。调整参数或拖动时间会重新计数。",
-        ]
-      : [
-          "Double amplitude: verify unchanged period and four times the energy.",
-          "Locate an endpoint: verify zero velocity and maximal acceleration.",
-          "Play one full cycle and observe two kinetic energy peaks. Parameter changes or seeking reset the count.",
-        ];
+    const state = this.state;
     return html`<div class="task-grid">
-      ${[
-        [t.task1, t.answer1, t.double],
-        [t.task2, t.answer2, t.locate],
-        [t.task3, t.answer3, zh ? "观察一周期" : "Observe one cycle"],
-      ].map(
-        ([question, answer, action], index) =>
-          html` <article
-            class=${"task" + (this.completedTasks[index] ? " completed" : "")}
-          >
-            ${
-              this.completedTasks[index]
-                ? html`
-                    <div class="task-result" role="status">
-                      <strong>✓ ${zh ? "探索完成" : "Completed"}</strong>
-                      <p>${answer}</p>
-                    </div>
-                    <button
-                      @click=${() => {
-                        this.completedTasks = this.completedTasks.map(
-                          (done, i) => (i === index ? false : done),
-                        );
-                        if (index === 2) this.cancelEnergyTask();
-                        this.persist();
-                      }}
-                    >
-                      ${zh ? "重新探索" : "Try again"}
-                    </button>
-                  `
-                : html`
-                    <h3>${question}</h3>
-                    <p class="task-requirement">${requirements[index]}</p>
-                    <button
-                      ?disabled=${this.dragging || this.params.A === 0 || (index === 0 && this.params.A > 0.4) || (index === 2 && this.observingEnergy)}
-                      @click=${() => this.explore(index)}
-                    >
-                      ${action}
-                    </button>
-                    ${index === 2 && this.observingEnergy ? html`<span class="task-progress" role="status">${zh ? "动能峰值" : "Energy peaks"} ${Math.min(this.energyPeaks, 2)} / 2</span>` : ""}
-                  `
-            }
-          </article>`,
-      )}
+      ${([0, 1, 2] as const).map((index) => {
+        const active = this.activeChallenge?.index === index;
+        const baseline = active ? this.activeChallenge!.baseline : this.params;
+        const target = 2 * stateAt(baseline, 0).period;
+        const unavailable =
+          this.dragging ||
+          this.params.A === 0 ||
+          (index === 0 && this.params.m > 1.25);
+        const status = active
+          ? index === 0
+            ? zh
+              ? `目标 T = ${format(target)} s · 当前 ${format(state.period)} s`
+              : `Target T = ${format(target)} s · Current ${format(state.period)} s`
+            : index === 1
+              ? zh
+                ? `目标各占 50% · 当前动能 ${state.total > 0 ? format((state.kinetic / state.total) * 100, 0) : "0"}%`
+                : `Target 50% each · Current kinetic ${state.total > 0 ? format((state.kinetic / state.total) * 100, 0) : "0"}%`
+              : zh
+                ? `初始位移 ${format(stateAt(this.params, 0).x, 3)} m · 请在 t = 0 调整初相位`
+                : `Initial position ${format(stateAt(this.params, 0).x, 3)} m · Adjust phase at t = 0`
+          : this.params.A === 0
+            ? zh
+              ? "先设置非零振幅"
+              : "Set a nonzero amplitude first"
+            : index === 0 && this.params.m > 1.25
+              ? zh
+                ? "先将质量调至不超过 1.25 kg，再记录基准"
+                : "Set mass to at most 1.25 kg before recording the baseline"
+              : zh
+                ? "开始后记录当前参数作为基准"
+                : "Starting records the current parameters as a baseline";
+        const requirements = [
+          t.challenge1Hint,
+          t.challenge2Hint,
+          t.challenge3Hint,
+        ];
+        const answers = [t.answer1, t.answer2, t.answer3];
+        const titles = [t.task1, t.task2, t.task3];
+        return html`<article
+          class=${"task" + (this.completedTasks[index] ? " completed" : active ? " active-task" : "")}
+        >
+          <h3 class="task-title">
+            ${this.completedTasks[index] ? html`<span class="task-check">✓</span> ${zh ? "探索完成" : "Completed"}` : titles[index]}
+          </h3>
+          <p class="task-description">
+            ${this.completedTasks[index] ? answers[index] : requirements[index]}
+          </p>
+          <div class="task-status">
+            ${this.completedTasks[index] ? (zh ? "已达到目标并验证" : "Target reached and verified") : status}
+          </div>
+          <div class="task-actions">
+            <button
+              ?disabled=${this.completedTasks[index] ? this.dragging : unavailable}
+              @click=${() => {
+                if (this.completedTasks[index]) {
+                  this.completedTasks = this.completedTasks.map((done, i) =>
+                    i === index ? false : done,
+                  );
+                  if (this.activeChallenge?.index === index)
+                    this.activeChallenge = null;
+                  this.persist();
+                } else this.startChallenge(index);
+              }}
+            >
+              ${this.completedTasks[index] ? (zh ? "重新探索" : "Try again") : active ? (zh ? "重设基准" : "Reset baseline") : zh ? "开始探索" : "Start challenge"}
+            </button>
+            ${active ? html`<span>${zh ? "进行中" : "In progress"}</span>` : ""}
+          </div>
+        </article>`;
+      })}
     </div>`;
   }
   supportPanel() {
