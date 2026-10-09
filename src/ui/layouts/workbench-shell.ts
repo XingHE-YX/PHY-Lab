@@ -26,7 +26,9 @@ export class App extends LitElement {
   declare modal: boolean;
   declare revision: number;
   declare catalogError: string;
+  private readonly experimentControls = document.createElement("div");
   private onRoute = () => {
+    this.experimentControls.replaceChildren();
     this.route = location.hash;
     this.menu = false;
   };
@@ -77,6 +79,19 @@ export class App extends LitElement {
         position: sticky;
         top: 0;
         z-index: 5;
+      }
+      .experiment-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-width: 0;
+      }
+      .back {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 13px;
       }
       .left,
       .right {
@@ -289,6 +304,7 @@ export class App extends LitElement {
   ];
   constructor() {
     super();
+    this.experimentControls.className = "experiment-controls";
     this.catalog = null;
     this.query = "";
     this.route = location.hash;
@@ -323,7 +339,11 @@ export class App extends LitElement {
     window.removeEventListener("keydown", this.onKey);
   }
   private onKey = (event: KeyboardEvent) => {
-    if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      event.key === "k" &&
+      !this.route.startsWith("#/experiments/")
+    ) {
       event.preventDefault();
       this.renderRoot.querySelector<HTMLInputElement>(".search input")?.focus();
     }
@@ -402,29 +422,42 @@ export class App extends LitElement {
       </div>
       <header class="toolbar">
         <div class="left">
-          <div class="navigation">
-            <button
-              class="icon"
-              aria-label=${t.menu}
-              aria-expanded=${this.menu}
-              @click=${() => (this.menu = !this.menu)}
-            >
-              ${icon("grid")}</button
-            >${this.menu ? html`<nav class="menu" aria-label=${t.menu}><a href="#/" @click=${() => (this.menu = false)}>${t.home}</a></nav>` : ""}
-          </div>
-          <a class="brand" href="#/">PHY<span> Lab</span></a>
+          ${
+            id
+              ? html`<a class="back" href="#/"
+                  >${icon("chevronLeft")}${t.back}</a
+                >`
+              : html`
+                  <div class="navigation">
+                    <button
+                      class="icon"
+                      aria-label=${t.menu}
+                      aria-expanded=${this.menu}
+                      @click=${() => (this.menu = !this.menu)}
+                    >
+                      ${icon("grid")}</button
+                    >${this.menu ? html`<nav class="menu" aria-label=${t.menu}><a href="#/" @click=${() => (this.menu = false)}>${t.home}</a></nav>` : ""}
+                  </div>
+                  <a class="brand" href="#/">PHY<span> Lab</span></a>
+                `
+          }
         </div>
-        <label class="search"
-          >${icon("search")}<input
-            aria-label=${t.search}
-            placeholder=${t.search}
-            .value=${this.query}
-            @input=${(event: Event) => {
-              this.query = (event.target as HTMLInputElement).value;
-              if (id) location.hash = "/";
-            }}
-          />${this.query ? html`<button class="clear" aria-label=${t.clear} @click=${() => (this.query = "")}>${icon("close")}</button>` : html`<span class="key">⌘ K</span>`}</label
-        >
+        ${
+          id
+            ? this.experimentControls
+            : html`
+                <label class="search"
+                  >${icon("search")}<input
+                    aria-label=${t.search}
+                    placeholder=${t.search}
+                    .value=${this.query}
+                    @input=${(event: Event) => {
+                      this.query = (event.target as HTMLInputElement).value;
+                    }}
+                  />${this.query ? html`<button class="clear" aria-label=${t.clear} @click=${() => (this.query = "")}>${icon("close")}</button>` : html`<span class="key">⌘ K</span>`}</label
+                >
+              `
+        }
         <div class="right">
           <button
             class="icon language"
@@ -452,7 +485,7 @@ export class App extends LitElement {
         </div>
       </header>
       <main>
-        ${this.catalogError ? html`<div class="catalog-error">${t.error} · <phy-button @click=${() => this.refreshCatalog()}>${t.retry}</phy-button></div>` : ""}${id && this.catalog ? html`<phy-experiment-page .catalog=${this.catalog} .experimentId=${id} .locale=${s.locale} .theme=${currentTheme()}></phy-experiment-page>` : html`<phy-workbench .catalog=${this.catalog} .locale=${s.locale} .query=${this.query}></phy-workbench>`}
+        ${this.catalogError ? html`<div class="catalog-error">${t.error} · <phy-button @click=${() => this.refreshCatalog()}>${t.retry}</phy-button></div>` : ""}${id && this.catalog ? html`<phy-experiment-page .catalog=${this.catalog} .experimentId=${id} .locale=${s.locale} .theme=${currentTheme()} .toolbar=${this.experimentControls}></phy-experiment-page>` : html`<phy-workbench .catalog=${this.catalog} .locale=${s.locale} .query=${this.query}></phy-workbench>`}
       </main>
       ${
         this.modal

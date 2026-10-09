@@ -88,7 +88,7 @@ test("experiment release changes without rebuilding platform and preserves the a
       page.getByRole("heading", { name: "弹簧振子", exact: true }),
     ).toBeVisible();
     expect(await readFile(join(dist, "sw.js"))).toEqual(workerBefore);
-    await page.getByRole("link", { name: "返回工作台" }).click();
+    await page.getByRole("link", { name: "返回控制台" }).click();
     await page.getByRole("link", { name: /弹簧振子 · 新版/ }).click();
     await expect(
       page.getByRole("heading", { name: "弹簧振子 · 新版", exact: true }),
@@ -170,7 +170,7 @@ test("platform activation coordinates tabs and restores experiment state", async
     expect(restored.time).toBeCloseTo(saved.time, 6);
     expect(restored.mode).toBe("energy");
     await expect(
-      second.getByRole("heading", { name: "让物理，触手可及。" }),
+      second.getByRole("heading", { name: "全部实验" }),
     ).toBeVisible();
   } finally {
     await writeFile(join(dist, "sw.js"), swText);

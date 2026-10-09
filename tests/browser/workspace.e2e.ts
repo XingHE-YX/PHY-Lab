@@ -217,3 +217,85 @@ test("observation tabs support keyboard navigation without changing time", async
     "true",
   );
 });
+
+test("console content aligns with toolbar and experiment navigation is minimal", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator(".card")).toBeVisible();
+  await expect(page.locator(".hero, .method, .number")).toHaveCount(0);
+  for (const width of [1280, 1920]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const toolbar = await page.locator(".toolbar").boundingBox();
+    const grid = await page.locator(".grid").boundingBox();
+    expect(grid!.x).toBe(toolbar!.x + 30);
+    expect(grid!.width).toBe(toolbar!.width - 60);
+  }
+  await page.getByRole("textbox").fill("energy");
+  await page.getByRole("link", { name: /弹簧振子/ }).click();
+  await expect(
+    page.getByRole("heading", { name: "弹簧振子", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("textbox")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "打开导航" })).toHaveCount(0);
+  await expect(page.locator(".toolbar .brand")).toHaveCount(0);
+  await expect(page.locator("phy-experiment-page .top")).toHaveCount(0);
+  await expect(page.locator(".experiment-controls")).toBeEmpty();
+  await page.getByRole("link", { name: "返回控制台" }).click();
+  await expect(page.getByRole("textbox")).toHaveValue("energy");
+});
+
+test.describe("toolbar API", () => {
+  test.use({ serviceWorkers: "block" });
+
+  test("experiment toolbar controls interact and cannot remount after disposal", async ({
+    page,
+  }) => {
+    await page.route("**/manifest.json", async (route) => {
+      const response = await route.fetch();
+      const manifest = await response.json();
+      manifest.entry = "/toolbar-fixture.js";
+      await route.fulfill({ response, json: manifest });
+    });
+    await page.route("**/toolbar-fixture.js", (route) =>
+      route.fulfill({
+        contentType: "text/javascript",
+        body: `export async function mount(context) {
+      const element = document.createElement('h1');
+      element.textContent = 'Toolbar fixture';
+      const controls = document.createElement('button');
+      controls.textContent = 'Fixture control';
+      controls.onclick = () => { element.textContent = 'Control clicked'; };
+      context.toolbar.setControls(controls);
+      window.fixtureContext = context;
+      return { element, update() {}, pause() {}, snapshot() { return {}; }, dispose() {} };
+    }`,
+      }),
+    );
+    await page.goto("/#/experiments/spring-oscillator");
+    const control = page.getByRole("button", { name: "Fixture control" });
+    await expect(control).toBeVisible();
+    await control.click();
+    await expect(
+      page.getByRole("heading", { name: "Control clicked" }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "返回控制台" }).click();
+    await expect(page.getByRole("textbox")).toBeVisible();
+    await page.evaluate(() => {
+      const context = (
+        window as unknown as {
+          fixtureContext: {
+            toolbar: { setControls(element: HTMLElement): void };
+          };
+        }
+      ).fixtureContext;
+      const stale = document.createElement("button");
+      stale.textContent = "Stale control";
+      context.toolbar.setControls(stale);
+    });
+    await expect(
+      page.getByRole("button", { name: "Stale control" }),
+    ).toHaveCount(0);
+    await expect(control).toHaveCount(0);
+  });
+});

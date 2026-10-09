@@ -37,6 +37,9 @@ export interface ExperimentContext {
   theme: "light" | "dark";
   buildId: string;
   signal: AbortSignal;
+  toolbar?: {
+    setControls(element: HTMLElement | null): void;
+  };
   storage: {
     read<T>(fallback: T): T;
     readVersion<T>(version: number, fallback: T): T;
