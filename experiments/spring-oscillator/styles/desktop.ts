@@ -602,8 +602,19 @@ export const styles = css`
     min-height: 44px;
     margin: 0 0 12px;
   }
-  .task-answer {
-    margin-top: 14px;
+  .task-result strong {
+    color: var(--green);
+    font-size: 12px;
+  }
+  .task-result p,
+  .task-requirement {
+    margin: 8px 0 12px;
+  }
+  .task-progress {
+    display: inline-block;
+    margin-left: 10px;
+    color: var(--muted);
+    font-size: 11px;
   }
   .task p {
     font-size: 12px;

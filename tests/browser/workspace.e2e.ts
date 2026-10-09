@@ -101,7 +101,6 @@ test("key moments, energy proportions and phase stay consistent", async ({
   await page.getByRole("button", { name: "经过平衡位置", exact: true }).click();
   await expect(page.locator(".energy-caption")).toContainText("动能 100%");
   await expect(page.locator('path[marker-end="url(#a-arrow)"]')).toHaveCount(0);
-  await page.getByText("进阶设置", { exact: true }).click();
   await range(page, "初相位", "1.57");
   await page.getByRole("button", { name: "左端点", exact: true }).click();
   const state = await page.locator("phy-experiment-page").evaluate(
@@ -229,7 +228,7 @@ test("console content aligns with toolbar and experiment navigation is minimal",
     const toolbar = await page.locator(".toolbar").boundingBox();
     const grid = await page.locator(".grid").boundingBox();
     expect(grid!.x).toBe(toolbar!.x + 30);
-    expect(grid!.width).toBe(toolbar!.width - 60);
+    expect(grid!.width).toBe(toolbar!.width - 60 - 4);
   }
   await page.getByRole("textbox").fill("energy");
   await page.getByRole("link", { name: /弹簧振子/ }).click();
@@ -325,14 +324,20 @@ test("spring toolbar and exploration preserve experiment actions", async ({
   const amplitude = (await snapshot(page)).params.A;
   await page.getByRole("button", { name: "振幅 × 2", exact: true }).click();
   expect((await snapshot(page)).params.A).toBe(amplitude * 2);
-  await page.getByText("查看结论", { exact: true }).first().click();
-  await expect(page.locator(".task-answer p").first()).toBeVisible();
+  await expect(page.locator(".task.completed")).toHaveCount(1);
+  await expect(page.locator(".task").first()).toContainText(
+    "周期不变，总能量变为四倍",
+  );
+  await expect(page.locator(".task").first().locator("h3")).toHaveCount(0);
   await page.getByRole("button", { name: "定位端点", exact: true }).click();
   await expect(
     page.getByRole("tab", { name: "看变化", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
-  await page.getByRole("button", { name: "回到起点", exact: true }).click();
-  expect((await snapshot(page)).time).toBe(0);
+  await expect(page.locator(".task.completed")).toHaveCount(2);
+  await page.getByRole("button", { name: "观察一周期", exact: true }).click();
+  await expect(page.locator(".task-progress")).toBeVisible();
+  await expect(page.locator(".task.completed")).toHaveCount(3);
+  await expect(page.locator(".task").nth(2)).toContainText("两次");
   await page.getByRole("tab", { name: "公式", exact: true }).click();
   await expect(page.locator(".equation")).toContainText("E");
   await page.getByRole("button", { name: "切换语言", exact: true }).click();
@@ -341,4 +346,99 @@ test("spring toolbar and exploration preserve experiment actions", async ({
       .locator(".toolbar")
       .getByRole("button", { name: "▷ Play", exact: true }),
   ).toBeVisible();
+});
+
+test("workspace scrollbar stays below toolbar and spring remains inside viewport", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator(".card")).toBeVisible();
+  const before = await page.locator(".toolbar").boundingBox();
+  const gridBefore = await page.locator(".grid").boundingBox();
+  await page.locator("phy-app").evaluate((el) => {
+    const spacer = document.createElement("div");
+    spacer.id = "scroll-fixture";
+    spacer.style.height = "2000px";
+    el.shadowRoot!.querySelector("main")!.append(spacer);
+  });
+  expect(await page.locator(".toolbar").boundingBox()).toEqual(before);
+  expect((await page.locator(".grid").boundingBox())!.width).toBe(
+    gridBefore!.width,
+  );
+  const scroll = await page.locator("phy-app").evaluate((el) => {
+    const main = el.shadowRoot!.querySelector("main")!;
+    return {
+      top: main.getBoundingClientRect().top,
+      width: getComputedStyle(main, "::-webkit-scrollbar").width,
+    };
+  });
+  expect(scroll.top).toBe(66);
+  expect(scroll.width).toBe("4px");
+  await page.locator("#scroll-fixture").evaluate((el) => el.remove());
+  await openExperiment(page);
+  await expect(
+    page.getByRole("slider", { name: "初相位", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".toolbar").getByRole("combobox", { name: "播放速度" }),
+  ).toBeVisible();
+  await expect(page.locator(".timeline span")).toHaveCount(3);
+  for (const height of [720, 1000]) {
+    await page.setViewportSize({ width: 1280, height });
+    for (const mode of ["看运动", "看变化", "看能量"]) {
+      await page.getByRole("tab", { name: mode, exact: true }).click();
+      await page.getByRole("tab", { name: "公式", exact: true }).click();
+      const details = page.locator(".derivation");
+      await details.evaluate((el) => ((el as HTMLDetailsElement).open = true));
+      const bounds = await page.locator("phy-experiment-page").boundingBox();
+      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(height);
+      const support = await page.locator(".support").boundingBox();
+      expect(support!.y + support!.height).toBeLessThanOrEqual(height - 15);
+      const dimensions = await page.locator("phy-app").evaluate((el) => {
+        const main = el.shadowRoot!.querySelector("main")!;
+        return {
+          height: main.clientHeight,
+          scroll: main.scrollHeight,
+          body: document.documentElement.scrollHeight,
+        };
+      });
+      expect(dimensions.scroll).toBe(dimensions.height);
+      expect(dimensions.body).toBe(height);
+    }
+    await page.getByRole("tab", { name: "探索任务", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "观察一周期", exact: true }),
+    ).toBeVisible();
+  }
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.getByRole("button", { name: "切换明暗" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.screenshot({
+    path: "/tmp/phy-lab-spring-compact.png",
+    fullPage: true,
+  });
+});
+
+test("energy exploration requires playback and resets after seeking", async ({
+  page,
+}) => {
+  await openExperiment(page);
+  await range(page, "振幅", "0");
+  await page.getByRole("tab", { name: "探索任务", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "观察一周期", exact: true }),
+  ).toBeDisabled();
+  await range(page, "振幅", "0.3");
+  await page.getByRole("button", { name: "观察一周期", exact: true }).click();
+  await range(page, "拖动时间游标", "1");
+  await expect(page.locator(".task.completed")).toHaveCount(0);
+  await expect(page.locator(".task-progress")).toHaveCount(0);
+  await page.getByRole("button", { name: "观察一周期", exact: true }).click();
+  await expect(page.locator(".task.completed")).toHaveCount(1);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "弹簧振子", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "探索任务", exact: true }).click();
+  await expect(page.locator(".task.completed")).toHaveCount(1);
 });
