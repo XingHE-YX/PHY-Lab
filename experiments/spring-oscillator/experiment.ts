@@ -1,4 +1,4 @@
-import { LitElement, html } from "lit";
+import { LitElement, html, render } from "lit";
 import type {
   ExperimentContext,
   Locale,
@@ -59,6 +59,7 @@ export class SpringExperiment extends LitElement {
   declare moment: string;
   declare curves: Record<Metric, boolean>;
   context!: ExperimentContext;
+  private toolbarControls?: HTMLDivElement;
   private frame = 0;
   private last = 0;
   private editing = false;
@@ -108,6 +109,31 @@ export class SpringExperiment extends LitElement {
       for (const key of Object.keys(this.curves) as Metric[])
         this.curves[key] = saved.curves[key] !== false;
   }
+  updated(changed: Map<PropertyKey, unknown>) {
+    if (!this.context?.toolbar) return;
+    if (!this.toolbarControls) {
+      this.toolbarControls = document.createElement("div");
+      this.toolbarControls.style.cssText =
+        "display:flex;align-items:center;gap:8px";
+      this.context.toolbar.setControls(this.toolbarControls);
+    }
+    if (
+      changed.has("playing") ||
+      changed.has("dragging") ||
+      changed.has("locale")
+    )
+      render(this.playbackButtons(), this.toolbarControls);
+  }
+  playbackButtons() {
+    const t = texts(this.locale);
+    return html`<phy-button
+        variant="primary"
+        ?disabled=${this.dragging}
+        @click=${() => (this.playing ? this.pause() : this.play())}
+        >${this.playing ? "Ⅱ" : "▷"}
+        ${this.playing ? t.pause : t.play}</phy-button
+      ><phy-button @click=${() => this.restart()}>↺ ${t.reset}</phy-button>`;
+  }
   get effectiveParameters(): Parameters {
     return this.dragging
       ? {
@@ -145,6 +171,8 @@ export class SpringExperiment extends LitElement {
     this.persist();
     document.removeEventListener("visibilitychange", this.visibility);
     window.removeEventListener("pagehide", this.saveOnHide);
+    if (this.toolbarControls) render(null, this.toolbarControls);
+    this.toolbarControls = undefined;
     super.disconnectedCallback();
   }
   private visibility = () => {
@@ -627,14 +655,8 @@ export class SpringExperiment extends LitElement {
             )}
           </div>
           <div class="controls">
-            <phy-button
-              variant="primary"
-              ?disabled=${this.dragging}
-              @click=${() => (this.playing ? this.pause() : this.play())}
-              >${this.playing ? "Ⅱ" : "▷"}
-              ${this.playing ? t.pause : t.play}</phy-button
-            ><phy-button @click=${() => this.restart()}>↺ ${t.reset}</phy-button
-            ><select
+            ${this.context.toolbar ? "" : this.playbackButtons()}
+            <select
               aria-label=${t.speed}
               .value=${String(this.speed)}
               @change=${(e: Event) => {
