@@ -318,7 +318,7 @@ test("spring toolbar and exploration preserve experiment actions", async ({
     0,
   );
   await page.getByText("查看推导", { exact: true }).click();
-  await expect(page.locator(".derivation p")).toBeVisible();
+  await expect(page.locator(".derivation-steps")).toBeVisible();
   await page.getByRole("tab", { name: "探索任务", exact: true }).click();
   await expect(page.locator(".task")).toHaveCount(3);
   const amplitude = (await snapshot(page)).params.A;
@@ -483,4 +483,43 @@ test("energy exploration requires playback and resets after seeking", async ({
   ).toBeVisible();
   await page.getByRole("tab", { name: "探索任务", exact: true }).click();
   await expect(page.locator(".task.completed")).toHaveCount(1);
+});
+
+test("TeX formulas render with local fonts, live values and accessible math", async ({
+  page,
+}) => {
+  const remote: string[] = [];
+  page.on("request", (request) => {
+    if (
+      !request.url().startsWith("http://127.0.0.1:4173") &&
+      !request.url().startsWith("data:")
+    )
+      remote.push(request.url());
+  });
+  await openExperiment(page);
+  for (const mode of ["看运动", "看变化", "看能量"]) {
+    await page.getByRole("tab", { name: mode, exact: true }).click();
+    await expect(page.locator(".equation .katex").first()).toBeVisible();
+    await expect(page.locator(".equation math").first()).toHaveAttribute(
+      "xmlns",
+      "http://www.w3.org/1998/Math/MathML",
+    );
+    await expect(page.locator(".katex-error")).toHaveCount(0);
+  }
+  await page.getByText("查看推导", { exact: true }).click();
+  await expect(page.locator(".derivation-steps .katex")).toHaveCount(4);
+  await expect(page.locator(".derivation-steps .katex").last()).toBeVisible();
+  await range(page, "振幅", "0.6");
+  await expect(page.locator(".formula-value").last()).toContainText("1.800");
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "弹簧振子", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".equation .katex").first()).toBeVisible();
+  await expect(page.locator(".formula-value").last()).toContainText("1.800");
+  expect(remote).toEqual([]);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.getByRole("button", { name: "切换明暗" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.screenshot({ path: "/tmp/phy-lab-formulas.png", fullPage: true });
 });

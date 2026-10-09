@@ -18,6 +18,7 @@ import { chart, type Metric } from "./components/chart";
 import { renderScene } from "./components/scene";
 import { texts } from "./locales/messages";
 import { styles } from "./styles/desktop";
+import { math, mathStyles } from "./components/math";
 export interface Snapshot {
   params: Parameters;
   time: number;
@@ -49,7 +50,7 @@ export class SpringExperiment extends LitElement {
     energyPeaks: { state: true },
     observingEnergy: { state: true },
   };
-  static styles = styles;
+  static styles = [mathStyles, styles];
   declare completedTasks: boolean[];
   declare energyPeaks: number;
   declare observingEnergy: boolean;
@@ -557,21 +558,96 @@ export class SpringExperiment extends LitElement {
   }
   equations() {
     const t = texts(this.locale),
+      zh = this.locale === "zh-CN",
       p = this.effectiveParameters,
-      s = this.state,
-      time = this.dragging ? 0 : this.time;
+      s = this.state;
+    const formulas =
+      this.mode === "motion"
+        ? [[String.raw`x = A\cos(\omega t + \varphi)`, "var(--blue)"]]
+        : this.mode === "changes"
+          ? [
+              [
+                String.raw`v = -A\omega\sin(\omega t + \varphi)`,
+                "var(--green)",
+              ],
+              [String.raw`a = -\omega^2 x`, "var(--red)"],
+            ]
+          : [
+              [String.raw`E_{\mathrm{k}} = \frac{1}{2}mv^2`, "var(--green)"],
+              [String.raw`E_{\mathrm{p}} = \frac{1}{2}kx^2`, "var(--blue)"],
+            ];
+    const values =
+      this.mode === "motion"
+        ? [
+            ["x", format(s.x, 3), "m", "var(--blue)"],
+            [String.raw`\omega`, format(s.omega), "rad/s", "var(--text)"],
+            [String.raw`\varphi`, format(p.phi), "rad", "var(--text)"],
+          ]
+        : this.mode === "changes"
+          ? [
+              ["v", format(s.v, 3), "m/s", "var(--green)"],
+              ["a", format(s.a, 3), "m/s²", "var(--red)"],
+            ]
+          : [
+              [
+                String.raw`E_{\mathrm{k}}`,
+                format(s.kinetic, 3),
+                "J",
+                "var(--green)",
+              ],
+              [
+                String.raw`E_{\mathrm{p}}`,
+                format(s.potential, 3),
+                "J",
+                "var(--blue)",
+              ],
+              ["E", format(s.total, 3), "J", "var(--text)"],
+            ];
     return html`<section class="theory">
-      <div class="equation">
-        ${this.mode === "motion" ? html`<span style="color:var(--blue)">x = A cos(ωt + φ)</span><small>x = ${format(p.A)} cos(${format(s.omega)} × ${format(time)} + ${format(p.phi)}) = ${format(s.x, 3)} m</small>` : this.mode === "changes" ? html`<span style="color:var(--green)">v = −Aω sin(ωt + φ)</span><br /><span style="color:var(--red)">a = −ω²x</span>` : html`<span style="color:var(--green)">E<sub>k</sub> = ½mv²</span> &nbsp; <span style="color:var(--blue)">E<sub>p</sub> = ½kx²</span><small>E = E<sub>k</sub> + E<sub>p</sub> = ½kA² = ${format(s.total, 3)} J</small>`}
+      <div class="formula-main">
+        <div class="equation">
+          ${formulas.map(([source, color]) => html`<span style=${"color:" + color}>${math(source)}</span>`)}
+        </div>
+        ${this.mode === "energy" ? html`<div class="conservation">${math(String.raw`E = E_{\mathrm{k}} + E_{\mathrm{p}} = \frac{1}{2}kA^2`)}</div>` : ""}
+        <p class="explanation">
+          ${this.mode === "motion" ? t.positionExplain : this.mode === "changes" ? t.velocityExplain : t.energyExplain}
+        </p>
       </div>
-      <p class="explanation">
-        ${this.mode === "motion" ? t.positionExplain : this.mode === "changes" ? t.velocityExplain : t.energyExplain}
-      </p>
+      <div class="formula-live">
+        <div class="formula-caption">
+          ${zh ? "当前数值" : "Current values"}<span class="mono"
+            >t = ${format(this.dragging ? 0 : this.time)} s</span
+          >
+        </div>
+        <div class="formula-values">
+          ${values.map(([symbol, value, unit, color]) => html`<div class="formula-value"><span class="formula-symbol">${math(symbol)}</span><strong style=${"color:" + color}>${value}</strong><span class="unit">${unit}</span></div>`)}
+        </div>
+      </div>
       <details class="derivation">
-        <summary>
-          ${this.locale === "zh-CN" ? "查看推导" : "View derivation"}
-        </summary>
-        <p>F = −kx<br />a = −(k/m)x<br />ω = √(k/m)<br />T = 2π√(m/k)</p>
+        <summary>${zh ? "查看推导" : "View derivation"}</summary>
+        <div class="derivation-steps">
+          ${[
+            [zh ? "回复力" : "Restoring force", String.raw`F = -kx`],
+            [
+              zh ? "运动方程" : "Equation of motion",
+              String.raw`\ddot{x} + \frac{k}{m}x = 0`,
+            ],
+            [
+              zh ? "角频率" : "Angular frequency",
+              String.raw`\omega = \sqrt{\frac{k}{m}}`,
+            ],
+            [
+              zh ? "周期" : "Period",
+              String.raw`T = \frac{2\pi}{\omega} = 2\pi\sqrt{\frac{m}{k}}`,
+            ],
+          ].map(
+            ([label, source]) =>
+              html`<div>
+                <small>${label}</small>
+                <div>${math(source)}</div>
+              </div>`,
+          )}
+        </div>
       </details>
     </section>`;
   }

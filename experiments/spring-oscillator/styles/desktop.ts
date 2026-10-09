@@ -555,47 +555,90 @@ export const styles = css`
     color: var(--primary);
   }
   .theory {
-    padding: 18px 20px;
+    padding: 14px 20px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 10px 28px;
-    align-items: start;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 12px 24px;
+    align-items: center;
+  }
+  .formula-main,
+  .formula-live {
+    min-width: 0;
   }
   .equation {
-    font-family: var(--mono);
-    font-size: 16px;
-    line-height: 1.8;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    font-size: 17px;
+    line-height: 1.5;
   }
-  .equation small {
-    display: block;
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 7px;
+  .katex {
+    font-size: 1em;
+  }
+  .conservation {
+    margin-top: 8px;
+    font-size: 13px;
   }
   .explanation {
-    grid-column: 1;
-    font-size: 12px;
-    line-height: 1.9;
+    font-size: 11px;
+    line-height: 1.7;
     color: var(--muted);
-    margin: 0;
+    margin: 8px 0 0;
+  }
+  .formula-live {
+    border-left: 1px solid var(--border);
+    padding-left: 24px;
+  }
+  .formula-caption {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 10px;
+    margin-bottom: 10px;
+  }
+  .formula-values {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px 24px;
+  }
+  .formula-value {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    white-space: nowrap;
+  }
+  .formula-symbol {
+    font-size: 14px;
+  }
+  .formula-value strong {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 500;
   }
   .derivation {
-    grid-column: 2;
-    grid-row: 1 / 3;
-    padding: 10px 14px;
-    border: 1px solid var(--border);
-    border-radius: 3px;
+    grid-column: 1 / -1;
+    padding-top: 9px;
+    border-top: 1px solid var(--border);
   }
   .derivation summary {
-    color: var(--text);
+    color: var(--muted);
+    font-size: 11px;
   }
-  .derivation p {
-    font-family: var(--mono);
-    font-size: 12px;
-    line-height: 2;
-    border-top: 1px solid var(--border);
-    padding-top: 12px;
-    margin-bottom: 0;
+  .derivation-steps {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+    padding: 12px 0 4px;
+    font-size: 15px;
+  }
+  .derivation-steps small {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    margin-bottom: 8px;
   }
   .task-grid {
     display: grid;
