@@ -5,7 +5,7 @@ export const styles = css`
     height: 100%;
     min-height: 0;
     overflow: hidden;
-    grid-template-rows: auto minmax(0, 1fr) auto clamp(150px, 23vh, 220px);
+    grid-template-rows: auto minmax(0, 1fr) clamp(150px, 23vh, 220px);
     font-family: var(--font);
     color: var(--text);
   }
@@ -84,7 +84,7 @@ export const styles = css`
   }
   .heading-copy {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 18px;
     min-width: 0;
   }
@@ -327,18 +327,6 @@ export const styles = css`
     accent-color: var(--primary);
     margin: 0;
   }
-  .stage .toggles {
-    padding: 13px 18px;
-    border-top: 1px solid var(--border);
-    justify-content: space-between;
-  }
-  .stage .toggle-group {
-    display: flex;
-    gap: 14px;
-  }
-  .arrow-note {
-    font-size: 9px;
-  }
   .observation {
     display: flex;
     flex-direction: column;
@@ -371,7 +359,7 @@ export const styles = css`
   }
   .plot-top {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
     gap: 8px;
     font-size: 10px;
@@ -385,10 +373,15 @@ export const styles = css`
     touch-action: none;
     margin-top: 8px;
   }
-  .plot .toggles {
-    margin: 13px 0 6px;
+  .plot-top .toggles {
+    margin: 0;
     font-size: 10px;
-    gap: 10px;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  .plot-time {
+    margin-left: auto;
+    white-space: nowrap;
   }
   .compare {
     border-top: 1px solid var(--border);
@@ -473,11 +466,30 @@ export const styles = css`
   }
   .moments {
     display: flex;
+    overflow-x: auto;
+    white-space: nowrap;
     align-items: center;
-    gap: 20px;
-    margin-top: 0;
-    border-top: 0;
-    padding: 10px 18px;
+    gap: 8px;
+    border-top: 1px solid var(--border);
+    padding: 10px 14px;
+    flex-shrink: 0;
+  }
+  .moments .toggles {
+    margin-left: auto;
+    flex-wrap: nowrap;
+    font-size: 10px;
+  }
+  .moments .toggle-group {
+    display: flex;
+    gap: 8px;
+  }
+  .moment-buttons button {
+    font-size: 10px;
+    padding: 5px 7px;
+    min-height: 28px;
+  }
+  .moments > * {
+    flex-shrink: 0;
   }
   .section-title {
     font-size: 11px;
@@ -493,12 +505,15 @@ export const styles = css`
     flex-shrink: 0;
   }
   .moment-hint {
-    font-size: 12px;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--muted);
     margin: 0;
     line-height: 1.7;
-    border-left: 1px solid var(--border);
-    padding-left: 18px;
+    white-space: nowrap;
+    font-size: 11px;
   }
   .support {
     margin-top: 0;

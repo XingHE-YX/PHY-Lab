@@ -456,30 +456,30 @@ export class SpringExperiment extends LitElement {
       );
     const ratio = s.total > 0 ? s.kinetic / s.total : 0;
     return html`<div class="plot-top">
-        <span class="mono">t = ${format(time)} s</span>
+        ${
+          this.mode !== "motion"
+            ? html`<div class="toggles">
+                ${keys.map(
+                  (key) =>
+                    html`<label
+                      ><input
+                        type="checkbox"
+                        .checked=${this.curves[key]}
+                        @change=${(event: Event) => {
+                          this.curves = {
+                            ...this.curves,
+                            [key]: (event.target as HTMLInputElement).checked,
+                          };
+                          this.persist();
+                        }}
+                      />${this.locale === "en" && this.mode === "energy" ? (key === "kinetic" ? "Kinetic" : key === "potential" ? "Potential" : "Total") : labels[key]}</label
+                    >`,
+                )}
+              </div>`
+            : ""
+        }
+        <span class="mono plot-time">t = ${format(time)} s</span>
       </div>
-      ${
-        this.mode !== "motion"
-          ? html`<div class="toggles">
-              ${keys.map(
-                (key) =>
-                  html`<label
-                    ><input
-                      type="checkbox"
-                      .checked=${this.curves[key]}
-                      @change=${(event: Event) => {
-                        this.curves = {
-                          ...this.curves,
-                          [key]: (event.target as HTMLInputElement).checked,
-                        };
-                        this.persist();
-                      }}
-                    />${labels[key]}</label
-                  >`,
-              )}
-            </div>`
-          : ""
-      }
       ${
         this.mode === "motion"
           ? html`${plot(["x"], t.position, "m")}
@@ -577,7 +577,19 @@ export class SpringExperiment extends LitElement {
   }
   moments() {
     const t = texts(this.locale);
-    return html`<section class="panel moments">
+    const hint =
+      this.params.A === 0
+        ? t.zero
+        : this.moment === "right"
+          ? t.rightHint
+          : this.moment === "left"
+            ? t.leftHint
+            : this.moment === "equilibrium"
+              ? t.centerHint
+              : this.moment === "equal"
+                ? t.equalHint
+                : "";
+    return html`<section class="moments">
       <h2 class="section-title">${t.moments}</h2>
       <div class="moment-buttons">
         ${[
@@ -595,9 +607,30 @@ export class SpringExperiment extends LitElement {
             </button>`,
         )}
       </div>
-      <p class="moment-hint">
-        ${this.params.A === 0 ? t.zero : this.moment === "right" ? t.rightHint : this.moment === "left" ? t.leftHint : this.moment === "equilibrium" ? t.centerHint : this.moment === "equal" ? t.equalHint : t.hint}
-      </p>
+      ${hint ? html`<p class="moment-hint" title=${hint}>${hint}</p>` : ""}
+      <div class="toggles">
+        <div class="toggle-group">
+          <label
+            ><input
+              type="checkbox"
+              .checked=${this.velocity}
+              @change=${(e: Event) => {
+                this.velocity = (e.target as HTMLInputElement).checked;
+                this.persist();
+              }}
+            />${t.velocity}</label
+          ><label
+            ><input
+              type="checkbox"
+              .checked=${this.acceleration}
+              @change=${(e: Event) => {
+                this.acceleration = (e.target as HTMLInputElement).checked;
+                this.persist();
+              }}
+            />${t.acceleration}</label
+          >
+        </div>
+      </div>
     </section>`;
   }
   private cancelEnergyTask() {
@@ -837,32 +870,7 @@ export class SpringExperiment extends LitElement {
               >t = ${format(this.time)} s</span
             >
           </div>
-          <div class="toggles">
-            <div class="toggle-group">
-              <label
-                ><input
-                  type="checkbox"
-                  .checked=${this.velocity}
-                  @change=${(e: Event) => {
-                    this.velocity = (e.target as HTMLInputElement).checked;
-                    this.persist();
-                  }}
-                />${t.velocity}</label
-              ><label
-                ><input
-                  type="checkbox"
-                  .checked=${this.acceleration}
-                  @change=${(e: Event) => {
-                    this.acceleration = (e.target as HTMLInputElement).checked;
-                    this.persist();
-                  }}
-                />${t.acceleration}</label
-              >
-            </div>
-            <span class="arrow-note"
-              >${zh ? "各箭头按自身峰值缩放" : "Arrows scaled to their own peak"}</span
-            >
-          </div>
+          ${this.moments()}
         </section>
         <aside class="panel observation">
           <div
@@ -905,6 +913,6 @@ export class SpringExperiment extends LitElement {
           </div>
         </aside>
       </div>
-      ${this.moments()}${this.supportPanel()}`;
+      ${this.supportPanel()}`;
   }
 }

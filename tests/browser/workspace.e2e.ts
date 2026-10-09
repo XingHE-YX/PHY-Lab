@@ -383,13 +383,55 @@ test("workspace scrollbar stays below toolbar and spring remains inside viewport
     page.locator(".toolbar").getByRole("combobox", { name: "播放速度" }),
   ).toBeVisible();
   await expect(page.locator(".timeline span")).toHaveCount(3);
+  const title = await page.locator(".heading-copy h1").boundingBox();
+  const subtitle = await page.locator(".heading-copy .intro").boundingBox();
+  expect(title!.y + title!.height).toBe(subtitle!.y + subtitle!.height);
+  await expect(
+    page.getByText("各箭头按自身峰值缩放", { exact: true }),
+  ).toHaveCount(0);
+  expect(
+    await page
+      .locator(".stage")
+      .evaluate((el) => el.lastElementChild?.className),
+  ).toBe("moments");
+  await expect(
+    page
+      .locator(".stage .moments")
+      .getByRole("checkbox", { name: "速度箭头", exact: true }),
+  ).toBeVisible();
+
   for (const height of [720, 1000]) {
     await page.setViewportSize({ width: 1280, height });
     for (const mode of ["看运动", "看变化", "看能量"]) {
       await page.getByRole("tab", { name: mode, exact: true }).click();
+      if (mode !== "看运动") {
+        const options = await page.locator(".plot-top .toggles").boundingBox();
+        const time = await page.locator(".plot-time").boundingBox();
+        expect(
+          Math.abs(
+            options!.y + options!.height / 2 - time!.y - time!.height / 2,
+          ),
+        ).toBeLessThan(1);
+      }
+
       await page.getByRole("tab", { name: "公式", exact: true }).click();
       const details = page.locator(".derivation");
       await details.evaluate((el) => ((el as HTMLDetailsElement).open = true));
+      const momentButtons = await page.locator(".moment-buttons").boundingBox();
+      const arrows = await page.locator(".moments .toggles").boundingBox();
+      const footer = await page.locator(".moments").boundingBox();
+      expect(arrows!.x + arrows!.width).toBe(footer!.x + footer!.width - 14);
+      expect(
+        Math.abs(
+          momentButtons!.y +
+            momentButtons!.height / 2 -
+            arrows!.y -
+            arrows!.height / 2,
+        ),
+      ).toBeLessThan(1);
+      await expect(
+        page.getByText("调整参数，看看什么发生了变化。", { exact: true }),
+      ).toHaveCount(0);
       const bounds = await page.locator("phy-experiment-page").boundingBox();
       expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(height);
       const support = await page.locator(".support").boundingBox();
