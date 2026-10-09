@@ -56,6 +56,8 @@ test("theme transition, settings dialog and focus restoration", async ({
   const settings = page.getByRole("button", { name: "设置", exact: true });
   await settings.click();
   await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("dialog")).toContainText("PHY Lab v0.1.0");
+  await expect(page.locator("footer")).toHaveCount(0);
   await page.getByLabel("减少界面动画").check();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);

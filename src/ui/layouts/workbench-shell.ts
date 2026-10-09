@@ -176,18 +176,6 @@ export class App extends LitElement {
       main {
         flex: 1;
       }
-      .footer {
-        max-width: 1116px;
-        width: calc(100% - 64px);
-        margin: 0 auto;
-        padding: 20px 0 25px;
-        border-top: 1px solid var(--border);
-        display: flex;
-        justify-content: space-between;
-        font-size: 10px;
-        letter-spacing: 0.4px;
-        color: var(--muted);
-      }
       dialog {
         width: 440px;
         max-width: calc(100vw - 32px);
@@ -268,8 +256,7 @@ export class App extends LitElement {
       }
       @media (max-width: 1279px) {
         .toolbar,
-        main,
-        .footer {
+        main {
           display: none;
         }
         .viewport-warning {
@@ -467,10 +454,6 @@ export class App extends LitElement {
       <main>
         ${this.catalogError ? html`<div class="catalog-error">${t.error} · <phy-button @click=${() => this.refreshCatalog()}>${t.retry}</phy-button></div>` : ""}${id && this.catalog ? html`<phy-experiment-page .catalog=${this.catalog} .experimentId=${id} .locale=${s.locale} .theme=${currentTheme()}></phy-experiment-page>` : html`<phy-workbench .catalog=${this.catalog} .locale=${s.locale} .query=${this.query}></phy-workbench>`}
       </main>
-      <footer class="footer">
-        <span>PHY Lab · ${t.footer}</span
-        ><span class="mono">v${__APP_VERSION__} / Apache 2.0</span>
-      </footer>
       ${
         this.modal
           ? html`<dialog
@@ -531,8 +514,7 @@ export class App extends LitElement {
                 </div>
               </div>
               <div class="dialog-footer">
-                <span>${t.local}</span
-                ><span class="mono">${__APP_VERSION__}</span>
+                <span>${t.local}</span><span>PHY Lab v${__APP_VERSION__}</span>
               </div>
             </dialog>`
           : ""
