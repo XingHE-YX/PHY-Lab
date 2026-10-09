@@ -65,33 +65,28 @@ export const styles = css`
     gap: 30px;
     margin: 0 0 20px;
   }
-  .eyebrow {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-    letter-spacing: 1.4px;
-    margin-bottom: 7px;
+  .heading-copy {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    min-width: 0;
   }
   h1 {
     font-weight: 550;
-    font-size: 26px;
+    font-size: 20px;
     letter-spacing: -0.8px;
     margin: 0;
   }
   .intro {
     font-size: 12px;
     color: var(--muted);
-    margin: 9px 0 0;
+    margin: 0;
     line-height: 1.6;
   }
   .lab-meta {
     display: flex;
     gap: 22px;
     align-items: center;
-  }
-  .model {
-    font-size: 11px;
-    color: var(--muted);
   }
   .status {
     display: flex;
@@ -239,16 +234,6 @@ export const styles = css`
   .mass:active {
     cursor: grabbing;
   }
-  .scene-stamp {
-    position: absolute;
-    top: 17px;
-    left: 20px;
-    font-size: 9px;
-    letter-spacing: 1px;
-    line-height: 1.8;
-    color: var(--muted);
-    pointer-events: none;
-  }
   .scene-scale {
     position: absolute;
     bottom: 12px;
@@ -370,7 +355,7 @@ export const styles = css`
   }
   .plot-top {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     gap: 8px;
     font-size: 10px;

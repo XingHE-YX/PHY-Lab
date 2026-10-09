@@ -373,7 +373,7 @@ export class SpringExperiment extends LitElement {
       );
     const ratio = s.total > 0 ? s.kinetic / s.total : 0;
     return html`<div class="plot-top">
-        <span>${t.zoom}</span><span class="mono">t = ${format(time)} s</span>
+        <span class="mono">t = ${format(time)} s</span>
       </div>
       ${
         this.mode !== "motion"
@@ -563,14 +563,12 @@ export class SpringExperiment extends LitElement {
     const start =
       Math.floor(Math.max(0, this.time - 1e-9) / duration) * duration;
     return html`<div class="heading">
-        <div>
-          <div class="eyebrow">EXPERIMENT 01 / SIMPLE HARMONIC MOTION</div>
+        <div class="heading-copy">
           <h1>${t.title}</h1>
           <p class="intro">${t.subtitle}</p>
         </div>
         <div class="lab-meta">
-          <span class="model">${t.model}</span
-          ><span class=${"status " + (this.playing ? "running" : "")}
+          <span class=${"status " + (this.playing ? "running" : "")}
             ><i class="status-dot"></i
             >${this.dragging ? (zh ? "拖动中" : "HOLDING") : this.playing ? (zh ? "运行中" : "RUNNING") : zh ? "已暂停" : "PAUSED"}</span
           >
@@ -608,9 +606,6 @@ export class SpringExperiment extends LitElement {
             >
           </div>
           <div class="scene-wrap">
-            <div class="scene-stamp mono">
-              SPRING / MASS SYSTEM<br />${zh ? "位移标尺 · SI 单位" : "POSITION SCALE · SI UNITS"}
-            </div>
             ${this.scene()}
             <div class="scene-scale mono">
               ${p.A === 0 ? t.zero : "−A ← 0 → +A"}
