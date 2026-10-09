@@ -24,9 +24,7 @@ test("workspace search, navigation and locale persistence", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "让物理，触手可及。" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "全部实验" })).toBeVisible();
   const search = page.getByRole("textbox");
   await search.fill("不存在");
   await expect(
@@ -36,11 +34,11 @@ test("workspace search, navigation and locale persistence", async ({
   await expect(page.getByRole("link", { name: /弹簧振子/ })).toBeVisible();
   await page.getByRole("button", { name: "切换语言", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Physics, within reach." }),
+    page.getByRole("heading", { name: "All experiments" }),
   ).toBeVisible();
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Physics, within reach." }),
+    page.getByRole("heading", { name: "All experiments" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Open navigation" }).click();
   await expect(
