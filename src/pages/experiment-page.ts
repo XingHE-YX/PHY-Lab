@@ -38,7 +38,10 @@ export class ExperimentPage extends LitElement {
         display: block;
         max-width: 1600px;
         margin: auto;
-        padding: 20px 28px 32px;
+        padding: 16px 28px;
+        height: calc(100dvh - 66px);
+        min-height: 0;
+        overflow: hidden;
       }
       .status {
         text-align: center;

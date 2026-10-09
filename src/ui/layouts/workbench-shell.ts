@@ -63,12 +63,14 @@ export class App extends LitElement {
     css`
       :host {
         display: flex;
-        min-height: 100dvh;
+        height: 100dvh;
+        overflow: hidden;
         flex-direction: column;
         background: var(--bg);
       }
       .toolbar {
         height: 66px;
+        flex-shrink: 0;
         border-bottom: 1px solid var(--border);
         background: var(--surface);
         display: grid;
@@ -190,6 +192,22 @@ export class App extends LitElement {
       }
       main {
         flex: 1;
+        min-height: 0;
+        overflow: auto;
+        scrollbar-gutter: stable;
+      }
+      main::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      main::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 2px;
+      }
+      @supports not selector(::-webkit-scrollbar) {
+        main {
+          scrollbar-width: thin;
+        }
       }
       dialog {
         width: 440px;

@@ -1,7 +1,11 @@
 import { css } from "lit";
 export const styles = css`
   :host {
-    display: block;
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    grid-template-rows: auto minmax(0, 1fr) auto clamp(150px, 23vh, 220px);
     font-family: var(--font);
     color: var(--text);
   }
@@ -58,12 +62,25 @@ export const styles = css`
   .muted {
     color: var(--muted);
   }
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+    }
+  }
   .heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 30px;
-    margin: 0 0 20px;
+    margin: 0 0 10px;
   }
   .heading-copy {
     display: flex;
@@ -111,12 +128,14 @@ export const styles = css`
   .lab-grid {
     display: grid;
     grid-template-columns: 218px minmax(480px, 1fr) 354px;
-    gap: 14px;
+    gap: 0;
+    min-height: 0;
     align-items: stretch;
   }
   .panel {
     border: 1px solid var(--border);
-    border-radius: 3px;
+    border-radius: 0;
+    min-height: 0;
     background: var(--surface);
     overflow: hidden;
   }
@@ -135,18 +154,25 @@ export const styles = css`
     color: var(--muted);
     letter-spacing: 0.8px;
   }
+  .parameters {
+    display: flex;
+    flex-direction: column;
+  }
   .parameter-body {
-    padding: 21px 18px;
+    min-height: 0;
+    overflow: auto;
+    scrollbar-gutter: stable;
+    padding: 16px 18px;
   }
   .parameter {
-    margin-bottom: 25px;
+    margin-bottom: 18px;
   }
   .parameter label {
     display: flex;
     align-items: center;
     justify-content: space-between;
     font-size: 12px;
-    margin-bottom: 13px;
+    margin-bottom: 8px;
     gap: 8px;
   }
   .parameter .val {
@@ -190,15 +216,6 @@ export const styles = css`
     color: var(--muted);
     line-height: 1.7;
   }
-  .advanced {
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-  }
-  .advanced .parameter {
-    margin-top: 18px;
-    margin-bottom: 0;
-  }
   .stage {
     display: flex;
     flex-direction: column;
@@ -218,12 +235,15 @@ export const styles = css`
     flex: 1;
     display: flex;
     align-items: center;
-    min-height: 305px;
+    min-height: 0;
+    overflow: hidden;
     background: var(--surface);
   }
   .scene {
     width: 100%;
-    height: 305px;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
     display: block;
     user-select: none;
   }
@@ -248,7 +268,7 @@ export const styles = css`
     border-top: 1px solid var(--border);
   }
   .readout {
-    padding: 15px 18px;
+    padding: 10px 18px;
     border-right: 1px solid var(--border);
   }
   .readout:last-child {
@@ -269,34 +289,27 @@ export const styles = css`
     color: var(--muted);
     margin-left: 4px;
   }
-  .controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 14px 18px;
-    border-top: 1px solid var(--border);
-  }
-  .controls select {
-    background: var(--surface);
-    color: var(--text);
-    padding: 8px;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    font-size: 11px;
-  }
-  .time-label {
-    margin-left: auto;
-    font-size: 12px;
-    font-family: var(--mono);
-  }
   .timeline {
-    padding: 0 18px 16px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
     display: flex;
     gap: 12px;
     align-items: center;
     font-family: var(--mono);
     font-size: 10px;
     color: var(--muted);
+  }
+  .timeline span {
+    white-space: nowrap;
+  }
+  .timeline input {
+    min-width: 0;
+    flex: 1;
+  }
+  .timeline .time-label {
+    color: var(--text);
+    border-left: 1px solid var(--border);
+    padding-left: 12px;
   }
   .toggles {
     display: flex;
@@ -350,6 +363,9 @@ export const styles = css`
     background: var(--primary-soft);
   }
   .plot {
+    min-height: 0;
+    overflow: auto;
+    scrollbar-gutter: stable;
     padding: 15px 16px;
     flex: 1;
   }
@@ -399,13 +415,16 @@ export const styles = css`
   .mini-stats {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin: 20px 0;
+    gap: 0;
+    margin: 16px 0;
   }
   .mini-stat {
     padding: 14px 12px;
     background: var(--bg);
     border: 1px solid var(--border);
+  }
+  .mini-stat + .mini-stat {
+    border-left: 0;
   }
   .mini-stat small {
     display: block;
@@ -456,8 +475,9 @@ export const styles = css`
     display: flex;
     align-items: center;
     gap: 20px;
-    margin-top: 14px;
-    padding: 14px 18px;
+    margin-top: 0;
+    border-top: 0;
+    padding: 10px 18px;
   }
   .section-title {
     font-size: 11px;
@@ -481,7 +501,29 @@ export const styles = css`
     padding-left: 18px;
   }
   .support {
-    margin-top: 14px;
+    margin-top: 0;
+    border-top: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  #support-content {
+    min-height: 0;
+    overflow: auto;
+    scrollbar-gutter: stable;
+    flex: 1;
+  }
+  .bench > .panel + .panel {
+    border-left: 0;
+  }
+  .tabs,
+  .support-tabs,
+  .panel-heading,
+  .scene-header,
+  .readouts,
+  .timeline,
+  .stage > .toggles,
+  .observation-note {
+    flex-shrink: 0;
   }
   .support-tabs {
     display: flex;

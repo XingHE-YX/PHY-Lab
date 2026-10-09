@@ -123,7 +123,8 @@ export class SpringExperiment extends LitElement {
     if (
       changed.has("playing") ||
       changed.has("dragging") ||
-      changed.has("locale")
+      changed.has("locale") ||
+      changed.has("speed")
     )
       render(this.playbackButtons(), this.toolbarControls);
   }
@@ -135,7 +136,21 @@ export class SpringExperiment extends LitElement {
         @click=${() => (this.playing ? this.pause() : this.play())}
         >${this.playing ? "Ⅱ" : "▷"}
         ${this.playing ? t.pause : t.play}</phy-button
-      ><phy-button @click=${() => this.restart()}>↺ ${t.reset}</phy-button>`;
+      ><phy-button @click=${() => this.restart()}>↺ ${t.reset}</phy-button>
+      <select
+        aria-label=${t.speed}
+        .value=${String(this.speed)}
+        style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:7px;font-size:12px"
+        @change=${(event: Event) => {
+          this.speed = Number((event.target as HTMLSelectElement).value);
+          this.last = 0;
+          this.persist();
+        }}
+      >
+        <option value="1">1×</option>
+        <option value="0.5">0.5×</option>
+        <option value="0.25">0.25×</option>
+      </select>`;
   }
   get effectiveParameters(): Parameters {
     return this.dragging
@@ -662,7 +677,7 @@ export class SpringExperiment extends LitElement {
         <aside class="panel parameters">
           <div class="panel-heading">${t.parameters}<span>INPUT</span></div>
           <div class="parameter-body">
-            ${this.parameter("A", t.amplitude, 0, 0.8, 0.01, "m")}${this.parameter("m", t.mass, 0.2, 5, 0.1, "kg")}${this.parameter("k", t.stiffness, 1, 50, 1, "N/m")}
+            ${this.parameter("A", t.amplitude, 0, 0.8, 0.01, "m")}${this.parameter("m", t.mass, 0.2, 5, 0.1, "kg")}${this.parameter("k", t.stiffness, 1, 50, 1, "N/m")}${this.parameter("phi", t.phase, 0, TAU, 0.01, "rad")}
             <div class="derived">
               ${[
                 [t.omega, format(s.omega) + " rad/s"],
@@ -675,10 +690,6 @@ export class SpringExperiment extends LitElement {
                   </div>`,
               )}
             </div>
-            <details class="advanced">
-              <summary>${t.advanced}</summary>
-              ${this.parameter("phi", t.phase, 0, TAU, 0.01, "rad")}
-            </details>
           </div>
         </aside>
         <section class="panel stage">
@@ -710,22 +721,7 @@ export class SpringExperiment extends LitElement {
                 </div>`,
             )}
           </div>
-          <div class="controls">
-            ${this.context.toolbar ? "" : this.playbackButtons()}
-            <select
-              aria-label=${t.speed}
-              .value=${String(this.speed)}
-              @change=${(e: Event) => {
-                this.speed = Number((e.target as HTMLSelectElement).value);
-                this.last = 0;
-                this.persist();
-              }}
-            >
-              <option value="1">1×</option>
-              <option value="0.5">0.5×</option>
-              <option value="0.25">0.25×</option></select
-            ><span class="time-label">t = ${format(this.time)} s</span>
-          </div>
+          ${this.context.toolbar ? "" : this.playbackButtons()}
           <div class="timeline">
             <span>${format(start, 1)}s</span
             ><input
@@ -737,6 +733,9 @@ export class SpringExperiment extends LitElement {
               aria-label=${t.timeline}
               @input=${(e: Event) => this.seek(Number((e.target as HTMLInputElement).value))}
             /><span>${format(start + duration, 1)}s</span>
+            <span class="time-label" aria-label=${t.time}
+              >t = ${format(this.time)} s</span
+            >
           </div>
           <div class="toggles">
             <div class="toggle-group">
