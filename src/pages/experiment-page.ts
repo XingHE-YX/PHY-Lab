@@ -4,6 +4,7 @@ import type {
   Locale,
   ExperimentInstance,
   ExperimentModule,
+  ExperimentControls,
 } from "../infra/platform/contract";
 import { loadManifest } from "../infra/platform/registry";
 import { experimentStorage } from "../services/storage";
@@ -19,6 +20,7 @@ export class ExperimentPage extends LitElement {
     status: { state: true },
     error: { state: true },
     toolbar: { attribute: false },
+    settingsApi: { attribute: false },
   };
   declare catalog: Catalog | null;
   declare experimentId: string;
@@ -27,6 +29,7 @@ export class ExperimentPage extends LitElement {
   declare status: string;
   declare error: string;
   declare toolbar: HTMLElement | null;
+  declare settingsApi: ExperimentControls | undefined;
   instance?: ExperimentInstance;
   private controller?: AbortController;
   private currentStorage?: ReturnType<typeof experimentStorage>;
@@ -97,6 +100,12 @@ export class ExperimentPage extends LitElement {
         buildId: manifest.buildId,
         signal: controller.signal,
         storage,
+        settings: {
+          setControls: (element) => {
+            if (controller.signal.aborted) return;
+            this.settingsApi?.setControls(element);
+          },
+        },
         toolbar: {
           setControls: (element) => {
             if (controller.signal.aborted) return;
@@ -118,6 +127,7 @@ export class ExperimentPage extends LitElement {
         this.error = error instanceof Error ? error.message : String(error);
         this.controller?.abort();
         this.toolbar?.replaceChildren();
+        this.settingsApi?.setControls(null);
         this.status = "error";
       }
     }
@@ -128,6 +138,7 @@ export class ExperimentPage extends LitElement {
   cleanup() {
     this.controller?.abort();
     this.toolbar?.replaceChildren();
+    this.settingsApi?.setControls(null);
     this.instance?.pause();
     this.save();
     this.instance?.dispose();

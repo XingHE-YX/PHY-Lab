@@ -1,5 +1,8 @@
 import { LitElement, html, css } from "lit";
-import type { Catalog } from "../../infra/platform/contract";
+import type {
+  Catalog,
+  ExperimentControls,
+} from "../../infra/platform/contract";
 import { loadCatalog } from "../../infra/platform/registry";
 import { settings } from "../../services/settings";
 import { currentTheme, toggleTheme } from "../../services/theme";
@@ -27,7 +30,15 @@ export class App extends LitElement {
   declare revision: number;
   declare catalogError: string;
   private readonly experimentControls = document.createElement("div");
+  private readonly experimentSettings = document.createElement("div");
+  private readonly experimentSettingsApi: ExperimentControls = {
+    setControls: (element) => {
+      this.experimentSettings.replaceChildren(...(element ? [element] : []));
+      this.requestUpdate();
+    },
+  };
   private onRoute = () => {
+    this.experimentSettings.replaceChildren();
     this.experimentControls.replaceChildren();
     this.route = location.hash;
     this.menu = false;
@@ -196,20 +207,28 @@ export class App extends LitElement {
         overflow: auto;
         scrollbar-gutter: stable;
       }
-      main::-webkit-scrollbar {
+      main::-webkit-scrollbar,
+      dialog::-webkit-scrollbar {
         width: 4px;
         height: 4px;
       }
-      main::-webkit-scrollbar-thumb {
+      main::-webkit-scrollbar-thumb,
+      dialog::-webkit-scrollbar-thumb {
         background: var(--border);
         border-radius: 2px;
       }
       @supports not selector(::-webkit-scrollbar) {
-        main {
+        main,
+        dialog {
           scrollbar-width: thin;
         }
       }
+      .experiment-settings {
+        margin-bottom: 24px;
+      }
       dialog {
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
         width: 440px;
         max-width: calc(100vw - 32px);
         padding: 0;
@@ -503,7 +522,7 @@ export class App extends LitElement {
         </div>
       </header>
       <main>
-        ${this.catalogError ? html`<div class="catalog-error">${t.error} · <phy-button @click=${() => this.refreshCatalog()}>${t.retry}</phy-button></div>` : ""}${id && this.catalog ? html`<phy-experiment-page .catalog=${this.catalog} .experimentId=${id} .locale=${s.locale} .theme=${currentTheme()} .toolbar=${this.experimentControls}></phy-experiment-page>` : html`<phy-workbench .catalog=${this.catalog} .locale=${s.locale} .query=${this.query}></phy-workbench>`}
+        ${this.catalogError ? html`<div class="catalog-error">${t.error} · <phy-button @click=${() => this.refreshCatalog()}>${t.retry}</phy-button></div>` : ""}${id && this.catalog ? html`<phy-experiment-page .catalog=${this.catalog} .experimentId=${id} .locale=${s.locale} .theme=${currentTheme()} .toolbar=${this.experimentControls} .settingsApi=${this.experimentSettingsApi}></phy-experiment-page>` : html`<phy-workbench .catalog=${this.catalog} .locale=${s.locale} .query=${this.query}></phy-workbench>`}
       </main>
       ${
         this.modal
@@ -535,6 +554,20 @@ export class App extends LitElement {
                 </button>
               </div>
               <div class="dialog-body">
+                ${
+                  id && this.experimentSettings.hasChildNodes()
+                    ? html` <section
+                        class="experiment-settings"
+                        aria-label=${t.experimentSettings}
+                      >
+                        <div class="section-label">
+                          ${t.experimentSettings} ·
+                          ${this.catalog?.experiments.find((entry) => entry.id === id)?.title[s.locale] ?? id}
+                        </div>
+                        ${this.experimentSettings}
+                      </section>`
+                    : ""
+                }
                 <div class="section-label">${t.appearance}</div>
                 <label class="row"
                   >${t.language}<select

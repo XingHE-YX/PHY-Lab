@@ -586,3 +586,103 @@ test("TeX formulas render with local fonts, live values and accessible math", as
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.screenshot({ path: "/tmp/phy-lab-formulas.png", fullPage: true });
 });
+
+test.describe("experiment settings API", () => {
+  test.use({ serviceWorkers: "block" });
+
+  test("settings controls preserve state, update locale and clean up on exit or failure", async ({
+    page,
+  }) => {
+    await page.route("**/manifest.json", async (route) => {
+      const response = await route.fetch();
+      const manifest = await response.json();
+      manifest.entry = "/settings-fixture.js";
+      await route.fulfill({ response, json: manifest });
+    });
+    await page.route("**/settings-fixture.js", (route) =>
+      route.fulfill({
+        contentType: "text/javascript",
+        body: `export async function mount(context) {
+        const element = document.createElement('h1');
+        element.textContent = 'Settings fixture';
+        const panel = document.createElement('label');
+        const label = document.createElement('span');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        panel.append(label, input);
+        const localize = locale => { label.textContent = locale === 'zh-CN' ? '显示轨迹' : 'Show trail'; };
+        localize(context.locale);
+        input.onchange = () => { element.dataset.trail = String(input.checked); };
+        context.settings.setControls(panel);
+        window.settingsFixture = { context, panel };
+        if (new URLSearchParams(location.search).has('fixture-fail')) throw new Error('Fixture mount failed');
+        return { element, update(next) { localize(next.locale); }, pause() {}, snapshot() { return {}; }, dispose() { input.onchange = null; } };
+      }`,
+      }),
+    );
+    await page.goto("/#/experiments/spring-oscillator");
+    await expect(
+      page.getByRole("heading", { name: "Settings fixture" }),
+    ).toBeVisible();
+    const openSettings = () =>
+      page
+        .getByRole("button", { name: /^(设置|Settings)$/, exact: true })
+        .click();
+    await openSettings();
+    const region = page.getByRole("region", { name: "实验设置", exact: true });
+    await expect(region).toContainText("弹簧振子");
+    await region.getByRole("checkbox", { name: "显示轨迹" }).check();
+    await expect(
+      page.getByRole("heading", { name: "Settings fixture" }),
+    ).toHaveAttribute("data-trail", "true");
+    await page.keyboard.press("Escape");
+    await openSettings();
+    await expect(
+      region.getByRole("checkbox", { name: "显示轨迹" }),
+    ).toBeChecked();
+    await page
+      .getByRole("dialog")
+      .getByRole("combobox", { name: "切换语言" })
+      .selectOption("en");
+    await expect(
+      page
+        .getByRole("region", { name: "Experiment settings", exact: true })
+        .getByRole("checkbox", { name: "Show trail" }),
+    ).toBeChecked();
+    await page.evaluate(() =>
+      (window as any).settingsFixture.context.settings.setControls(null),
+    );
+    await expect(
+      page.getByRole("region", { name: "Experiment settings", exact: true }),
+    ).toHaveCount(0);
+    await page.evaluate(() => {
+      const fixture = (window as any).settingsFixture;
+      fixture.context.settings.setControls(fixture.panel);
+    });
+    await expect(
+      page.getByRole("checkbox", { name: "Show trail" }),
+    ).toBeChecked();
+    await page.keyboard.press("Escape");
+    await page
+      .getByRole("link", { name: "Back to console", exact: true })
+      .click();
+    await expect(page.getByRole("textbox")).toBeVisible();
+    await page.evaluate(() => {
+      const fixture = (window as any).settingsFixture;
+      fixture.context.settings.setControls(fixture.panel);
+    });
+    await openSettings();
+    await expect(
+      page.getByRole("region", { name: "Experiment settings", exact: true }),
+    ).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await page.goto("/?fixture-fail=1#/experiments/spring-oscillator");
+    await expect(
+      page.getByText("Fixture mount failed", { exact: true }),
+    ).toBeVisible();
+    await openSettings();
+    await expect(
+      page.getByRole("region", { name: "Experiment settings", exact: true }),
+    ).toHaveCount(0);
+  });
+});
