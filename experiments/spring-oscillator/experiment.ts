@@ -1,4 +1,4 @@
-import { LitElement, html } from "lit";
+import { LitElement, html, render } from "lit";
 import type {
   ExperimentContext,
   Locale,
@@ -18,6 +18,12 @@ import { chart, type Metric } from "./components/chart";
 import { renderScene } from "./components/scene";
 import { texts } from "./locales/messages";
 import { styles } from "./styles/desktop";
+import {
+  meetsChallenge,
+  type Challenge,
+  type ChallengeIndex,
+} from "./model/exploration";
+import { math, mathStyles } from "./components/math";
 export interface Snapshot {
   params: Parameters;
   time: number;
@@ -27,6 +33,11 @@ export interface Snapshot {
   acceleration: boolean;
   previous: Parameters | null;
   curves: Record<Metric, boolean>;
+  exploration?: {
+    version: 1;
+    completed: boolean[];
+    active: Challenge | null;
+  };
 }
 export class SpringExperiment extends LitElement {
   static properties = {
@@ -43,8 +54,14 @@ export class SpringExperiment extends LitElement {
     previous: { state: true },
     moment: { state: true },
     curves: { state: true },
+    supportTab: { state: true },
+    completedTasks: { state: true },
+    activeChallenge: { state: true },
   };
-  static styles = styles;
+  static styles = [mathStyles, styles];
+  declare completedTasks: boolean[];
+  declare activeChallenge: Challenge | null;
+  declare supportTab: "formula" | "tasks";
   declare locale: Locale;
   declare params: Parameters;
   declare time: number;
@@ -59,11 +76,15 @@ export class SpringExperiment extends LitElement {
   declare moment: string;
   declare curves: Record<Metric, boolean>;
   context!: ExperimentContext;
+  private toolbarControls?: HTMLDivElement;
   private frame = 0;
   private last = 0;
   private editing = false;
   constructor() {
     super();
+    this.completedTasks = [false, false, false];
+    this.activeChallenge = null;
+    this.supportTab = "formula";
     this.locale = "zh-CN";
     this.params = { ...defaults };
     this.time = 0;
@@ -89,6 +110,22 @@ export class SpringExperiment extends LitElement {
     this.context = context;
     this.locale = context.locale;
     const saved = context.storage.read<Partial<Snapshot>>({});
+    if (saved.exploration?.version === 1) {
+      this.completedTasks = [0, 1, 2].map(
+        (index) => saved.exploration?.completed?.[index] === true,
+      );
+      const active = saved.exploration.active;
+      if (
+        active &&
+        [0, 1, 2].includes(active.index) &&
+        active.baseline &&
+        !this.completedTasks[active.index]
+      )
+        this.activeChallenge = {
+          index: active.index,
+          baseline: parameters(active.baseline),
+        };
+    }
     this.params = parameters(saved?.params);
     this.time =
       typeof saved?.time === "number" && Number.isFinite(saved.time)
@@ -107,6 +144,66 @@ export class SpringExperiment extends LitElement {
     if (saved?.curves && typeof saved.curves === "object")
       for (const key of Object.keys(this.curves) as Metric[])
         this.curves[key] = saved.curves[key] !== false;
+  }
+  updated(changed: Map<PropertyKey, unknown>) {
+    if (
+      this.activeChallenge &&
+      !changed.has("activeChallenge") &&
+      (changed.has("params") ||
+        changed.has("time") ||
+        changed.has("dragging")) &&
+      meetsChallenge(
+        this.activeChallenge,
+        this.params,
+        this.time,
+        this.dragging,
+      )
+    ) {
+      const index = this.activeChallenge.index;
+      this.activeChallenge = null;
+      this.completedTasks = this.completedTasks.map(
+        (done, i) => i === index || done,
+      );
+      this.pause();
+    }
+    if (!this.context?.toolbar) return;
+    if (!this.toolbarControls) {
+      this.toolbarControls = document.createElement("div");
+      this.toolbarControls.style.cssText =
+        "display:flex;align-items:center;gap:8px";
+      this.context.toolbar.setControls(this.toolbarControls);
+    }
+    if (
+      changed.has("playing") ||
+      changed.has("dragging") ||
+      changed.has("locale") ||
+      changed.has("speed")
+    )
+      render(this.playbackButtons(), this.toolbarControls);
+  }
+  playbackButtons() {
+    const t = texts(this.locale);
+    return html`<phy-button
+        variant="primary"
+        ?disabled=${this.dragging}
+        @click=${() => (this.playing ? this.pause() : this.play())}
+        >${this.playing ? "Ⅱ" : "▷"}
+        ${this.playing ? t.pause : t.play}</phy-button
+      ><phy-button @click=${() => this.restart()}>↺ ${t.reset}</phy-button>
+      <select
+        aria-label=${t.speed}
+        .value=${String(this.speed)}
+        style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:7px;font-size:12px"
+        @change=${(event: Event) => {
+          this.speed = Number((event.target as HTMLSelectElement).value);
+          this.last = 0;
+          this.persist();
+        }}
+      >
+        <option value="1">1×</option>
+        <option value="0.5">0.5×</option>
+        <option value="0.25">0.25×</option>
+      </select>`;
   }
   get effectiveParameters(): Parameters {
     return this.dragging
@@ -130,6 +227,16 @@ export class SpringExperiment extends LitElement {
       acceleration: this.acceleration,
       previous: this.previous,
       curves: this.curves,
+      exploration: {
+        version: 1,
+        completed: [...this.completedTasks],
+        active: this.activeChallenge
+          ? {
+              index: this.activeChallenge.index,
+              baseline: { ...this.activeChallenge.baseline },
+            }
+          : null,
+      },
     };
   }
   persist() {
@@ -145,6 +252,8 @@ export class SpringExperiment extends LitElement {
     this.persist();
     document.removeEventListener("visibilitychange", this.visibility);
     window.removeEventListener("pagehide", this.saveOnHide);
+    if (this.toolbarControls) render(null, this.toolbarControls);
+    this.toolbarControls = undefined;
     super.disconnectedCallback();
   }
   private visibility = () => {
@@ -323,7 +432,8 @@ export class SpringExperiment extends LitElement {
         }}
       />
       <div class="limits mono">
-        <span>${min} ${unit}</span><span>${max} ${unit}</span>
+        <span>${min} ${unit}</span
+        ><span>${name === "phi" ? "2π" : max} ${unit}</span>
       </div>
     </div>`;
   }
@@ -373,30 +483,30 @@ export class SpringExperiment extends LitElement {
       );
     const ratio = s.total > 0 ? s.kinetic / s.total : 0;
     return html`<div class="plot-top">
-        <span>${t.zoom}</span><span class="mono">t = ${format(time)} s</span>
+        ${
+          this.mode !== "motion"
+            ? html`<div class="toggles">
+                ${keys.map(
+                  (key) =>
+                    html`<label
+                      ><input
+                        type="checkbox"
+                        .checked=${this.curves[key]}
+                        @change=${(event: Event) => {
+                          this.curves = {
+                            ...this.curves,
+                            [key]: (event.target as HTMLInputElement).checked,
+                          };
+                          this.persist();
+                        }}
+                      />${this.locale === "en" && this.mode === "energy" ? (key === "kinetic" ? "Kinetic" : key === "potential" ? "Potential" : "Total") : labels[key]}</label
+                    >`,
+                )}
+              </div>`
+            : ""
+        }
+        <span class="mono plot-time">t = ${format(time)} s</span>
       </div>
-      ${
-        this.mode !== "motion"
-          ? html`<div class="toggles">
-              ${keys.map(
-                (key) =>
-                  html`<label
-                    ><input
-                      type="checkbox"
-                      .checked=${this.curves[key]}
-                      @change=${(event: Event) => {
-                        this.curves = {
-                          ...this.curves,
-                          [key]: (event.target as HTMLInputElement).checked,
-                        };
-                        this.persist();
-                      }}
-                    />${labels[key]}</label
-                  >`,
-              )}
-            </div>`
-          : ""
-      }
       ${
         this.mode === "motion"
           ? html`${plot(["x"], t.position, "m")}
@@ -474,25 +584,114 @@ export class SpringExperiment extends LitElement {
   }
   equations() {
     const t = texts(this.locale),
+      zh = this.locale === "zh-CN",
       p = this.effectiveParameters,
-      s = this.state,
-      time = this.dragging ? 0 : this.time;
-    return html`<section class="panel theory">
-      <div class="equation">
-        ${this.mode === "motion" ? html`<span style="color:var(--blue)">x = A cos(ωt + φ)</span><small>x = ${format(p.A)} cos(${format(s.omega)} × ${format(time)} + ${format(p.phi)}) = ${format(s.x, 3)} m</small>` : this.mode === "changes" ? html`<span style="color:var(--green)">v = −Aω sin(ωt + φ)</span><br /><span style="color:var(--red)">a = −ω²x</span>` : html`<span style="color:var(--green)">E<sub>k</sub> = ½mv²</span> &nbsp; <span style="color:var(--blue)">E<sub>p</sub> = ½kx²</span><small>E = E<sub>k</sub> + E<sub>p</sub> = ½kA² = ${format(s.total, 3)} J</small>`}
+      s = this.state;
+    const formulas =
+      this.mode === "motion"
+        ? [[String.raw`x = A\cos(\omega t + \varphi)`, "var(--blue)"]]
+        : this.mode === "changes"
+          ? [
+              [
+                String.raw`v = -A\omega\sin(\omega t + \varphi)`,
+                "var(--green)",
+              ],
+              [String.raw`a = -\omega^2 x`, "var(--red)"],
+            ]
+          : [
+              [String.raw`E_{\mathrm{k}} = \frac{1}{2}mv^2`, "var(--green)"],
+              [String.raw`E_{\mathrm{p}} = \frac{1}{2}kx^2`, "var(--blue)"],
+            ];
+    const values =
+      this.mode === "motion"
+        ? [
+            ["x", format(s.x, 3), "m", "var(--blue)"],
+            [String.raw`\omega`, format(s.omega), "rad/s", "var(--text)"],
+            [String.raw`\varphi`, format(p.phi), "rad", "var(--text)"],
+          ]
+        : this.mode === "changes"
+          ? [
+              ["v", format(s.v, 3), "m/s", "var(--green)"],
+              ["a", format(s.a, 3), "m/s²", "var(--red)"],
+            ]
+          : [
+              [
+                String.raw`E_{\mathrm{k}}`,
+                format(s.kinetic, 3),
+                "J",
+                "var(--green)",
+              ],
+              [
+                String.raw`E_{\mathrm{p}}`,
+                format(s.potential, 3),
+                "J",
+                "var(--blue)",
+              ],
+              ["E", format(s.total, 3), "J", "var(--text)"],
+            ];
+    return html`<section class="theory">
+      <div class="formula-main">
+        <div class="equation">
+          ${formulas.map(([source, color]) => html`<span style=${"color:" + color}>${math(source)}</span>`)}
+        </div>
+        ${this.mode === "energy" ? html`<div class="conservation">${math(String.raw`E = E_{\mathrm{k}} + E_{\mathrm{p}} = \frac{1}{2}kA^2`)}</div>` : ""}
+        <p class="explanation">
+          ${this.mode === "motion" ? t.positionExplain : this.mode === "changes" ? t.velocityExplain : t.energyExplain}
+        </p>
       </div>
-      <p class="explanation">
-        ${this.mode === "motion" ? t.positionExplain : this.mode === "changes" ? t.velocityExplain : t.energyExplain}
-      </p>
+      <div class="formula-live">
+        <div class="formula-caption">
+          ${zh ? "当前数值" : "Current values"}<span class="mono"
+            >t = ${format(this.dragging ? 0 : this.time)} s</span
+          >
+        </div>
+        <div class="formula-values">
+          ${values.map(([symbol, value, unit, color]) => html`<div class="formula-value"><span class="formula-symbol">${math(symbol)}</span><strong style=${"color:" + color}>${value}</strong><span class="unit">${unit}</span></div>`)}
+        </div>
+      </div>
       <details class="derivation">
-        <summary>${t.derive}</summary>
-        <p>F = −kx<br />a = −(k/m)x<br />ω = √(k/m)<br />T = 2π√(m/k)</p>
+        <summary>${zh ? "查看推导" : "View derivation"}</summary>
+        <div class="derivation-steps">
+          ${[
+            [zh ? "回复力" : "Restoring force", String.raw`F = -kx`],
+            [
+              zh ? "运动方程" : "Equation of motion",
+              String.raw`\ddot{x} + \frac{k}{m}x = 0`,
+            ],
+            [
+              zh ? "角频率" : "Angular frequency",
+              String.raw`\omega = \sqrt{\frac{k}{m}}`,
+            ],
+            [
+              zh ? "周期" : "Period",
+              String.raw`T = \frac{2\pi}{\omega} = 2\pi\sqrt{\frac{m}{k}}`,
+            ],
+          ].map(
+            ([label, source]) =>
+              html`<div>
+                <small>${label}</small>
+                <div>${math(source)}</div>
+              </div>`,
+          )}
+        </div>
       </details>
     </section>`;
   }
   moments() {
     const t = texts(this.locale);
-    return html`<section class="panel moments">
+    const hint =
+      this.params.A === 0
+        ? t.zero
+        : this.moment === "right"
+          ? t.rightHint
+          : this.moment === "left"
+            ? t.leftHint
+            : this.moment === "equilibrium"
+              ? t.centerHint
+              : this.moment === "equal"
+                ? t.equalHint
+                : "";
+    return html`<section class="moments">
       <h2 class="section-title">${t.moments}</h2>
       <div class="moment-buttons">
         ${[
@@ -510,49 +709,170 @@ export class SpringExperiment extends LitElement {
             </button>`,
         )}
       </div>
-      <p class="moment-hint">
-        ${this.params.A === 0 ? t.zero : this.moment === "right" ? t.rightHint : this.moment === "left" ? t.leftHint : this.moment === "equilibrium" ? t.centerHint : this.moment === "equal" ? t.equalHint : t.hint}
-      </p>
+      ${hint ? html`<p class="moment-hint" title=${hint}>${hint}</p>` : ""}
+      <div class="toggles">
+        <div class="toggle-group">
+          <label
+            ><input
+              type="checkbox"
+              .checked=${this.velocity}
+              @change=${(e: Event) => {
+                this.velocity = (e.target as HTMLInputElement).checked;
+                this.persist();
+              }}
+            />${t.velocity}</label
+          ><label
+            ><input
+              type="checkbox"
+              .checked=${this.acceleration}
+              @change=${(e: Event) => {
+                this.acceleration = (e.target as HTMLInputElement).checked;
+                this.persist();
+              }}
+            />${t.acceleration}</label
+          >
+        </div>
+      </div>
     </section>`;
   }
+  private startChallenge(index: ChallengeIndex) {
+    this.pause();
+    this.dragging = false;
+    if (index === 2) this.restart();
+    this.mode = index === 1 ? "energy" : "motion";
+    this.completedTasks = this.completedTasks.map((done, i) =>
+      i === index ? false : done,
+    );
+    this.activeChallenge = { index, baseline: { ...this.params } };
+    this.persist();
+  }
   tasks() {
-    const t = texts(this.locale);
-    return html`<details class="explore">
-      <summary>
-        ${t.tasks} ·
-        ${this.locale === "zh-CN" ? "三个问题，亲手验证" : "Three questions. Test them yourself."}
-      </summary>
-      <div class="task-grid">
-        ${[
-          [t.task1, t.answer1, t.double],
-          [t.task2, t.answer2, t.locate],
-          [t.task3, t.answer3, t.resetTask],
-        ].map(
-          ([question, answer, action], i) =>
-            html`<details class="panel task">
-              <span class="task-number">0${i + 1}</span>
-              <summary>${question}</summary>
-              <p>${answer}</p>
-              <button
-                ?disabled=${i === 0 && (this.params.A > 0.4 || this.params.A === 0)}
-                @click=${() => {
-                  if (i === 0) this.setParameter("A", this.params.A * 2);
-                  if (i === 1) {
-                    this.mode = "changes";
-                    this.locate("right");
-                  }
-                  if (i === 2) {
-                    this.mode = "energy";
-                    this.restart();
-                  }
-                }}
-              >
-                ${action}
-              </button>
-            </details>`,
+    const t = texts(this.locale),
+      zh = this.locale === "zh-CN";
+    const state = this.state;
+    return html`<div class="task-grid">
+      ${([0, 1, 2] as const).map((index) => {
+        const active = this.activeChallenge?.index === index;
+        const baseline = active ? this.activeChallenge!.baseline : this.params;
+        const target = 2 * stateAt(baseline, 0).period;
+        const unavailable =
+          this.dragging ||
+          this.params.A === 0 ||
+          (index === 0 && this.params.m > 1.25);
+        const status = active
+          ? index === 0
+            ? zh
+              ? `目标 T = ${format(target)} s · 当前 ${format(state.period)} s`
+              : `Target T = ${format(target)} s · Current ${format(state.period)} s`
+            : index === 1
+              ? zh
+                ? `目标各占 50% · 当前动能 ${state.total > 0 ? format((state.kinetic / state.total) * 100, 0) : "0"}%`
+                : `Target 50% each · Current kinetic ${state.total > 0 ? format((state.kinetic / state.total) * 100, 0) : "0"}%`
+              : zh
+                ? `初始位移 ${format(stateAt(this.params, 0).x, 3)} m · 请在 t = 0 调整初相位`
+                : `Initial position ${format(stateAt(this.params, 0).x, 3)} m · Adjust phase at t = 0`
+          : this.params.A === 0
+            ? zh
+              ? "先设置非零振幅"
+              : "Set a nonzero amplitude first"
+            : index === 0 && this.params.m > 1.25
+              ? zh
+                ? "先将质量调至不超过 1.25 kg，再记录基准"
+                : "Set mass to at most 1.25 kg before recording the baseline"
+              : zh
+                ? "开始后记录当前参数作为基准"
+                : "Starting records the current parameters as a baseline";
+        const requirements = [
+          t.challenge1Hint,
+          t.challenge2Hint,
+          t.challenge3Hint,
+        ];
+        const answers = [t.answer1, t.answer2, t.answer3];
+        const titles = [t.task1, t.task2, t.task3];
+        return html`<article
+          class=${"task" + (this.completedTasks[index] ? " completed" : active ? " active-task" : "")}
+        >
+          <h3 class="task-title">
+            ${this.completedTasks[index] ? html`<span class="task-check">✓</span> ${zh ? "探索完成" : "Completed"}` : titles[index]}
+          </h3>
+          <p class="task-description">
+            ${this.completedTasks[index] ? answers[index] : requirements[index]}
+          </p>
+          <div class="task-status">
+            ${this.completedTasks[index] ? (zh ? "已达到目标并验证" : "Target reached and verified") : status}
+          </div>
+          <div class="task-actions">
+            <button
+              ?disabled=${this.completedTasks[index] ? this.dragging : unavailable}
+              @click=${() => {
+                if (this.completedTasks[index]) {
+                  this.completedTasks = this.completedTasks.map((done, i) =>
+                    i === index ? false : done,
+                  );
+                  if (this.activeChallenge?.index === index)
+                    this.activeChallenge = null;
+                  this.persist();
+                } else this.startChallenge(index);
+              }}
+            >
+              ${this.completedTasks[index] ? (zh ? "重新探索" : "Try again") : active ? (zh ? "重设基准" : "Reset baseline") : zh ? "开始探索" : "Start challenge"}
+            </button>
+            ${active ? html`<span>${zh ? "进行中" : "In progress"}</span>` : ""}
+          </div>
+        </article>`;
+      })}
+    </div>`;
+  }
+  supportPanel() {
+    const zh = this.locale === "zh-CN";
+    return html`<section class="panel support">
+      <div
+        class="support-tabs"
+        role="tablist"
+        aria-label=${zh ? "公式与探索" : "Equations and exploration"}
+        @keydown=${(event: KeyboardEvent) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
+            return;
+          event.preventDefault();
+          this.supportTab =
+            event.key === "Home"
+              ? "formula"
+              : event.key === "End"
+                ? "tasks"
+                : this.supportTab === "formula"
+                  ? "tasks"
+                  : "formula";
+          void this.updateComplete.then(() =>
+            this.renderRoot
+              .querySelector<HTMLButtonElement>(
+                ".support-tabs [aria-selected=true]",
+              )
+              ?.focus(),
+          );
+        }}
+      >
+        ${(["formula", "tasks"] as const).map(
+          (tab) =>
+            html`<button
+              role="tab"
+              aria-selected=${this.supportTab === tab}
+              tabindex=${this.supportTab === tab ? 0 : -1}
+              aria-controls="support-content"
+              class=${this.supportTab === tab ? "selected" : ""}
+              @click=${() => (this.supportTab = tab)}
+            >
+              ${tab === "formula" ? (zh ? "公式" : "Equations") : texts(this.locale).tasks}
+            </button>`,
         )}
       </div>
-    </details>`;
+      <div
+        id="support-content"
+        role="tabpanel"
+        aria-label=${this.supportTab === "formula" ? (zh ? "公式" : "Equations") : texts(this.locale).tasks}
+      >
+        ${this.supportTab === "formula" ? this.equations() : this.tasks()}
+      </div>
+    </section>`;
   }
   render() {
     const t = texts(this.locale),
@@ -563,14 +883,12 @@ export class SpringExperiment extends LitElement {
     const start =
       Math.floor(Math.max(0, this.time - 1e-9) / duration) * duration;
     return html`<div class="heading">
-        <div>
-          <div class="eyebrow">EXPERIMENT 01 / SIMPLE HARMONIC MOTION</div>
+        <div class="heading-copy">
           <h1>${t.title}</h1>
           <p class="intro">${t.subtitle}</p>
         </div>
         <div class="lab-meta">
-          <span class="model">${t.model}</span
-          ><span class=${"status " + (this.playing ? "running" : "")}
+          <span class=${"status " + (this.playing ? "running" : "")}
             ><i class="status-dot"></i
             >${this.dragging ? (zh ? "拖动中" : "HOLDING") : this.playing ? (zh ? "运行中" : "RUNNING") : zh ? "已暂停" : "PAUSED"}</span
           >
@@ -580,7 +898,7 @@ export class SpringExperiment extends LitElement {
         <aside class="panel parameters">
           <div class="panel-heading">${t.parameters}<span>INPUT</span></div>
           <div class="parameter-body">
-            ${this.parameter("A", t.amplitude, 0, 0.8, 0.01, "m")}${this.parameter("m", t.mass, 0.2, 5, 0.1, "kg")}${this.parameter("k", t.stiffness, 1, 50, 1, "N/m")}
+            ${this.parameter("A", t.amplitude, 0, 0.8, 0.01, "m")}${this.parameter("m", t.mass, 0.2, 5, 0.1, "kg")}${this.parameter("k", t.stiffness, 1, 50, 1, "N/m")}${this.parameter("phi", t.phase, 0, TAU, 0.01, "rad")}
             <div class="derived">
               ${[
                 [t.omega, format(s.omega) + " rad/s"],
@@ -593,10 +911,6 @@ export class SpringExperiment extends LitElement {
                   </div>`,
               )}
             </div>
-            <details class="advanced">
-              <summary>${t.advanced}</summary>
-              ${this.parameter("phi", t.phase, 0, TAU, 0.01, "rad")}
-            </details>
           </div>
         </aside>
         <section class="panel stage">
@@ -608,9 +922,6 @@ export class SpringExperiment extends LitElement {
             >
           </div>
           <div class="scene-wrap">
-            <div class="scene-stamp mono">
-              SPRING / MASS SYSTEM<br />${zh ? "位移标尺 · SI 单位" : "POSITION SCALE · SI UNITS"}
-            </div>
             ${this.scene()}
             <div class="scene-scale mono">
               ${p.A === 0 ? t.zero : "−A ← 0 → +A"}
@@ -631,28 +942,7 @@ export class SpringExperiment extends LitElement {
                 </div>`,
             )}
           </div>
-          <div class="controls">
-            <phy-button
-              variant="primary"
-              ?disabled=${this.dragging}
-              @click=${() => (this.playing ? this.pause() : this.play())}
-              >${this.playing ? "Ⅱ" : "▷"}
-              ${this.playing ? t.pause : t.play}</phy-button
-            ><phy-button @click=${() => this.restart()}>↺ ${t.reset}</phy-button
-            ><select
-              aria-label=${t.speed}
-              .value=${String(this.speed)}
-              @change=${(e: Event) => {
-                this.speed = Number((e.target as HTMLSelectElement).value);
-                this.last = 0;
-                this.persist();
-              }}
-            >
-              <option value="1">1×</option>
-              <option value="0.5">0.5×</option>
-              <option value="0.25">0.25×</option></select
-            ><span class="time-label">t = ${format(this.time)} s</span>
-          </div>
+          ${this.context.toolbar ? "" : this.playbackButtons()}
           <div class="timeline">
             <span>${format(start, 1)}s</span
             ><input
@@ -664,33 +954,11 @@ export class SpringExperiment extends LitElement {
               aria-label=${t.timeline}
               @input=${(e: Event) => this.seek(Number((e.target as HTMLInputElement).value))}
             /><span>${format(start + duration, 1)}s</span>
-          </div>
-          <div class="toggles">
-            <div class="toggle-group">
-              <label
-                ><input
-                  type="checkbox"
-                  .checked=${this.velocity}
-                  @change=${(e: Event) => {
-                    this.velocity = (e.target as HTMLInputElement).checked;
-                    this.persist();
-                  }}
-                />${t.velocity}</label
-              ><label
-                ><input
-                  type="checkbox"
-                  .checked=${this.acceleration}
-                  @change=${(e: Event) => {
-                    this.acceleration = (e.target as HTMLInputElement).checked;
-                    this.persist();
-                  }}
-                />${t.acceleration}</label
-              >
-            </div>
-            <span class="arrow-note"
-              >${zh ? "各箭头按自身峰值缩放" : "Arrows scaled to their own peak"}</span
+            <span class="time-label" aria-label=${t.time}
+              >t = ${format(this.time)} s</span
             >
           </div>
+          ${this.moments()}
         </section>
         <aside class="panel observation">
           <div
@@ -733,6 +1001,6 @@ export class SpringExperiment extends LitElement {
           </div>
         </aside>
       </div>
-      ${this.moments()}${this.equations()}${this.tasks()}`;
+      ${this.supportPanel()}`;
   }
 }

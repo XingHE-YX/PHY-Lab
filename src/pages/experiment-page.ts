@@ -4,12 +4,12 @@ import type {
   Locale,
   ExperimentInstance,
   ExperimentModule,
+  ExperimentControls,
 } from "../infra/platform/contract";
 import { loadManifest } from "../infra/platform/registry";
 import { experimentStorage } from "../services/storage";
 import { messages } from "../infra/locales/messages";
 import { baseStyles } from "../ui/styles/shared";
-import { icon } from "../ui/components/icons";
 import { offline } from "../services/offline";
 export class ExperimentPage extends LitElement {
   static properties = {
@@ -19,7 +19,8 @@ export class ExperimentPage extends LitElement {
     theme: { type: String },
     status: { state: true },
     error: { state: true },
-    version: { state: true },
+    toolbar: { attribute: false },
+    settingsApi: { attribute: false },
   };
   declare catalog: Catalog | null;
   declare experimentId: string;
@@ -27,7 +28,8 @@ export class ExperimentPage extends LitElement {
   declare theme: "light" | "dark";
   declare status: string;
   declare error: string;
-  declare version: string;
+  declare toolbar: HTMLElement | null;
+  declare settingsApi: ExperimentControls | undefined;
   instance?: ExperimentInstance;
   private controller?: AbortController;
   private currentStorage?: ReturnType<typeof experimentStorage>;
@@ -39,20 +41,10 @@ export class ExperimentPage extends LitElement {
         display: block;
         max-width: 1600px;
         margin: auto;
-        padding: 20px 28px 32px;
-      }
-      .top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 23px;
-        font-size: 12px;
-        color: var(--muted);
-      }
-      a {
-        display: flex;
-        gap: 7px;
-        align-items: center;
+        padding: 16px 28px;
+        height: calc(100dvh - 66px);
+        min-height: 0;
+        overflow: hidden;
       }
       .status {
         text-align: center;
@@ -72,7 +64,7 @@ export class ExperimentPage extends LitElement {
     this.theme = "light";
     this.status = "loading";
     this.error = "";
-    this.version = "";
+    this.toolbar = null;
   }
   updated(changed: Map<PropertyKey, unknown>) {
     if (
@@ -108,6 +100,18 @@ export class ExperimentPage extends LitElement {
         buildId: manifest.buildId,
         signal: controller.signal,
         storage,
+        settings: {
+          setControls: (element) => {
+            if (controller.signal.aborted) return;
+            this.settingsApi?.setControls(element);
+          },
+        },
+        toolbar: {
+          setControls: (element) => {
+            if (controller.signal.aborted) return;
+            this.toolbar?.replaceChildren(...(element ? [element] : []));
+          },
+        },
       });
       if (controller.signal.aborted) {
         instance.dispose();
@@ -117,11 +121,13 @@ export class ExperimentPage extends LitElement {
       this.currentStorage = storage;
       this.pinnedEntry = new URL(manifest.entry, location.href).href;
       offline.pins.add(this.pinnedEntry);
-      this.version = manifest.version;
       this.status = "ready";
     } catch (error) {
       if (!controller.signal.aborted) {
         this.error = error instanceof Error ? error.message : String(error);
+        this.controller?.abort();
+        this.toolbar?.replaceChildren();
+        this.settingsApi?.setControls(null);
         this.status = "error";
       }
     }
@@ -131,6 +137,8 @@ export class ExperimentPage extends LitElement {
   }
   cleanup() {
     this.controller?.abort();
+    this.toolbar?.replaceChildren();
+    this.settingsApi?.setControls(null);
     this.instance?.pause();
     this.save();
     this.instance?.dispose();
@@ -145,27 +153,21 @@ export class ExperimentPage extends LitElement {
   }
   render() {
     const t = messages(this.locale);
-    return html`<div class="top">
-        <a href="#/">${icon("back")}${t.back}</a
-        ><span class="mono"
-          >${this.version ? "EXP / " + this.version : ""}</span
-        >
-      </div>
-      ${
-        this.status === "ready"
-          ? this.instance?.element
-          : html`<div class="status">
-              <p>${this.status === "error" ? t.error : t.loading}</p>
-              ${
-                this.status === "error"
-                  ? html`<p>${this.error}</p>
-                      <phy-button @click=${() => this.load()}
-                        >${t.retry}</phy-button
-                      >`
-                  : ""
-              }
-            </div>`
-      }`;
+    return html`${
+      this.status === "ready"
+        ? this.instance?.element
+        : html`<div class="status">
+            <p>${this.status === "error" ? t.error : t.loading}</p>
+            ${
+              this.status === "error"
+                ? html`<p>${this.error}</p>
+                    <phy-button @click=${() => this.load()}
+                      >${t.retry}</phy-button
+                    >`
+                : ""
+            }
+          </div>`
+    }`;
   }
 }
 customElements.define("phy-experiment-page", ExperimentPage);

@@ -32,11 +32,16 @@ export interface Catalog {
     | "thumbnail"
   > & { manifest: string })[];
 }
+export interface ExperimentControls {
+  setControls(element: HTMLElement | null): void;
+}
 export interface ExperimentContext {
   locale: Locale;
   theme: "light" | "dark";
   buildId: string;
   signal: AbortSignal;
+  toolbar?: ExperimentControls;
+  settings?: ExperimentControls;
   storage: {
     read<T>(fallback: T): T;
     readVersion<T>(version: number, fallback: T): T;

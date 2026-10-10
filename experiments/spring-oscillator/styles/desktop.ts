@@ -1,7 +1,11 @@
 import { css } from "lit";
 export const styles = css`
   :host {
-    display: block;
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    grid-template-rows: auto minmax(0, 1fr) clamp(150px, 23vh, 220px);
     font-family: var(--font);
     color: var(--text);
   }
@@ -58,40 +62,48 @@ export const styles = css`
   .muted {
     color: var(--muted);
   }
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 2px;
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+    }
+  }
   .heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 30px;
-    margin: 0 0 20px;
+    margin: 0 0 10px;
   }
-  .eyebrow {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-    letter-spacing: 1.4px;
-    margin-bottom: 7px;
+  .heading-copy {
+    display: flex;
+    align-items: flex-end;
+    gap: 18px;
+    min-width: 0;
   }
   h1 {
     font-weight: 550;
-    font-size: 26px;
+    font-size: 20px;
     letter-spacing: -0.8px;
     margin: 0;
   }
   .intro {
     font-size: 12px;
     color: var(--muted);
-    margin: 9px 0 0;
+    margin: 0;
     line-height: 1.6;
   }
   .lab-meta {
     display: flex;
     gap: 22px;
     align-items: center;
-  }
-  .model {
-    font-size: 11px;
-    color: var(--muted);
   }
   .status {
     display: flex;
@@ -116,12 +128,14 @@ export const styles = css`
   .lab-grid {
     display: grid;
     grid-template-columns: 218px minmax(480px, 1fr) 354px;
-    gap: 14px;
+    gap: 0;
+    min-height: 0;
     align-items: stretch;
   }
   .panel {
     border: 1px solid var(--border);
-    border-radius: 3px;
+    border-radius: 0;
+    min-height: 0;
     background: var(--surface);
     overflow: hidden;
   }
@@ -140,18 +154,25 @@ export const styles = css`
     color: var(--muted);
     letter-spacing: 0.8px;
   }
+  .parameters {
+    display: flex;
+    flex-direction: column;
+  }
   .parameter-body {
-    padding: 21px 18px;
+    min-height: 0;
+    overflow: auto;
+    scrollbar-gutter: stable;
+    padding: 16px 18px;
   }
   .parameter {
-    margin-bottom: 25px;
+    margin-bottom: 18px;
   }
   .parameter label {
     display: flex;
     align-items: center;
     justify-content: space-between;
     font-size: 12px;
-    margin-bottom: 13px;
+    margin-bottom: 8px;
     gap: 8px;
   }
   .parameter .val {
@@ -195,15 +216,6 @@ export const styles = css`
     color: var(--muted);
     line-height: 1.7;
   }
-  .advanced {
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-  }
-  .advanced .parameter {
-    margin-top: 18px;
-    margin-bottom: 0;
-  }
   .stage {
     display: flex;
     flex-direction: column;
@@ -223,12 +235,15 @@ export const styles = css`
     flex: 1;
     display: flex;
     align-items: center;
-    min-height: 305px;
+    min-height: 0;
+    overflow: hidden;
     background: var(--surface);
   }
   .scene {
     width: 100%;
-    height: 305px;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
     display: block;
     user-select: none;
   }
@@ -238,16 +253,6 @@ export const styles = css`
   }
   .mass:active {
     cursor: grabbing;
-  }
-  .scene-stamp {
-    position: absolute;
-    top: 17px;
-    left: 20px;
-    font-size: 9px;
-    letter-spacing: 1px;
-    line-height: 1.8;
-    color: var(--muted);
-    pointer-events: none;
   }
   .scene-scale {
     position: absolute;
@@ -263,7 +268,7 @@ export const styles = css`
     border-top: 1px solid var(--border);
   }
   .readout {
-    padding: 15px 18px;
+    padding: 10px 18px;
     border-right: 1px solid var(--border);
   }
   .readout:last-child {
@@ -284,34 +289,27 @@ export const styles = css`
     color: var(--muted);
     margin-left: 4px;
   }
-  .controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 14px 18px;
-    border-top: 1px solid var(--border);
-  }
-  .controls select {
-    background: var(--surface);
-    color: var(--text);
-    padding: 8px;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    font-size: 11px;
-  }
-  .time-label {
-    margin-left: auto;
-    font-size: 12px;
-    font-family: var(--mono);
-  }
   .timeline {
-    padding: 0 18px 16px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
     display: flex;
     gap: 12px;
     align-items: center;
     font-family: var(--mono);
     font-size: 10px;
     color: var(--muted);
+  }
+  .timeline span {
+    white-space: nowrap;
+  }
+  .timeline input {
+    min-width: 0;
+    flex: 1;
+  }
+  .timeline .time-label {
+    color: var(--text);
+    border-left: 1px solid var(--border);
+    padding-left: 12px;
   }
   .toggles {
     display: flex;
@@ -328,18 +326,6 @@ export const styles = css`
   .toggles input {
     accent-color: var(--primary);
     margin: 0;
-  }
-  .stage .toggles {
-    padding: 13px 18px;
-    border-top: 1px solid var(--border);
-    justify-content: space-between;
-  }
-  .stage .toggle-group {
-    display: flex;
-    gap: 14px;
-  }
-  .arrow-note {
-    font-size: 9px;
   }
   .observation {
     display: flex;
@@ -365,6 +351,9 @@ export const styles = css`
     background: var(--primary-soft);
   }
   .plot {
+    min-height: 0;
+    overflow: auto;
+    scrollbar-gutter: stable;
     padding: 15px 16px;
     flex: 1;
   }
@@ -384,10 +373,15 @@ export const styles = css`
     touch-action: none;
     margin-top: 8px;
   }
-  .plot .toggles {
-    margin: 13px 0 6px;
+  .plot-top .toggles {
+    margin: 0;
     font-size: 10px;
-    gap: 10px;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  .plot-time {
+    margin-left: auto;
+    white-space: nowrap;
   }
   .compare {
     border-top: 1px solid var(--border);
@@ -414,13 +408,16 @@ export const styles = css`
   .mini-stats {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin: 20px 0;
+    gap: 0;
+    margin: 16px 0;
   }
   .mini-stat {
     padding: 14px 12px;
     background: var(--bg);
     border: 1px solid var(--border);
+  }
+  .mini-stat + .mini-stat {
+    border-left: 0;
   }
   .mini-stat small {
     display: block;
@@ -469,10 +466,30 @@ export const styles = css`
   }
   .moments {
     display: flex;
+    overflow-x: auto;
+    white-space: nowrap;
     align-items: center;
-    gap: 20px;
-    margin-top: 14px;
-    padding: 14px 18px;
+    gap: 8px;
+    border-top: 1px solid var(--border);
+    padding: 10px 14px;
+    flex-shrink: 0;
+  }
+  .moments .toggles {
+    margin-left: auto;
+    flex-wrap: nowrap;
+    font-size: 10px;
+  }
+  .moments .toggle-group {
+    display: flex;
+    gap: 8px;
+  }
+  .moment-buttons button {
+    font-size: 10px;
+    padding: 5px 7px;
+    min-height: 28px;
+  }
+  .moments > * {
+    flex-shrink: 0;
   }
   .section-title {
     font-size: 11px;
@@ -488,79 +505,190 @@ export const styles = css`
     flex-shrink: 0;
   }
   .moment-hint {
-    font-size: 12px;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--muted);
     margin: 0;
     line-height: 1.7;
-    border-left: 1px solid var(--border);
-    padding-left: 18px;
+    white-space: nowrap;
+    font-size: 11px;
+  }
+  .support {
+    margin-top: 0;
+    border-top: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  #support-content {
+    min-height: 0;
+    overflow: auto;
+    scrollbar-gutter: stable;
+    flex: 1;
+  }
+  .bench > .panel + .panel {
+    border-left: 0;
+  }
+  .tabs,
+  .support-tabs,
+  .panel-heading,
+  .scene-header,
+  .readouts,
+  .timeline,
+  .stage > .toggles,
+  .observation-note {
+    flex-shrink: 0;
+  }
+  .support-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .support-tabs button {
+    background: transparent;
+    border-color: transparent;
+  }
+  .support-tabs button.selected {
+    background: var(--primary-soft);
+    color: var(--primary);
   }
   .theory {
-    margin-top: 14px;
+    padding: 14px 20px;
     display: grid;
-    grid-template-columns: minmax(380px, 1fr) 1fr 220px;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 12px 24px;
     align-items: center;
-    padding: 18px 20px;
-    gap: 25px;
+  }
+  .formula-main,
+  .formula-live {
+    min-width: 0;
   }
   .equation {
-    font-family: var(--mono);
-    font-size: 16px;
-    line-height: 1.8;
-    margin: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px 24px;
+    font-size: 17px;
+    line-height: 1.5;
   }
-  .equation small {
-    display: block;
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 7px;
+  .katex {
+    font-size: 1em;
+  }
+  .conservation {
+    margin-top: 8px;
+    font-size: 13px;
   }
   .explanation {
-    font-size: 12px;
-    line-height: 1.9;
+    font-size: 11px;
+    line-height: 1.7;
     color: var(--muted);
-    margin: 0;
+    margin: 8px 0 0;
+  }
+  .formula-live {
+    border-left: 1px solid var(--border);
+    padding-left: 24px;
+  }
+  .formula-caption {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 10px;
+    margin-bottom: 10px;
+  }
+  .formula-values {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px 24px;
+  }
+  .formula-value {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    white-space: nowrap;
+  }
+  .formula-symbol {
+    font-size: 14px;
+  }
+  .formula-value strong {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 500;
   }
   .derivation {
-    border-left: 1px solid var(--border);
-    padding-left: 20px;
-  }
-  .derivation p {
-    font-family: var(--mono);
-    font-size: 12px;
-    line-height: 2;
-  }
-  .explore {
-    margin-top: 16px;
+    grid-column: 1 / -1;
+    padding-top: 9px;
     border-top: 1px solid var(--border);
-    padding-top: 15px;
   }
-  .explore > summary {
-    font-size: 12px;
-    letter-spacing: 0.4px;
+  .derivation summary {
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .derivation-steps {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+    padding: 12px 0 4px;
+    font-size: 15px;
+  }
+  .derivation-steps small {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    margin-bottom: 8px;
   }
   .task-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-    margin-top: 14px;
+    grid-template-rows: auto auto auto auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 12px 20px;
+    gap: 10px 18px;
   }
   .task {
-    padding: 17px;
+    padding: 0 18px 0 0;
+    border-right: 1px solid var(--border);
+    display: grid;
+    grid-row: 1 / span 4;
+    grid-template-rows: subgrid;
+    gap: 10px;
+    align-content: start;
   }
-  .task-number {
-    font-family: var(--mono);
+  .task:last-child {
+    border-right: 0;
+  }
+  .task-title {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.2;
+    margin: 0;
+  }
+  .task-check,
+  .task.completed .task-title {
+    color: var(--green);
+  }
+  .task-description {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin: 0;
+  }
+  .task-status {
+    color: var(--muted);
     font-size: 10px;
-    color: var(--muted);
+    line-height: 1.6;
+    min-height: 1.6em;
   }
-  .task summary {
-    margin: 10px 0;
-    color: var(--text);
-    font-size: 12px;
+  .task-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 10px;
+    color: var(--primary);
   }
-  .task p {
-    font-size: 12px;
-    color: var(--muted);
-    line-height: 1.8;
+  .task-actions button {
+    justify-self: start;
   }
 `;

@@ -24,9 +24,7 @@ test("workspace search, navigation and locale persistence", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "让物理，触手可及。" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "全部实验" })).toBeVisible();
   const search = page.getByRole("textbox");
   await search.fill("不存在");
   await expect(
@@ -36,11 +34,11 @@ test("workspace search, navigation and locale persistence", async ({
   await expect(page.getByRole("link", { name: /弹簧振子/ })).toBeVisible();
   await page.getByRole("button", { name: "切换语言", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Physics, within reach." }),
+    page.getByRole("heading", { name: "All experiments" }),
   ).toBeVisible();
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Physics, within reach." }),
+    page.getByRole("heading", { name: "All experiments" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Open navigation" }).click();
   await expect(
@@ -58,6 +56,8 @@ test("theme transition, settings dialog and focus restoration", async ({
   const settings = page.getByRole("button", { name: "设置", exact: true });
   await settings.click();
   await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("dialog")).toContainText("PHY Lab v0.1.0");
+  await expect(page.locator("footer")).toHaveCount(0);
   await page.getByLabel("减少界面动画").check();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -101,7 +101,6 @@ test("key moments, energy proportions and phase stay consistent", async ({
   await page.getByRole("button", { name: "经过平衡位置", exact: true }).click();
   await expect(page.locator(".energy-caption")).toContainText("动能 100%");
   await expect(page.locator('path[marker-end="url(#a-arrow)"]')).toHaveCount(0);
-  await page.getByText("进阶设置", { exact: true }).click();
   await range(page, "初相位", "1.57");
   await page.getByRole("button", { name: "左端点", exact: true }).click();
   const state = await page.locator("phy-experiment-page").evaluate(
@@ -216,4 +215,474 @@ test("observation tabs support keyboard navigation without changing time", async
     "aria-selected",
     "true",
   );
+});
+
+test("console content aligns with toolbar and experiment navigation is minimal", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator(".card")).toBeVisible();
+  await expect(page.locator(".hero, .method, .number")).toHaveCount(0);
+  for (const width of [1280, 1920]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const toolbar = await page.locator(".toolbar").boundingBox();
+    const grid = await page.locator(".grid").boundingBox();
+    expect(grid!.x).toBe(toolbar!.x + 30);
+    expect(grid!.width).toBe(toolbar!.width - 60 - 4);
+  }
+  await page.getByRole("textbox").fill("energy");
+  await page.getByRole("link", { name: /弹簧振子/ }).click();
+  await expect(
+    page.getByRole("heading", { name: "弹簧振子", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("textbox")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "打开导航" })).toHaveCount(0);
+  await expect(page.locator(".toolbar .brand")).toHaveCount(0);
+  await expect(page.locator("phy-experiment-page .top")).toHaveCount(0);
+  await expect(
+    page
+      .locator(".experiment-controls")
+      .getByRole("button", { name: "▷ 播放", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "返回控制台" }).click();
+  await expect(page.getByRole("textbox")).toHaveValue("energy");
+});
+
+test.describe("toolbar API", () => {
+  test.use({ serviceWorkers: "block" });
+
+  test("experiment toolbar controls interact and cannot remount after disposal", async ({
+    page,
+  }) => {
+    await page.route("**/manifest.json", async (route) => {
+      const response = await route.fetch();
+      const manifest = await response.json();
+      manifest.entry = "/toolbar-fixture.js";
+      await route.fulfill({ response, json: manifest });
+    });
+    await page.route("**/toolbar-fixture.js", (route) =>
+      route.fulfill({
+        contentType: "text/javascript",
+        body: `export async function mount(context) {
+      const element = document.createElement('h1');
+      element.textContent = 'Toolbar fixture';
+      const controls = document.createElement('button');
+      controls.textContent = 'Fixture control';
+      controls.onclick = () => { element.textContent = 'Control clicked'; };
+      context.toolbar.setControls(controls);
+      window.fixtureContext = context;
+      return { element, update() {}, pause() {}, snapshot() { return {}; }, dispose() {} };
+    }`,
+      }),
+    );
+    await page.goto("/#/experiments/spring-oscillator");
+    const control = page.getByRole("button", { name: "Fixture control" });
+    await expect(control).toBeVisible();
+    await control.click();
+    await expect(
+      page.getByRole("heading", { name: "Control clicked" }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "返回控制台" }).click();
+    await expect(page.getByRole("textbox")).toBeVisible();
+    await page.evaluate(() => {
+      const context = (
+        window as unknown as {
+          fixtureContext: {
+            toolbar: { setControls(element: HTMLElement): void };
+          };
+        }
+      ).fixtureContext;
+      const stale = document.createElement("button");
+      stale.textContent = "Stale control";
+      context.toolbar.setControls(stale);
+    });
+    await expect(
+      page.getByRole("button", { name: "Stale control" }),
+    ).toHaveCount(0);
+    await expect(control).toHaveCount(0);
+  });
+});
+
+test("spring toolbar and exploration preserve experiment actions", async ({
+  page,
+}) => {
+  await openExperiment(page);
+  await expect(
+    page
+      .locator(".toolbar")
+      .getByRole("button", { name: "▷ 播放", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".controls phy-button")).toHaveCount(0);
+  await expect(page.locator(".eyebrow, .model, .scene-stamp")).toHaveCount(0);
+  await expect(page.getByText("两周期观察窗口", { exact: true })).toHaveCount(
+    0,
+  );
+  await page.getByText("查看推导", { exact: true }).click();
+  await expect(page.locator(".derivation-steps")).toBeVisible();
+  await page.getByRole("tab", { name: "探索任务", exact: true }).click();
+  await expect(page.locator(".task")).toHaveCount(3);
+  const tasks = page.locator(".task");
+  const gapBefore = await tasks
+    .first()
+    .evaluate((el) => getComputedStyle(el).rowGap);
+  await tasks
+    .nth(0)
+    .getByRole("button", { name: "开始探索", exact: true })
+    .click();
+  await expect(tasks.nth(0)).toContainText("目标 T");
+  await expect(page.locator(".task.completed")).toHaveCount(0);
+  await range(page, "质量", "4");
+  await expect(tasks.nth(0)).toHaveClass(/completed/);
+  await expect(tasks.nth(0)).toContainText("质量变为约四倍");
+  expect(
+    await tasks.first().evaluate((el) => getComputedStyle(el).rowGap),
+  ).toBe(gapBefore);
+  await tasks
+    .nth(1)
+    .getByRole("button", { name: "开始探索", exact: true })
+    .click();
+  await page.getByRole("button", { name: "动能 = 势能", exact: true }).click();
+  await expect(tasks.nth(1)).toHaveClass(/completed/);
+  await expect(tasks.nth(1)).toContainText("0.707");
+  await tasks
+    .nth(2)
+    .getByRole("button", { name: "开始探索", exact: true })
+    .click();
+  await range(page, "初相位", "1.57");
+  await expect(tasks.nth(2)).toHaveClass(/completed/);
+  await expect(page.locator(".task.completed")).toHaveCount(3);
+  for (const selector of [
+    ".task-title",
+    ".task-description",
+    ".task-status",
+    ".task-actions",
+  ]) {
+    const positions = await page
+      .locator(".task " + selector)
+      .evaluateAll((nodes) =>
+        nodes.map((node) => node.getBoundingClientRect().y),
+      );
+    expect(new Set(positions).size).toBe(1);
+  }
+  await page.screenshot({
+    path: "/tmp/phy-lab-challenges-completed.png",
+    fullPage: true,
+  });
+
+  await expect(tasks.nth(2)).toContainText("相反的运动方向");
+  await page.getByRole("tab", { name: "看能量", exact: true }).click();
+  await page.getByRole("tab", { name: "公式", exact: true }).click();
+  await expect(page.locator(".equation")).toContainText("E");
+  await page.getByRole("button", { name: "切换语言", exact: true }).click();
+  await expect(
+    page
+      .locator(".toolbar")
+      .getByRole("button", { name: "▷ Play", exact: true }),
+  ).toBeVisible();
+});
+
+test("workspace scrollbar stays below toolbar and spring remains inside viewport", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator(".card")).toBeVisible();
+  const before = await page.locator(".toolbar").boundingBox();
+  const gridBefore = await page.locator(".grid").boundingBox();
+  await page.locator("phy-app").evaluate((el) => {
+    const spacer = document.createElement("div");
+    spacer.id = "scroll-fixture";
+    spacer.style.height = "2000px";
+    el.shadowRoot!.querySelector("main")!.append(spacer);
+  });
+  expect(await page.locator(".toolbar").boundingBox()).toEqual(before);
+  expect((await page.locator(".grid").boundingBox())!.width).toBe(
+    gridBefore!.width,
+  );
+  const scroll = await page.locator("phy-app").evaluate((el) => {
+    const main = el.shadowRoot!.querySelector("main")!;
+    return {
+      top: main.getBoundingClientRect().top,
+      width: getComputedStyle(main, "::-webkit-scrollbar").width,
+    };
+  });
+  expect(scroll.top).toBe(66);
+  expect(scroll.width).toBe("4px");
+  await page.locator("#scroll-fixture").evaluate((el) => el.remove());
+  await openExperiment(page);
+  await expect(
+    page.getByRole("slider", { name: "初相位", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".toolbar").getByRole("combobox", { name: "播放速度" }),
+  ).toBeVisible();
+  await expect(page.locator(".timeline span")).toHaveCount(3);
+  const title = await page.locator(".heading-copy h1").boundingBox();
+  const subtitle = await page.locator(".heading-copy .intro").boundingBox();
+  expect(title!.y + title!.height).toBe(subtitle!.y + subtitle!.height);
+  await expect(
+    page.getByText("各箭头按自身峰值缩放", { exact: true }),
+  ).toHaveCount(0);
+  expect(
+    await page
+      .locator(".stage")
+      .evaluate((el) => el.lastElementChild?.className),
+  ).toBe("moments");
+  await expect(
+    page
+      .locator(".stage .moments")
+      .getByRole("checkbox", { name: "速度箭头", exact: true }),
+  ).toBeVisible();
+
+  for (const height of [720, 1000]) {
+    await page.setViewportSize({ width: 1280, height });
+    for (const mode of ["看运动", "看变化", "看能量"]) {
+      await page.getByRole("tab", { name: mode, exact: true }).click();
+      if (mode !== "看运动") {
+        const options = await page.locator(".plot-top .toggles").boundingBox();
+        const time = await page.locator(".plot-time").boundingBox();
+        expect(
+          Math.abs(
+            options!.y + options!.height / 2 - time!.y - time!.height / 2,
+          ),
+        ).toBeLessThan(1);
+      }
+
+      await page.getByRole("tab", { name: "公式", exact: true }).click();
+      const details = page.locator(".derivation");
+      await details.evaluate((el) => ((el as HTMLDetailsElement).open = true));
+      const momentButtons = await page.locator(".moment-buttons").boundingBox();
+      const arrows = await page.locator(".moments .toggles").boundingBox();
+      const footer = await page.locator(".moments").boundingBox();
+      expect(arrows!.x + arrows!.width).toBe(footer!.x + footer!.width - 14);
+      expect(
+        Math.abs(
+          momentButtons!.y +
+            momentButtons!.height / 2 -
+            arrows!.y -
+            arrows!.height / 2,
+        ),
+      ).toBeLessThan(1);
+      await expect(
+        page.getByText("调整参数，看看什么发生了变化。", { exact: true }),
+      ).toHaveCount(0);
+      const bounds = await page.locator("phy-experiment-page").boundingBox();
+      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(height);
+      const support = await page.locator(".support").boundingBox();
+      expect(support!.y + support!.height).toBeLessThanOrEqual(height - 15);
+      const dimensions = await page.locator("phy-app").evaluate((el) => {
+        const main = el.shadowRoot!.querySelector("main")!;
+        return {
+          height: main.clientHeight,
+          scroll: main.scrollHeight,
+          body: document.documentElement.scrollHeight,
+        };
+      });
+      expect(dimensions.scroll).toBe(dimensions.height);
+      expect(dimensions.body).toBe(height);
+    }
+    await page.getByRole("tab", { name: "探索任务", exact: true }).click();
+    await expect(
+      page
+        .locator(".task")
+        .nth(2)
+        .getByRole("button", { name: "开始探索", exact: true }),
+    ).toBeVisible();
+  }
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.getByRole("button", { name: "切换明暗" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.screenshot({
+    path: "/tmp/phy-lab-spring-compact.png",
+    fullPage: true,
+  });
+});
+
+test("challenges reject changed baseline parameters and restore progress", async ({
+  page,
+}) => {
+  await openExperiment(page);
+  await range(page, "振幅", "0");
+  await page.getByRole("tab", { name: "探索任务", exact: true }).click();
+  const tasks = page.locator(".task");
+  await expect(
+    tasks.nth(1).getByRole("button", { name: "开始探索", exact: true }),
+  ).toBeDisabled();
+  await range(page, "振幅", "0.3");
+  await tasks
+    .nth(0)
+    .getByRole("button", { name: "开始探索", exact: true })
+    .click();
+  await range(page, "劲度系数", "20");
+  await range(page, "质量", "4");
+  await expect(page.locator(".task.completed")).toHaveCount(0);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "弹簧振子", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "探索任务", exact: true }).click();
+  await expect(tasks.nth(0)).toContainText("目标 T = 3.97 s");
+  await range(page, "劲度系数", "10");
+  await expect(tasks.nth(0)).toHaveClass(/completed/);
+  await tasks
+    .nth(0)
+    .getByRole("button", { name: "重新探索", exact: true })
+    .click();
+  await expect(tasks.nth(0)).not.toHaveClass(/completed/);
+  await expect(tasks.nth(0)).toContainText("1.25 kg");
+  await expect(
+    tasks.nth(0).getByRole("button", { name: "开始探索", exact: true }),
+  ).toBeDisabled();
+  await tasks
+    .nth(1)
+    .getByRole("button", { name: "开始探索", exact: true })
+    .click();
+  await range(page, "拖动时间游标", "0");
+  await expect(tasks.nth(1)).not.toHaveClass(/completed/);
+  await range(page, "拖动时间游标", "0.497");
+  await expect(tasks.nth(1)).toHaveClass(/completed/);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "弹簧振子", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "探索任务", exact: true }).click();
+  await expect(tasks.nth(1)).toHaveClass(/completed/);
+});
+
+test("TeX formulas render with local fonts, live values and accessible math", async ({
+  page,
+}) => {
+  const remote: string[] = [];
+  page.on("request", (request) => {
+    if (
+      !request.url().startsWith("http://127.0.0.1:4173") &&
+      !request.url().startsWith("data:")
+    )
+      remote.push(request.url());
+  });
+  await openExperiment(page);
+  for (const mode of ["看运动", "看变化", "看能量"]) {
+    await page.getByRole("tab", { name: mode, exact: true }).click();
+    await expect(page.locator(".equation .katex").first()).toBeVisible();
+    await expect(page.locator(".equation math").first()).toHaveAttribute(
+      "xmlns",
+      "http://www.w3.org/1998/Math/MathML",
+    );
+    await expect(page.locator(".katex-error")).toHaveCount(0);
+  }
+  await page.getByText("查看推导", { exact: true }).click();
+  await expect(page.locator(".derivation-steps .katex")).toHaveCount(4);
+  await expect(page.locator(".derivation-steps .katex").last()).toBeVisible();
+  await range(page, "振幅", "0.6");
+  await expect(page.locator(".formula-value").last()).toContainText("1.800");
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "弹簧振子", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".equation .katex").first()).toBeVisible();
+  await expect(page.locator(".formula-value").last()).toContainText("1.800");
+  expect(remote).toEqual([]);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.getByRole("button", { name: "切换明暗" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.screenshot({ path: "/tmp/phy-lab-formulas.png", fullPage: true });
+});
+
+test.describe("experiment settings API", () => {
+  test.use({ serviceWorkers: "block" });
+
+  test("settings controls preserve state, update locale and clean up on exit or failure", async ({
+    page,
+  }) => {
+    await page.route("**/manifest.json", async (route) => {
+      const response = await route.fetch();
+      const manifest = await response.json();
+      manifest.entry = "/settings-fixture.js";
+      await route.fulfill({ response, json: manifest });
+    });
+    await page.route("**/settings-fixture.js", (route) =>
+      route.fulfill({
+        contentType: "text/javascript",
+        body: `export async function mount(context) {
+        const element = document.createElement('h1');
+        element.textContent = 'Settings fixture';
+        const panel = document.createElement('label');
+        const label = document.createElement('span');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        panel.append(label, input);
+        const localize = locale => { label.textContent = locale === 'zh-CN' ? '显示轨迹' : 'Show trail'; };
+        localize(context.locale);
+        input.onchange = () => { element.dataset.trail = String(input.checked); };
+        context.settings.setControls(panel);
+        window.settingsFixture = { context, panel };
+        if (new URLSearchParams(location.search).has('fixture-fail')) throw new Error('Fixture mount failed');
+        return { element, update(next) { localize(next.locale); }, pause() {}, snapshot() { return {}; }, dispose() { input.onchange = null; } };
+      }`,
+      }),
+    );
+    await page.goto("/#/experiments/spring-oscillator");
+    await expect(
+      page.getByRole("heading", { name: "Settings fixture" }),
+    ).toBeVisible();
+    const openSettings = () =>
+      page
+        .getByRole("button", { name: /^(设置|Settings)$/, exact: true })
+        .click();
+    await openSettings();
+    const region = page.getByRole("region", { name: "实验设置", exact: true });
+    await expect(region).toContainText("弹簧振子");
+    await region.getByRole("checkbox", { name: "显示轨迹" }).check();
+    await expect(
+      page.getByRole("heading", { name: "Settings fixture" }),
+    ).toHaveAttribute("data-trail", "true");
+    await page.keyboard.press("Escape");
+    await openSettings();
+    await expect(
+      region.getByRole("checkbox", { name: "显示轨迹" }),
+    ).toBeChecked();
+    await page
+      .getByRole("dialog")
+      .getByRole("combobox", { name: "切换语言" })
+      .selectOption("en");
+    await expect(
+      page
+        .getByRole("region", { name: "Experiment settings", exact: true })
+        .getByRole("checkbox", { name: "Show trail" }),
+    ).toBeChecked();
+    await page.evaluate(() =>
+      (window as any).settingsFixture.context.settings.setControls(null),
+    );
+    await expect(
+      page.getByRole("region", { name: "Experiment settings", exact: true }),
+    ).toHaveCount(0);
+    await page.evaluate(() => {
+      const fixture = (window as any).settingsFixture;
+      fixture.context.settings.setControls(fixture.panel);
+    });
+    await expect(
+      page.getByRole("checkbox", { name: "Show trail" }),
+    ).toBeChecked();
+    await page.keyboard.press("Escape");
+    await page
+      .getByRole("link", { name: "Back to console", exact: true })
+      .click();
+    await expect(page.getByRole("textbox")).toBeVisible();
+    await page.evaluate(() => {
+      const fixture = (window as any).settingsFixture;
+      fixture.context.settings.setControls(fixture.panel);
+    });
+    await openSettings();
+    await expect(
+      page.getByRole("region", { name: "Experiment settings", exact: true }),
+    ).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await page.goto("/?fixture-fail=1#/experiments/spring-oscillator");
+    await expect(
+      page.getByText("Fixture mount failed", { exact: true }),
+    ).toBeVisible();
+    await openSettings();
+    await expect(
+      page.getByRole("region", { name: "Experiment settings", exact: true }),
+    ).toHaveCount(0);
+  });
 });

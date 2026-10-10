@@ -1,5 +1,8 @@
 import { LitElement, html, css } from "lit";
-import type { Catalog } from "../../infra/platform/contract";
+import type {
+  Catalog,
+  ExperimentControls,
+} from "../../infra/platform/contract";
 import { loadCatalog } from "../../infra/platform/registry";
 import { settings } from "../../services/settings";
 import { currentTheme, toggleTheme } from "../../services/theme";
@@ -26,7 +29,17 @@ export class App extends LitElement {
   declare modal: boolean;
   declare revision: number;
   declare catalogError: string;
+  private readonly experimentControls = document.createElement("div");
+  private readonly experimentSettings = document.createElement("div");
+  private readonly experimentSettingsApi: ExperimentControls = {
+    setControls: (element) => {
+      this.experimentSettings.replaceChildren(...(element ? [element] : []));
+      this.requestUpdate();
+    },
+  };
   private onRoute = () => {
+    this.experimentSettings.replaceChildren();
+    this.experimentControls.replaceChildren();
     this.route = location.hash;
     this.menu = false;
   };
@@ -61,12 +74,14 @@ export class App extends LitElement {
     css`
       :host {
         display: flex;
-        min-height: 100dvh;
+        height: 100dvh;
+        overflow: hidden;
         flex-direction: column;
         background: var(--bg);
       }
       .toolbar {
         height: 66px;
+        flex-shrink: 0;
         border-bottom: 1px solid var(--border);
         background: var(--surface);
         display: grid;
@@ -77,6 +92,19 @@ export class App extends LitElement {
         position: sticky;
         top: 0;
         z-index: 5;
+      }
+      .experiment-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-width: 0;
+      }
+      .back {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 13px;
       }
       .left,
       .right {
@@ -175,20 +203,32 @@ export class App extends LitElement {
       }
       main {
         flex: 1;
+        min-height: 0;
+        overflow: auto;
+        scrollbar-gutter: stable;
       }
-      .footer {
-        max-width: 1116px;
-        width: calc(100% - 64px);
-        margin: 0 auto;
-        padding: 20px 0 25px;
-        border-top: 1px solid var(--border);
-        display: flex;
-        justify-content: space-between;
-        font-size: 10px;
-        letter-spacing: 0.4px;
-        color: var(--muted);
+      main::-webkit-scrollbar,
+      dialog::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      main::-webkit-scrollbar-thumb,
+      dialog::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 2px;
+      }
+      @supports not selector(::-webkit-scrollbar) {
+        main,
+        dialog {
+          scrollbar-width: thin;
+        }
+      }
+      .experiment-settings {
+        margin-bottom: 24px;
       }
       dialog {
+        max-height: calc(100dvh - 32px);
+        overflow: auto;
         width: 440px;
         max-width: calc(100vw - 32px);
         padding: 0;
@@ -268,8 +308,7 @@ export class App extends LitElement {
       }
       @media (max-width: 1279px) {
         .toolbar,
-        main,
-        .footer {
+        main {
           display: none;
         }
         .viewport-warning {
@@ -302,6 +341,7 @@ export class App extends LitElement {
   ];
   constructor() {
     super();
+    this.experimentControls.className = "experiment-controls";
     this.catalog = null;
     this.query = "";
     this.route = location.hash;
@@ -336,7 +376,11 @@ export class App extends LitElement {
     window.removeEventListener("keydown", this.onKey);
   }
   private onKey = (event: KeyboardEvent) => {
-    if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      event.key === "k" &&
+      !this.route.startsWith("#/experiments/")
+    ) {
       event.preventDefault();
       this.renderRoot.querySelector<HTMLInputElement>(".search input")?.focus();
     }
@@ -415,29 +459,42 @@ export class App extends LitElement {
       </div>
       <header class="toolbar">
         <div class="left">
-          <div class="navigation">
-            <button
-              class="icon"
-              aria-label=${t.menu}
-              aria-expanded=${this.menu}
-              @click=${() => (this.menu = !this.menu)}
-            >
-              ${icon("grid")}</button
-            >${this.menu ? html`<nav class="menu" aria-label=${t.menu}><a href="#/" @click=${() => (this.menu = false)}>${t.home}</a></nav>` : ""}
-          </div>
-          <a class="brand" href="#/">PHY<span> Lab</span></a>
+          ${
+            id
+              ? html`<a class="back" href="#/"
+                  >${icon("chevronLeft")}${t.back}</a
+                >`
+              : html`
+                  <div class="navigation">
+                    <button
+                      class="icon"
+                      aria-label=${t.menu}
+                      aria-expanded=${this.menu}
+                      @click=${() => (this.menu = !this.menu)}
+                    >
+                      ${icon("grid")}</button
+                    >${this.menu ? html`<nav class="menu" aria-label=${t.menu}><a href="#/" @click=${() => (this.menu = false)}>${t.home}</a></nav>` : ""}
+                  </div>
+                  <a class="brand" href="#/">PHY<span> Lab</span></a>
+                `
+          }
         </div>
-        <label class="search"
-          >${icon("search")}<input
-            aria-label=${t.search}
-            placeholder=${t.search}
-            .value=${this.query}
-            @input=${(event: Event) => {
-              this.query = (event.target as HTMLInputElement).value;
-              if (id) location.hash = "/";
-            }}
-          />${this.query ? html`<button class="clear" aria-label=${t.clear} @click=${() => (this.query = "")}>${icon("close")}</button>` : html`<span class="key">⌘ K</span>`}</label
-        >
+        ${
+          id
+            ? this.experimentControls
+            : html`
+                <label class="search"
+                  >${icon("search")}<input
+                    aria-label=${t.search}
+                    placeholder=${t.search}
+                    .value=${this.query}
+                    @input=${(event: Event) => {
+                      this.query = (event.target as HTMLInputElement).value;
+                    }}
+                  />${this.query ? html`<button class="clear" aria-label=${t.clear} @click=${() => (this.query = "")}>${icon("close")}</button>` : html`<span class="key">⌘ K</span>`}</label
+                >
+              `
+        }
         <div class="right">
           <button
             class="icon language"
@@ -465,12 +522,8 @@ export class App extends LitElement {
         </div>
       </header>
       <main>
-        ${this.catalogError ? html`<div class="catalog-error">${t.error} · <phy-button @click=${() => this.refreshCatalog()}>${t.retry}</phy-button></div>` : ""}${id && this.catalog ? html`<phy-experiment-page .catalog=${this.catalog} .experimentId=${id} .locale=${s.locale} .theme=${currentTheme()}></phy-experiment-page>` : html`<phy-workbench .catalog=${this.catalog} .locale=${s.locale} .query=${this.query}></phy-workbench>`}
+        ${this.catalogError ? html`<div class="catalog-error">${t.error} · <phy-button @click=${() => this.refreshCatalog()}>${t.retry}</phy-button></div>` : ""}${id && this.catalog ? html`<phy-experiment-page .catalog=${this.catalog} .experimentId=${id} .locale=${s.locale} .theme=${currentTheme()} .toolbar=${this.experimentControls} .settingsApi=${this.experimentSettingsApi}></phy-experiment-page>` : html`<phy-workbench .catalog=${this.catalog} .locale=${s.locale} .query=${this.query}></phy-workbench>`}
       </main>
-      <footer class="footer">
-        <span>PHY Lab · ${t.footer}</span
-        ><span class="mono">v${__APP_VERSION__} / Apache 2.0</span>
-      </footer>
       ${
         this.modal
           ? html`<dialog
@@ -501,6 +554,20 @@ export class App extends LitElement {
                 </button>
               </div>
               <div class="dialog-body">
+                ${
+                  id && this.experimentSettings.hasChildNodes()
+                    ? html` <section
+                        class="experiment-settings"
+                        aria-label=${t.experimentSettings}
+                      >
+                        <div class="section-label">
+                          ${t.experimentSettings} ·
+                          ${this.catalog?.experiments.find((entry) => entry.id === id)?.title[s.locale] ?? id}
+                        </div>
+                        ${this.experimentSettings}
+                      </section>`
+                    : ""
+                }
                 <div class="section-label">${t.appearance}</div>
                 <label class="row"
                   >${t.language}<select
@@ -531,8 +598,7 @@ export class App extends LitElement {
                 </div>
               </div>
               <div class="dialog-footer">
-                <span>${t.local}</span
-                ><span class="mono">${__APP_VERSION__}</span>
+                <span>${t.local}</span><span>PHY Lab v${__APP_VERSION__}</span>
               </div>
             </dialog>`
           : ""
