@@ -11,11 +11,14 @@ import {
   clamp,
   TAU,
   keyTime,
+  phaseAt,
+  timeAtPhase,
   type Parameters,
   type PhysicsState,
 } from "./model/physics";
 import { chart, type Metric } from "./components/chart";
 import { renderScene } from "./components/scene";
+import { sceneFrame } from "./model/scene";
 import { texts } from "./locales/messages";
 import { styles } from "./styles/desktop";
 import {
@@ -31,6 +34,7 @@ export interface Snapshot {
   mode: string;
   velocity: boolean;
   acceleration: boolean;
+  phasor?: boolean;
   previous: Parameters | null;
   curves: Record<Metric, boolean>;
   exploration?: {
@@ -50,6 +54,7 @@ export class SpringExperiment extends LitElement {
     dragX: { state: true },
     velocity: { state: true },
     acceleration: { state: true },
+    phasor: { state: true },
     mode: { state: true },
     previous: { state: true },
     moment: { state: true },
@@ -71,6 +76,7 @@ export class SpringExperiment extends LitElement {
   declare dragX: number;
   declare velocity: boolean;
   declare acceleration: boolean;
+  declare phasor: boolean;
   declare mode: string;
   declare previous: Parameters | null;
   declare moment: string;
@@ -80,6 +86,7 @@ export class SpringExperiment extends LitElement {
   private frame = 0;
   private last = 0;
   private editing = false;
+  private phaseDragging = false;
   constructor() {
     super();
     this.completedTasks = [false, false, false];
@@ -94,6 +101,7 @@ export class SpringExperiment extends LitElement {
     this.dragX = 0;
     this.velocity = true;
     this.acceleration = true;
+    this.phasor = false;
     this.mode = "motion";
     this.previous = null;
     this.moment = "";
@@ -140,6 +148,7 @@ export class SpringExperiment extends LitElement {
       : "motion";
     this.velocity = saved?.velocity !== false;
     this.acceleration = saved?.acceleration !== false;
+    this.phasor = saved?.phasor === true;
     this.previous = saved?.previous ? parameters(saved.previous) : null;
     if (saved?.curves && typeof saved.curves === "object")
       for (const key of Object.keys(this.curves) as Metric[])
@@ -225,6 +234,7 @@ export class SpringExperiment extends LitElement {
       mode: this.mode,
       velocity: this.velocity,
       acceleration: this.acceleration,
+      phasor: this.phasor,
       previous: this.previous,
       curves: this.curves,
       exploration: {
@@ -265,12 +275,13 @@ export class SpringExperiment extends LitElement {
   };
   pause() {
     this.playing = false;
+    this.phaseDragging = false;
     cancelAnimationFrame(this.frame);
     this.last = 0;
     this.persist();
   }
   play() {
-    if (this.playing || this.dragging) return;
+    if (this.playing || this.dragging || this.phaseDragging) return;
     this.playing = true;
     this.last = 0;
     this.frame = requestAnimationFrame(this.tick);
@@ -314,7 +325,11 @@ export class SpringExperiment extends LitElement {
     const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(
       matrix.inverse(),
     );
-    this.dragX = clamp((point.x - 390) / 300, -0.8, 0.8);
+    this.dragX = clamp(
+      (point.x - sceneFrame.originX) / sceneFrame.scale,
+      -0.8,
+      0.8,
+    );
   }
   private release() {
     if (!this.dragging) return;
@@ -353,6 +368,54 @@ export class SpringExperiment extends LitElement {
       this.release();
     }
   }
+  private beginPhaseDrag(event: PointerEvent) {
+    if (this.dragging || this.params.A === 0 || !this.phasor) return;
+    this.pause();
+    this.phaseDragging = true;
+    (event.currentTarget as SVGCircleElement).setPointerCapture(
+      event.pointerId,
+    );
+    this.movePhaseDrag(event);
+  }
+  private movePhaseDrag(event: PointerEvent) {
+    if (!this.phaseDragging) return;
+    const matrix = this.renderRoot
+      .querySelector<SVGSVGElement>(".scene")
+      ?.getScreenCTM();
+    if (!matrix) return;
+    const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(
+      matrix.inverse(),
+    );
+    const dx = point.x - sceneFrame.originX;
+    const dy = sceneFrame.originY - point.y;
+    if (Math.hypot(dx, dy) < 8) return;
+    this.time = timeAtPhase(this.params, Math.atan2(dy, dx), this.time);
+    this.moment = "";
+  }
+  private endPhaseDrag() {
+    this.phaseDragging = false;
+    this.persist();
+  }
+  private keyPhase(event: KeyboardEvent) {
+    if (
+      !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home"].includes(
+        event.key,
+      )
+    )
+      return;
+    event.preventDefault();
+    this.pause();
+    const step = ((event.shiftKey ? 15 : 5) * Math.PI) / 180;
+    const angle = phaseAt(this.params, this.time);
+    const phase =
+      event.key === "Home"
+        ? 0
+        : angle +
+          (["ArrowRight", "ArrowUp"].includes(event.key) ? step : -step);
+    this.time = timeAtPhase(this.params, phase, this.time);
+    this.moment = "";
+    this.persist();
+  }
   scene() {
     return renderScene({
       params: this.effectiveParameters,
@@ -361,6 +424,11 @@ export class SpringExperiment extends LitElement {
       locale: this.locale,
       velocity: this.velocity,
       acceleration: this.acceleration,
+      phasor: this.phasor,
+      phasePointerDown: (event) => this.beginPhaseDrag(event),
+      phasePointerMove: (event) => this.movePhaseDrag(event),
+      phaseRelease: () => this.endPhaseDrag(),
+      phaseKeyboard: (event) => this.keyPhase(event),
       pointerDown: (event) => this.beginDrag(event),
       pointerMove: (event) => this.moveDrag(event),
       release: () => this.release(),
@@ -915,16 +983,32 @@ export class SpringExperiment extends LitElement {
         </aside>
         <section class="panel stage">
           <div class="scene-header">
-            <span>${this.dragging ? t.holding : t.drag}</span
-            ><span class="mono"
+            <label class="phasor-toggle">
+              <input
+                type="checkbox"
+                role="switch"
+                aria-controls="phasor-layer"
+                .checked=${this.phasor}
+                @change=${(event: Event) => {
+                  this.phasor = (event.target as HTMLInputElement).checked;
+                  if (!this.phasor) this.phaseDragging = false;
+                  this.persist();
+                }}
+              />
+              <span>${t.phasor}</span>
+            </label>
+            <span class="mono phase-readout"
               >θ =
-              ${format((((s.omega * (this.dragging ? 0 : this.time) + p.phi) % TAU) / TAU) * 360, 1)}°</span
+              ${format((phaseAt(p, this.dragging ? 0 : this.time) / TAU) * 360, 1)}°</span
             >
           </div>
           <div class="scene-wrap">
+            <div class="scene-instruction">
+              ${this.dragging ? t.holding : t.drag}
+            </div>
             ${this.scene()}
             <div class="scene-scale mono">
-              ${p.A === 0 ? t.zero : "−A ← 0 → +A"}
+              ${p.A === 0 ? t.zero : this.phasor ? t.projection : "−A ← 0 → +A"}
             </div>
           </div>
           <div class="readouts">

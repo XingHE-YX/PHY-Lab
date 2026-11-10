@@ -49,6 +49,21 @@ export function stateAt(p: Parameters, t: number): PhysicsState {
     total: 0.5 * p.k * p.A * p.A,
   };
 }
+export function phaseAt(p: Parameters, t: number) {
+  return (((Math.sqrt(p.k / p.m) * t + p.phi) % TAU) + TAU) % TAU;
+}
+// Pick the nearest nonnegative time with this phase, including across 0/2π.
+export function timeAtPhase(p: Parameters, phase: number, near: number) {
+  const omega = Math.sqrt(p.k / p.m);
+  const angle = ((phase % TAU) + TAU) % TAU;
+  const base = (angle - p.phi) / omega;
+  const period = TAU / omega;
+  const cycle = Math.max(
+    Math.ceil(-base / period),
+    Math.round((near - base) / period),
+  );
+  return Math.max(0, base + cycle * period);
+}
 export function keyTime(
   p: Parameters,
   target: "right" | "equilibrium" | "left" | "equal",
