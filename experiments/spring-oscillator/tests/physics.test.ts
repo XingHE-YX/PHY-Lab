@@ -1,5 +1,13 @@
 import { describe, test, expect } from "bun:test";
-import { stateAt, defaults, keyTime, parameters, TAU } from "../model/physics";
+import {
+  stateAt,
+  defaults,
+  keyTime,
+  parameters,
+  TAU,
+  phaseAt,
+  timeAtPhase,
+} from "../model/physics";
 describe("ideal spring model", () => {
   test("conserves energy for arbitrary phases, masses and stiffness", () => {
     for (const m of [0.2, 1, 5])
@@ -42,5 +50,45 @@ describe("ideal spring model", () => {
     expect(p.m).toBe(0.2);
     expect(p.phi).toBeCloseTo(TAU - 0.4);
     expect(Number.isFinite(stateAt(p, 0).omega)).toBe(true);
+  });
+  test("phase scrubbing preserves the oscillator state at the nearest valid cycle", () => {
+    for (const phi of [0, 0.8, 3, 5.7])
+      for (const m of [0.2, 5])
+        for (const angle of [
+          -0.01,
+          0,
+          0.01,
+          Math.PI / 2,
+          Math.PI,
+          TAU + 0.01,
+        ]) {
+          const p = { ...defaults, phi, m };
+          const period = stateAt(p, 0).period;
+          for (const near of [0, 0.4 * period, 5.99 * period]) {
+            const time = timeAtPhase(p, angle, near);
+            expect(time).toBeGreaterThanOrEqual(0);
+            expect(stateAt(p, time).x).toBeCloseTo(p.A * Math.cos(angle), 10);
+            expect(stateAt(p, time).v).toBeCloseTo(
+              -p.A * Math.sqrt(p.k / p.m) * Math.sin(angle),
+              10,
+            );
+            expect(phaseAt(p, time)).toBeGreaterThanOrEqual(0);
+            expect(phaseAt(p, time)).toBeLessThan(TAU);
+            if (time >= period)
+              expect(Math.abs(time - near)).toBeLessThanOrEqual(
+                Math.abs(time - period - near) + 1e-10,
+              );
+            expect(Math.abs(time - near)).toBeLessThanOrEqual(
+              Math.abs(time + period - near) + 1e-10,
+            );
+          }
+        }
+  });
+  test("scrubbing counterclockwise across zero continues into the next cycle", () => {
+    const omega = Math.sqrt(defaults.k / defaults.m);
+    const before = (TAU - 0.01) / omega;
+    const after = timeAtPhase(defaults, 0.01, before);
+    expect(after - before).toBeCloseTo(0.02 / omega, 10);
+    expect(timeAtPhase(defaults, -0.01, after)).toBeCloseTo(before, 10);
   });
 });

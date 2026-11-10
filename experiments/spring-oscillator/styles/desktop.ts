@@ -230,6 +230,47 @@ export const styles = css`
     color: var(--muted);
     border-bottom: 1px solid var(--border);
   }
+  .phasor-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    cursor: pointer;
+    color: var(--text);
+    min-height: 24px;
+  }
+  .phasor-toggle input {
+    appearance: none;
+    width: 30px;
+    height: 17px;
+    margin: 0;
+    border: 1px solid var(--muted);
+    border-radius: 3px;
+    background: var(--subtle);
+    cursor: pointer;
+    position: relative;
+  }
+  .phasor-toggle input::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 9px;
+    height: 9px;
+    border-radius: 1px;
+    background: var(--muted);
+  }
+  .phasor-toggle input:checked {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+  }
+  .phasor-toggle input:checked::after {
+    transform: translateX(13px);
+    background: var(--primary);
+  }
+  .phase-readout {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
   .scene-wrap {
     position: relative;
     flex: 1;
@@ -254,6 +295,30 @@ export const styles = css`
   .mass:active {
     cursor: grabbing;
   }
+  .phasor-layer {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 180ms ease,
+      visibility 180ms;
+  }
+  .phasor-layer[aria-hidden="true"] {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .phase-handle {
+    cursor: crosshair;
+    touch-action: none;
+  }
+  .scene-instruction {
+    position: absolute;
+    top: 14px;
+    left: 18px;
+    font-size: 10px;
+    color: var(--muted);
+    pointer-events: none;
+  }
   .scene-scale {
     position: absolute;
     bottom: 12px;
@@ -261,6 +326,12 @@ export const styles = css`
     font-size: 9px;
     color: var(--muted);
     letter-spacing: 0.5px;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .phasor-layer {
+      transition: none;
+    }
   }
   .readouts {
     display: grid;
