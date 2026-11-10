@@ -35,10 +35,10 @@ export function renderScene(options: SceneOptions) {
     <svg class="scene" viewBox="0 0 800 285" role="group" aria-label=${t.title}>
       <defs>
         <pattern id="lab-grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="var(--border)" stroke-width=".5"/></pattern>
-        <radialGradient id="mass-light" cx="30%" cy="25%" r="85%"><stop offset="0" stop-color="#bed5ff"/><stop offset=".35" stop-color="#568bfd"/><stop offset="1" stop-color="#1747b9"/></radialGradient>
+        <radialGradient id="mass-light" cx="32%" cy="25%" r="78%"><stop offset="0" stop-color="#b4d3ff"/><stop offset=".22" stop-color="#5a98ff"/><stop offset=".55" stop-color="#286eed"/><stop offset=".85" stop-color="#124bc0"/><stop offset="1" stop-color="#103778"/></radialGradient>
         <linearGradient id="spring-metal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--muted)"/><stop offset=".5" stop-color="var(--text)"/><stop offset="1" stop-color="var(--muted)"/></linearGradient>
         <linearGradient id="wall-metal"><stop stop-color="var(--subtle)"/><stop offset="1" stop-color="var(--border)"/></linearGradient>
-        <filter id="ball-glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="10"/></filter>
+        <filter id="ball-glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="7"/></filter>
         <marker id="v-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 7 3.5 0 7" fill="var(--green)"/></marker>
         <marker id="a-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 7 3.5 0 7" fill="var(--red)"/></marker>
       </defs>
@@ -51,15 +51,15 @@ export function renderScene(options: SceneOptions) {
       ${options.time > 0.03 ? Array.from({ length: 8 }, (_, i) => svg`<circle cx=${390 + stateAt(p, Math.max(0, options.time - (8 - i) * 0.025)).x * 300} cy="137" r=${9 + i} fill="var(--blue)" opacity=${0.025 + i * 0.018}/>`) : ""}
       <polyline points=${points} fill="none" stroke="var(--border)" stroke-width="5" stroke-linejoin="round"/>
       <polyline points=${points} fill="none" stroke="url(#spring-metal)" stroke-width="2.5" stroke-linejoin="round"/>
-      <ellipse cx=${x} cy="177" rx="26" ry="4" fill="var(--text)" opacity=".09"/>
-      <circle cx=${x} cy="137" r="27" fill="var(--blue)" opacity=".22" filter="url(#ball-glow)"/>
-      <circle cx=${x} cy="137" r="24" fill="url(#mass-light)" stroke="#5185ec" stroke-width="1"/>
+      <ellipse cx=${x} cy="166" rx="24" ry="3" fill="#286eed" opacity=".16" filter="url(#ball-glow)"/>
+      <circle cx=${x} cy="137" r="26" fill="#286eed" opacity=".1" filter="url(#ball-glow)"/>
+      <circle cx=${x} cy="137" r="24" fill="url(#mass-light)" stroke="#4d8bff" stroke-opacity=".8" stroke-width=".8"/>
       <circle class="mass" cx=${x} cy="137" r="46" fill="transparent" tabindex="0" role="slider"
         aria-label=${t.drag} aria-valuemin="-0.8" aria-valuemax="0.8" aria-valuenow=${Number(format(s.x, 3))}
         aria-valuetext=${format(s.x, 3) + " m. " + t.keyHelp}
         @pointerdown=${options.pointerDown} @pointermove=${options.pointerMove}
         @pointerup=${options.release} @pointercancel=${options.cancel} @keydown=${options.keyboard}/>
-      <text x=${x} y="142" text-anchor="middle" fill="white" font-family="var(--mono)" font-size="15" pointer-events="none">m</text>
+      <text x=${x} y="142" text-anchor="middle" fill="white" font-family="Georgia, serif" font-style="italic" font-size="18" pointer-events="none">m</text>
       ${
         velocity && Math.abs(s.v) > 1e-7
           ? svg`
