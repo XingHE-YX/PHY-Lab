@@ -25,8 +25,12 @@ const sha = (bytes: Uint8Array) =>
 async function candidateExperiment(broken = false) {
   const catalogText = await readFile(join(dist, "catalog.json"), "utf8"),
     catalog = JSON.parse(catalogText) as Catalog;
+  const index = catalog.experiments.findIndex(
+    (entry) => entry.id === "spring-oscillator",
+  );
+  expect(index).toBeGreaterThanOrEqual(0);
   const original = await readFile(
-      join(dist, catalog.experiments[0].manifest.slice(1)),
+      join(dist, catalog.experiments[index].manifest.slice(1)),
       "utf8",
     ),
     manifest = JSON.parse(original) as ExperimentManifest;
@@ -63,8 +67,8 @@ async function candidateExperiment(broken = false) {
   };
   await writeFile(join(path, "manifest.json"), JSON.stringify(next));
   catalog.revision = buildId;
-  catalog.experiments[0] = {
-    ...catalog.experiments[0],
+  catalog.experiments[index] = {
+    ...catalog.experiments[index],
     version,
     title: next.title,
     thumbnail: next.thumbnail,
