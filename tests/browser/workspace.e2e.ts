@@ -221,7 +221,7 @@ test("console content aligns with toolbar and experiment navigation is minimal",
   page,
 }) => {
   await page.goto("/");
-  await expect(page.locator(".card")).toBeVisible();
+  await expect(page.getByRole("link", { name: /弹簧振子/ })).toBeVisible();
   await expect(page.locator(".hero, .method, .number")).toHaveCount(0);
   for (const width of [1280, 1920]) {
     await page.setViewportSize({ width, height: 1000 });
@@ -389,7 +389,7 @@ test("workspace scrollbar stays below toolbar and spring remains inside viewport
   page,
 }) => {
   await page.goto("/");
-  await expect(page.locator(".card")).toBeVisible();
+  await expect(page.getByRole("link", { name: /弹簧振子/ })).toBeVisible();
   const before = await page.locator(".toolbar").boundingBox();
   const gridBefore = await page.locator(".grid").boundingBox();
   await page.locator("phy-app").evaluate((el) => {

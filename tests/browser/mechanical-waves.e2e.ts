@@ -115,7 +115,9 @@ test("fixed and free boundaries reflect correctly and layers preserve the physic
 
 test("standing nodes stay at rest and a straight profile can still have moving antinodes", async ({
   page,
-}) => {
+}, info) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await open(page);
   await page.getByRole("button", { name: "驻波", exact: true }).click();
   await expect(page.locator(".node-marker")).toHaveCount(5);
@@ -160,6 +162,15 @@ test("standing nodes stay at rest and a straight profile can still have moving a
     "v",
   );
   await expect(page.locator(".katex-error")).toHaveCount(0);
+  await range(page, "拖动时间游标", 0.25);
+  await page.getByLabel("入射波 →", { exact: true }).check();
+  await page.getByLabel("反射波 ←", { exact: true }).check();
+  if ((await page.locator("html").getAttribute("data-theme")) !== "dark")
+    await page.getByRole("button", { name: "切换明暗", exact: true }).click();
+  await page.screenshot({
+    path: info.outputPath("standing-wave-desktop.png"),
+    animations: "disabled",
+  });
 });
 
 async function layoutViolations(page: Page) {

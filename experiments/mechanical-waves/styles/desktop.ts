@@ -27,6 +27,7 @@ export const styles = css`
   .task-grid {
     display: grid;
     gap: 12px;
+    margin-top: 12px;
   }
   .task {
     border: 1px solid var(--border);

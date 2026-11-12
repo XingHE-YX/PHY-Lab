@@ -91,6 +91,7 @@ const zh = {
   equations: "公式",
   support: "公式与探索",
   tasks: "探索",
+  taskPresetHint: "载入观察预设会重置参数并暂停。",
   help: "模型说明",
   close: "关闭说明",
   travelExplain: "扰动以 c 传播；vᵧ 是一个质点的横向速度，两者方向与含义不同。",
@@ -221,6 +222,8 @@ const en: typeof zh = {
   equations: "Equations",
   support: "Equations and exploration",
   tasks: "Explore",
+  taskPresetHint:
+    "Loading a preset resets parameters and pauses the experiment.",
   help: "Model guide",
   close: "Close guide",
   travelExplain:

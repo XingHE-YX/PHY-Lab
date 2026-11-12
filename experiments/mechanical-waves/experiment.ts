@@ -193,7 +193,9 @@ export class WaveExperiment extends LitElement {
   }
   seek = (time: number) => {
     this.pause();
-    this.set({ time: clamp(time, 0, 1e5) });
+    this.set({
+      time: clamp(time, 0, harmonic(this.p) ? 1e5 : duration(this.p)),
+    });
   };
   emit(polarity: 1 | -1 = this.p.polarity) {
     this.pause();
@@ -254,7 +256,7 @@ export class WaveExperiment extends LitElement {
       >
       <phy-button @click=${() => this.restart()}>↺ ${t.restart}</phy-button>
       <phy-button
-        aria-label=${t.step}
+        label=${t.step}
         @click=${() => this.seek(this.data.time + (harmonic(this.p) ? 1 / this.p.frequency : this.p.duration) / 40)}
         >▹</phy-button
       >
@@ -290,6 +292,7 @@ export class WaveExperiment extends LitElement {
         id=${name}
         type="range"
         aria-label=${t[name]}
+        aria-valuetext=${format(this.p[name]) + " " + unit}
         min=${min}
         max=${max}
         step=${step}
@@ -411,6 +414,7 @@ export class WaveExperiment extends LitElement {
           step=".001"
           .value=${String(this.data.probe)}
           aria-label=${t.probe + " xₚ"}
+          aria-valuetext=${format(s.x) + " m"}
           @input=${(e: Event) => this.setProbe(Number((e.target as HTMLInputElement).value))}
         />
       </div>
@@ -592,22 +596,23 @@ export class WaveExperiment extends LitElement {
         ${
           this.data.support === "formula"
             ? this.equations()
-            : html`<div class="task-grid">
-                ${[
-                  [t.task1, t.task1Hint, t.task1Action],
-                  [t.task2, t.task2Hint, t.task2Action],
-                  [t.task3, t.task3Hint, t.task3Action],
-                ].map(
-                  ([title, hint, action], index) =>
-                    html`<article class="task">
-                      <h3>${title}</h3>
-                      <p>${hint}</p>
-                      <button @click=${() => this.applyTask(index)}>
-                        ${action}
-                      </button>
-                    </article>`,
-                )}
-              </div>`
+            : html`<p class="view-note">${t.taskPresetHint}</p>
+                <div class="task-grid">
+                  ${[
+                    [t.task1, t.task1Hint, t.task1Action],
+                    [t.task2, t.task2Hint, t.task2Action],
+                    [t.task3, t.task3Hint, t.task3Action],
+                  ].map(
+                    ([title, hint, action], index) =>
+                      html`<article class="task">
+                        <h3>${title}</h3>
+                        <p>${hint}</p>
+                        <button @click=${() => this.applyTask(index)}>
+                          ${action}
+                        </button>
+                      </article>`,
+                  )}
+                </div>`
         }
       </div>
     </section>`;
@@ -727,6 +732,7 @@ export class WaveExperiment extends LitElement {
               step=".001"
               .value=${String(this.data.time)}
               aria-label=${t.timeline}
+              aria-valuetext=${format(this.data.time) + " s"}
               @input=${(e: Event) => this.seek(Number((e.target as HTMLInputElement).value))}
             /><span>${format(end, 1)}s</span
             ><span class="time-label">t = ${format(this.data.time)} s</span>

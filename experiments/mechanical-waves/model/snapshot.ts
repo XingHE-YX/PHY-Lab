@@ -1,4 +1,11 @@
-import { parameters, clamp, record, type WaveParameters } from "./physics";
+import {
+  parameters,
+  clamp,
+  record,
+  duration,
+  harmonic,
+  type WaveParameters,
+} from "./physics";
 export interface Snapshot {
   version: 1;
   params: WaveParameters;
@@ -19,7 +26,8 @@ export interface Snapshot {
 }
 export function normalizeSnapshot(value: unknown): Snapshot {
   const v = record(value),
-    layers = record(v.layers);
+    layers = record(v.layers),
+    params = parameters(v.params);
   const bounded = (
     value: unknown,
     fallback: number,
@@ -33,8 +41,8 @@ export function normalizeSnapshot(value: unknown): Snapshot {
     typeof v === "boolean" ? v : fallback;
   return {
     version: 1,
-    params: parameters(v.params),
-    time: bounded(v.time, 0, 0, 1e5),
+    params,
+    time: bounded(v.time, 0, 0, harmonic(params) ? 1e5 : duration(params)),
     rate:
       typeof v.rate === "number" && [0.25, 0.5, 1].includes(v.rate)
         ? v.rate
