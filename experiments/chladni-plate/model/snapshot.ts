@@ -17,6 +17,7 @@ export interface Snapshot {
   heat: boolean;
   nodes: boolean;
   metric: "w" | "v" | "a";
+  muted: boolean;
 }
 export function frequencyRange(p: Snapshot["params"]) {
   return {
@@ -55,5 +56,6 @@ export function normalizeSnapshot(value: unknown): Snapshot {
     heat: flag(v.heat, false),
     nodes: flag(v.nodes, false),
     metric: v.metric === "v" || v.metric === "a" ? v.metric : "w",
+    muted: flag(v.muted, false),
   };
 }

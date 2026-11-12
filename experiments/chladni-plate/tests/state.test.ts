@@ -25,6 +25,7 @@ test("malformed saves recover finite defaults and bounded plate parameters", () 
     observation: "bad",
     rate: 5,
     tilt: "true",
+    muted: "false",
   });
   expect(recovered.params.length).toBe(0.24);
   expect(recovered.params.thickness).toBe(defaults.params.thickness);
@@ -43,12 +44,14 @@ test("malformed saves recover finite defaults and bounded plate parameters", () 
   expect(recovered.observation).toBe("sand");
   expect(recovered.rate).toBe(1);
   expect(recovered.tilt).toBe(false);
+  expect(recovered.muted).toBe(false);
   const saved = normalizeSnapshot({
     ...defaults,
     cycles: 47.125,
     tilt: true,
     nodes: true,
     metric: "a",
+    muted: true,
   });
   expect(normalizeSnapshot(JSON.parse(JSON.stringify(saved)))).toEqual(saved);
 });

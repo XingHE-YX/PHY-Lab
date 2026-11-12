@@ -390,3 +390,176 @@ test("unavailable WebGL falls back to an operable planar experiment", async ({
   expect((await saved(page)).cycles).toBe(20.12);
   await expect(page.locator(".layer-controls")).toContainText("基础平面绘制");
 });
+
+test("vibration audio follows drive frequency, mutes in settings and releases on exit", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const NativeAudio = AudioContext;
+    const observed: Array<{
+      context: AudioContext;
+      gain?: GainNode;
+      tone?: OscillatorNode;
+      analyser?: AnalyserNode;
+    }> = [];
+    (window as any).plateAudio = observed;
+    window.AudioContext = class extends NativeAudio {
+      constructor(options?: AudioContextOptions) {
+        super(options);
+        observed.push({ context: this });
+      }
+      override createGain() {
+        const gain = super.createGain();
+        observed.find((item) => item.context === this)!.gain = gain;
+        return gain;
+      }
+      override createOscillator() {
+        const tone = super.createOscillator();
+        observed.find((item) => item.context === this)!.tone = tone;
+        return tone;
+      }
+    };
+  });
+  await open(page);
+  await expect(
+    page.getByRole("button", { name: /步进 1\/16 周期|Step 1\/16 cycle/ }),
+  ).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).plateAudio.length)).toBe(0);
+  await page.getByRole("button", { name: "▷ 开始", exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as any).plateAudio[0]?.context.state),
+    )
+    .toBe("running");
+  expect(
+    await page.evaluate(
+      () => (window as any).plateAudio[0].tone.frequency.value,
+    ),
+  ).toBeCloseTo((await saved(page)).params.frequency, 3);
+  await page.evaluate(() => {
+    const output = (window as any).plateAudio[0];
+    output.analyser = output.context.createAnalyser();
+    output.analyser.fftSize = 2048;
+    output.gain.connect(output.analyser);
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const output = (window as any).plateAudio[0],
+          samples = new Float32Array(2048);
+        output.analyser.getFloatTimeDomainData(samples);
+        return Math.sqrt(
+          samples.reduce((sum, value) => sum + value * value, 0) /
+            samples.length,
+        );
+      }),
+    )
+    .toBeGreaterThan(0.001);
+  await page.getByRole("button", { name: "设置", exact: true }).click();
+  const settings = page.getByRole("region", { name: "实验设置", exact: true });
+  await settings.getByRole("checkbox", { name: "静音", exact: true }).check();
+  expect((await saved(page)).muted).toBe(true);
+  const before = (await saved(page)).cycles;
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as any).plateAudio[0].context.state),
+    )
+    .toBe("suspended");
+  await expect
+    .poll(async () => (await saved(page)).cycles)
+    .toBeGreaterThan(before);
+  await settings.getByRole("checkbox", { name: "静音", exact: true }).uncheck();
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as any).plateAudio[0].context.state),
+    )
+    .toBe("running");
+  await page
+    .getByRole("dialog")
+    .getByRole("combobox", { name: "切换语言", exact: true })
+    .selectOption("en");
+  await expect(
+    page
+      .getByRole("region", { name: "Experiment settings", exact: true })
+      .getByRole("checkbox", { name: "Mute", exact: true }),
+  ).not.toBeChecked();
+  await page.keyboard.press("Escape");
+  await page
+    .getByRole("combobox", { name: "Playback speed", exact: true })
+    .selectOption("0.25");
+  expect(
+    await page.evaluate(
+      () => (window as any).plateAudio[0].tone.frequency.value,
+    ),
+  ).toBeCloseTo((await saved(page)).params.frequency, 3);
+  await page.getByRole("button", { name: "Ⅱ Pause", exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as any).plateAudio[0].context.state),
+    )
+    .toBe("suspended");
+  await range(page, "Drive frequency", 180);
+  const changedFrequency = (await saved(page)).params.frequency;
+  await page.getByRole("button", { name: "▷ Play", exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as any).plateAudio[0].tone.frequency.value),
+    )
+    .toBeCloseTo(changedFrequency, 3);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("checkbox", { name: "Mute", exact: true }).check();
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Chladni figures", exact: true }),
+  ).toBeVisible();
+  expect((await saved(page)).muted).toBe(true);
+  await page.getByRole("button", { name: "▷ Play", exact: true }).click();
+  expect(await page.evaluate(() => (window as any).plateAudio.length)).toBe(0);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(
+    page.getByRole("checkbox", { name: "Mute", exact: true }),
+  ).toBeChecked();
+  await page.getByRole("checkbox", { name: "Mute", exact: true }).uncheck();
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as any).plateAudio[0]?.context.state),
+    )
+    .toBe("running");
+  await page.keyboard.press("Escape");
+  await page
+    .getByRole("link", { name: "Back to console", exact: true })
+    .click();
+  await expect(page.locator("phy-experiment-page")).toHaveCount(0);
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as any).plateAudio[0].context.state),
+    )
+    .toBe("closed");
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(
+    page.getByRole("region", { name: "Experiment settings", exact: true }),
+  ).toHaveCount(0);
+});
+
+test("unavailable audio leaves the experiment operable with a localized explanation", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "AudioContext", { value: undefined });
+  });
+  await open(page);
+  await page.getByRole("button", { name: "▷ 开始", exact: true }).click();
+  await expect.poll(async () => (await saved(page)).cycles).toBeGreaterThan(0);
+  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await expect(
+    page.getByRole("checkbox", { name: "静音", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText("当前浏览器无法播放声音，其他实验操作仍可使用。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});

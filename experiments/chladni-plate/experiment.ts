@@ -15,13 +15,14 @@ import {
   type Response,
   type Field,
 } from "./model/response";
-import { SandSimulation, MAX_CYCLES, SAND_STEP } from "./model/sand";
+import { SandSimulation, MAX_CYCLES } from "./model/sand";
 import {
   normalizeSnapshot,
   frequencyRange,
   type Snapshot,
 } from "./model/snapshot";
 import { PlateRenderer, geometry, pickPlate } from "./components/renderer";
+import { PlateAudio } from "./components/audio";
 import {
   historyChart,
   resonanceChart,
@@ -43,6 +44,7 @@ export class ChladniExperiment extends LitElement {
     helpOpen: { state: true },
     backend: { state: true },
     chartHeight: { state: true },
+    audioUnavailable: { state: true },
   };
   static styles = [mathStyles, styles];
   declare data: Snapshot;
@@ -52,11 +54,17 @@ export class ChladniExperiment extends LitElement {
   declare helpOpen: boolean;
   declare backend: string;
   declare chartHeight: number;
+  declare audioUnavailable: boolean;
   private context?: ExperimentContext;
   private frame = 0;
   private last = 0;
   private toolbar?: HTMLDivElement;
   private toolbarKey = "";
+  private settingsControls?: HTMLDivElement;
+  private settingsKey = "";
+  private audio = new PlateAudio(() => {
+    this.audioUnavailable = true;
+  });
   private drag?: {
     pointer: number;
     target: string;
@@ -80,6 +88,7 @@ export class ChladniExperiment extends LitElement {
     this.helpOpen = false;
     this.backend = "";
     this.chartHeight = 180;
+    this.audioUnavailable = false;
   }
   initialize(context: ExperimentContext) {
     this.context = context;
@@ -135,11 +144,15 @@ export class ChladniExperiment extends LitElement {
     this.observer?.disconnect();
     this.chartObserver?.disconnect();
     this.renderer?.dispose();
+    this.audio.dispose();
     this.renderer = undefined;
     document.removeEventListener("visibilitychange", this.visibility);
     window.removeEventListener("pagehide", this.hide);
     if (this.toolbar) render(null, this.toolbar);
     this.toolbar = undefined;
+    if (this.settingsControls) render(null, this.settingsControls);
+    this.context?.settings?.setControls(null);
+    this.settingsControls = undefined;
     super.disconnectedCallback();
   }
   private visibility = () => {
@@ -190,6 +203,61 @@ export class ChladniExperiment extends LitElement {
         render(this.playback(), this.toolbar);
       }
     }
+    if (this.context?.settings) {
+      if (!this.settingsControls) {
+        this.settingsControls = document.createElement("div");
+        this.context.settings.setControls(this.settingsControls);
+      }
+      const key = JSON.stringify([
+        this.data.muted,
+        this.locale,
+        this.audioUnavailable,
+      ]);
+      if (this.settingsKey !== key) {
+        this.settingsKey = key;
+        const t = texts(this.locale);
+        render(
+          html`<label
+              style="display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:13px;cursor:pointer"
+            >
+              ${t.mute}<input
+                type="checkbox"
+                style="accent-color:var(--primary)"
+                .checked=${this.data.muted}
+                ?disabled=${this.audioUnavailable}
+                @change=${(e: Event) => {
+                  this.set({ muted: (e.target as HTMLInputElement).checked });
+                  this.syncAudio();
+                }}
+              />
+            </label>
+            <p
+              style="font-size:12px;line-height:1.7;color:var(--muted);margin:10px 0 0"
+            >
+              ${this.audioUnavailable ? t.audioUnavailable : t.audioHint}
+            </p>`,
+          this.settingsControls,
+        );
+      }
+    }
+  }
+  private syncAudio() {
+    if (!this.playing || this.data.muted || this.p.force === 0) {
+      this.audio.stop();
+      return;
+    }
+    // Spatial/time RMS surface velocity controls a bounded illustrative volume.
+    const amplitude =
+      Math.sqrt(
+        this.state.real.reduce(
+          (sum, value, i) => sum + value ** 2 + this.state.imaginary[i] ** 2,
+          0,
+        ),
+      ) / 2;
+    void this.audio.play(
+      this.p.frequency,
+      (2 * Math.PI * this.p.frequency * amplitude) / Math.SQRT2,
+    );
   }
   private get tilted() {
     return this.data.tilt && this.backend === "webgl2";
@@ -245,6 +313,7 @@ export class ChladniExperiment extends LitElement {
   }
   pause() {
     this.playing = false;
+    this.audio.stop();
     cancelAnimationFrame(this.frame);
     this.last = 0;
     this.persist();
@@ -253,6 +322,7 @@ export class ChladniExperiment extends LitElement {
     if (this.playing) return;
     if (this.data.cycles >= MAX_CYCLES) this.seek(0);
     this.playing = true;
+    this.syncAudio();
     this.last = 0;
     this.frame = requestAnimationFrame(this.tick);
   }
@@ -327,10 +397,6 @@ export class ChladniExperiment extends LitElement {
         >${this.playing ? "Ⅱ" : "▷"}
         ${this.playing ? t.pause : t.play}</phy-button
       ><phy-button @click=${() => this.seek(0)}>↺ ${t.restart}</phy-button
-      ><phy-button
-        label=${t.step}
-        @click=${() => this.seek(this.data.cycles + SAND_STEP)}
-        >↦</phy-button
       ><select
         aria-label=${t.speed}
         .value=${String(this.data.rate)}
@@ -707,7 +773,7 @@ export class ChladniExperiment extends LitElement {
           ×
         </button>
       </div>
-      ${[t.helpIntro, t.helpModel, t.helpSteady, t.helpTime, t.helpSand, t.helpInteraction, t.helpLimits].map((text) => html`<p>${text}</p>`)}
+      ${[t.helpIntro, t.helpModel, t.helpSteady, t.helpTime, t.helpSand, t.helpAudio, t.helpInteraction, t.helpLimits].map((text) => html`<p>${text}</p>`)}
       <div class="help-formulas">
         ${math(String.raw`D=\frac{Eh^3}{12(1-\nu^2)},\qquad D\nabla^4 w+\rho h\ddot w=p`)}${math(String.raw`\omega=2\pi f,\qquad t=N/f,\qquad f_j\propto h/L^2`)}
       </div>

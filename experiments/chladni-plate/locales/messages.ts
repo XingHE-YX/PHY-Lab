@@ -26,7 +26,10 @@ const zh = {
   play: "开始",
   pause: "暂停",
   restart: "回到起点",
-  step: "步进 1/16 周期",
+  mute: "静音",
+  audioHint:
+    "播放时发声；音高跟随驱动频率，音量示意板面振动强弱。慢放不降低音高。",
+  audioUnavailable: "当前浏览器无法播放声音，其他实验操作仍可使用。",
   speed: "观察速度",
   playing: "运行中",
   paused: "已暂停",
@@ -105,6 +108,8 @@ const zh = {
     "所有读数、曲线、形变与砂粒共享周期数 N；物理时间 t=N/f。播放每秒推进 4 个周期，0.5× / 0.25× 再减慢相位观察。砂粒迁移使用无量纲的教学规律，不能用动画耗时推算真实砂粒的聚集时间。",
   helpSand:
     "粒子按振幅平方的梯度迁移，并随局部振动产生有种子的微扰；不计算精确接触、弹跳、粒间碰撞和声辐射。越过板边的砂粒会离开板面；重新撒沙可补充。种子和固定步长使任意时间回看与状态恢复可重现。",
+  helpAudio:
+    "播放时生成与驱动频率相同的正弦音，音量示意板面均方根速度的强弱，慢放不改变音高；这不是原装置录音或精确声辐射计算。右上设置中的“静音”开关仅影响声音并自动保存。暂停、回看、修改物理参数或离开页面时停止发声。",
   helpInteraction:
     "拖动 S 或 P，也可聚焦标记后使用方向键，按住 Shift 加大步长；Home 回到中心。左栏可以调整频率、力、阻尼、板长和板厚。修改物理参数或激励位置会暂停并重新撒沙；图层、语言和观察切换保留当前时间与参数。离开实验和切换到后台会暂停并保存。",
   helpLimits:
@@ -139,7 +144,11 @@ const en: Texts = {
   play: "Play",
   pause: "Pause",
   restart: "Restart",
-  step: "Step 1/16 cycle",
+  mute: "Mute",
+  audioHint:
+    "Sound plays during playback. Pitch follows the drive frequency; volume illustrates plate vibration. Slow motion preserves pitch.",
+  audioUnavailable:
+    "Sound is unavailable in this browser. The experiment remains operable.",
   speed: "Playback speed",
   playing: "Running",
   paused: "Paused",
@@ -223,6 +232,8 @@ const en: Texts = {
     "Readouts, curves, bending and grains share cycle count N, with physical time t=N/f. Playback advances 4 cycles per second; 0.5× and 0.25× slow phase observation further. Grain migration follows a dimensionless educational rule. Animation duration does not predict real settling time.",
   helpSand:
     "Particles follow a negative squared-amplitude gradient with seeded vibration-dependent perturbations. Exact contact, bouncing, grain collisions and acoustic radiation are omitted. Grains crossing the edge leave the plate. Fixed stepping and a saved seed make scrubbing and restoration reproducible.",
+  helpAudio:
+    "Playback synthesizes a sine tone at the physical drive frequency. Volume illustrates RMS surface velocity; slow motion preserves pitch. This is not recorded apparatus sound or an acoustic radiation calculation. Mute in the upper-right settings affects only sound and is saved. Pausing, scrubbing, changing physics or leaving stops the tone.",
   helpInteraction:
     "Drag S or P, or focus either marker and use arrow keys; Shift increases the step and Home returns to center. Adjust frequency, force, damping, length or thickness on the left. Physical and exciter changes pause and redistribute grains. Overlays, language and observation preserve time and parameters. Leaving the experiment or hiding the page pauses and saves it.",
   helpLimits:
