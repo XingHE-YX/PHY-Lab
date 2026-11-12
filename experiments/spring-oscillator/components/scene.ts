@@ -1,12 +1,12 @@
 import { svg } from "lit";
 import type { Locale } from "../../../src/infra/platform/contract";
+import { format, phaseAt } from "../model/physics";
 import {
-  format,
-  phaseAt,
-  stateAt,
-  type Parameters,
-  type PhysicsState,
-} from "../model/physics";
+  motionAt,
+  type OscillatorParameters as Parameters,
+  type OscillatorState as PhysicsState,
+} from "../model/dynamics";
+import { labTexts } from "../locales/dynamics";
 import { sceneFrame } from "../model/scene";
 import { texts } from "../locales/messages";
 
@@ -18,6 +18,8 @@ interface SceneOptions {
   acceleration: boolean;
   phasor: boolean;
   time: number;
+  scale: number;
+  peaks: { extent: number; velocity: number; acceleration: number };
   pointerDown: (event: PointerEvent) => void;
   pointerMove: (event: PointerEvent) => void;
   release: () => void;
@@ -32,9 +34,11 @@ interface SceneOptions {
 export function renderScene(options: SceneOptions) {
   const { params: p, state: s, locale, velocity, acceleration } = options;
   const t = texts(locale);
-  const { originX: ox, originY: oy, scale, width, height } = sceneFrame;
+  const { originX: ox, originY: oy, width, height } = sceneFrame;
+  const scale = options.scale;
+  const l = labTexts(locale);
   const x = ox + s.x * scale;
-  const radius = p.A * scale;
+  const radius = (p.model === "ideal" ? p.A : options.peaks.extent) * scale;
   // v/ω = −A sin θ: use the same instantaneous state as the physical mass.
   const tipY = oy + (s.v / s.omega) * scale;
   const angle = phaseAt(p, options.time);
@@ -43,12 +47,12 @@ export function renderScene(options: SceneOptions) {
     const px = 86 + ((x - 25 - 86) * i) / 28;
     return px + "," + (i === 0 || i === 28 ? oy : oy + (i % 2 ? 9 : -9));
   }).join(" ");
-  const vLength = (s.v / (p.A * s.omega || 1)) * 100;
-  const aLength = (s.a / (p.A * s.omega ** 2 || 1)) * 100;
+  const vLength = (s.v / options.peaks.velocity) * 100;
+  const aLength = (s.a / options.peaks.acceleration) * 100;
   const visible = options.phasor && radius > 0;
 
   return svg`
-    <svg class="scene" viewBox=${`0 0 ${width} ${height}`} role="group" aria-label=${t.title}>
+    <svg class="scene" data-scale=${scale} viewBox=${`0 0 ${width} ${height}`} role="group" aria-label=${t.title}>
       <defs>
         <pattern id="lab-grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="var(--border)" stroke-width=".5"/></pattern>
         <radialGradient id="mass-light" cx="32%" cy="25%" r="78%"><stop offset="0" stop-color="#b4d3ff"/><stop offset=".22" stop-color="#5a98ff"/><stop offset=".55" stop-color="#286eed"/><stop offset=".85" stop-color="#124bc0"/><stop offset="1" stop-color="#103778"/></radialGradient>
@@ -106,17 +110,19 @@ export function renderScene(options: SceneOptions) {
           @keydown=${options.phaseKeyboard}><title>${t.phaseDrag}</title></circle>
       </g>
 
+      ${p.model !== "ideal" ? svg`<g class="damper" fill="none" stroke="var(--muted)" stroke-width="1.5"><path d=${`M74 ${oy}V${oy + 160}H145m0 -13v26m0 -26h64v26h-64m40 -24v22m0 -11H${x}V${oy + 26}`}/></g><text x="155" y=${oy + 190} fill="var(--muted)" font-size="12" font-family="var(--mono)">b = ${format(2 * p.zeta * Math.sqrt(p.k * p.m))} N·s/m</text>` : ""}
+      ${p.model === "driven" && Math.abs(s.drivingForce) > 1e-8 ? svg`<path class="driving-arrow" d=${`M${x} ${oy - 130}h${(s.drivingForce / (p.force || 1)) * 90}`} stroke="var(--text)" stroke-width="2" marker-end="url(#axis-arrow)"/><text x=${x} y=${oy - 145} fill="var(--text)" text-anchor="middle" font-size="12">${l.drivingForce}</text>` : ""}
       <path d=${`M48 ${oy - 46}h26v92H48z`} fill="url(#wall-metal)" stroke="var(--border)"/>
       <circle cx="61" cy=${oy - 32} r="3" fill="var(--muted)"/><circle cx="61" cy=${oy + 32} r="3" fill="var(--muted)"/>
       <path d=${`M48 ${oy - 45}l-12 12m12 3-12 12m12 3-12 12m12 3-12 12m12 3-12 12m12 3-12 12M74 ${oy}h12`} stroke="var(--muted)" fill="none" stroke-width="1.5"/>
-      ${options.time > 0.03 ? Array.from({ length: 8 }, (_, i) => svg`<circle cx=${ox + stateAt(p, Math.max(0, options.time - (8 - i) * 0.025)).x * scale} cy=${oy} r=${9 + i} fill="var(--blue)" opacity=${0.015 + i * 0.009}/>`) : ""}
+      ${options.time > 0.03 ? Array.from({ length: 8 }, (_, i) => svg`<circle cx=${ox + motionAt(p, Math.max(0, options.time - (8 - i) * 0.025)).x * scale} cy=${oy} r=${9 + i} fill="var(--blue)" opacity=${0.015 + i * 0.009}/>`) : ""}
       <polyline points=${points} fill="none" stroke="var(--border)" stroke-width="5" stroke-linejoin="round"/>
       <polyline points=${points} fill="none" stroke="url(#spring-metal)" stroke-width="2.5" stroke-linejoin="round"/>
       <ellipse cx=${x} cy=${oy + 29} rx="24" ry="3" fill="#286eed" opacity=".16" filter="url(#ball-glow)"/>
       <circle cx=${x} cy=${oy} r="26" fill="#286eed" opacity=".1" filter="url(#ball-glow)"/>
       <circle class="mass-surface" cx=${x} cy=${oy} r="24" fill="url(#mass-light)" stroke="#4d8bff" stroke-opacity=".8" stroke-width=".8"/>
       <circle class="mass" cx=${x} cy=${oy} r="36" fill="transparent" tabindex="0" role="slider"
-        aria-label=${t.drag} aria-valuemin="-0.8" aria-valuemax="0.8" aria-valuenow=${Number(format(s.x, 3))}
+        aria-label=${t.drag} aria-valuemin=${-options.peaks.extent} aria-valuemax=${options.peaks.extent} aria-valuenow=${Number(format(s.x, 3))}
         aria-valuetext=${format(s.x, 3) + " m. " + t.keyHelp}
         @pointerdown=${options.pointerDown} @pointermove=${options.pointerMove}
         @pointerup=${options.release} @pointercancel=${options.cancel} @keydown=${options.keyboard}/>
@@ -139,10 +145,10 @@ export function renderScene(options: SceneOptions) {
       }
       <path d=${`M${ox - radius} ${oy + 40}H${ox + radius}M${ox - radius} ${oy + 34}v12M${ox} ${oy + 34}v12M${ox + radius} ${oy + 34}v12`} stroke="var(--muted)" stroke-opacity=".7"/>
       ${
-        p.A > 0.08
+        p.model !== "ideal" || p.A > 0.08
           ? svg`
-        <text x=${ox - radius} y=${oy + 63} text-anchor="middle" fill="var(--muted)" font-size="12" font-family="var(--mono)">−A</text>
-        <text x=${ox + radius} y=${oy + 63} text-anchor="middle" fill="var(--muted)" font-size="12" font-family="var(--mono)">+A</text>
+        <text x=${ox - radius} y=${oy + 63} text-anchor="middle" fill="var(--muted)" font-size="12" font-family="var(--mono)">${p.model === "ideal" ? "−A" : "−" + format(options.peaks.extent)}</text>
+        <text x=${ox + radius} y=${oy + 63} text-anchor="middle" fill="var(--muted)" font-size="12" font-family="var(--mono)">${p.model === "ideal" ? "+A" : "+" + format(options.peaks.extent)}</text>
       `
           : ""
       }
