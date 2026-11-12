@@ -113,6 +113,55 @@ test("fixed and free boundaries reflect correctly and layers preserve the physic
   await expect(page.locator(".readout").first()).toContainText("-0.220");
 });
 
+test("standing nodes stay at rest and a straight profile can still have moving antinodes", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "驻波", exact: true }).click();
+  await expect(page.locator(".node-marker")).toHaveCount(5);
+  await expect(page.locator(".antinode-marker")).toHaveCount(4);
+  await page.getByRole("button", { name: "定位波节", exact: true }).click();
+  await page.getByRole("button", { name: "T/4", exact: true }).click();
+  let saved = await snapshot(page),
+    s = waveAt(saved.params, saved.probe * saved.params.length, saved.time);
+  expect(s.y).toBeCloseTo(0, 10);
+  expect(s.v).toBeCloseTo(0, 10);
+  await page.getByRole("button", { name: "定位波腹", exact: true }).click();
+  saved = await snapshot(page);
+  s = waveAt(saved.params, saved.probe * saved.params.length, saved.time);
+  expect(s.y).toBeCloseTo(0, 10);
+  expect(Math.abs(s.v)).toBeGreaterThan(1);
+  const arrow = page.locator(".particle-velocity");
+  await expect(arrow).toHaveCount(1);
+  // A vertical SVG path has zero box width; inspect its painted direction.
+  const dy = await arrow.evaluate((node) => {
+    const path = node as SVGPathElement;
+    return (
+      path.getPointAtLength(path.getTotalLength()).y -
+      path.getPointAtLength(0).y
+    );
+  });
+  expect(Math.sign(dy)).toBe(-Math.sign(s.v));
+  expect(Math.abs(dy)).toBeGreaterThan(20);
+  await page.getByLabel("波节与波腹", { exact: true }).uncheck();
+  await expect(page.locator(".node-marker")).toHaveCount(0);
+  expect((await snapshot(page)).time).toBe(saved.time);
+  await page.getByRole("button", { name: "波源", exact: true }).click();
+  await range(page, "入射振幅", 0);
+  await expect(
+    page.getByRole("button", { name: "定位波节", exact: true }),
+  ).toBeDisabled();
+  await expect(page.locator(".view-note").last()).toContainText("振幅为零");
+  await page.getByRole("tab", { name: "探索", exact: true }).click();
+  await page.getByRole("button", { name: "观察驻波", exact: true }).click();
+  expect((await snapshot(page)).params.mode).toBe("standing");
+  await expect(page.locator(".chart-point")).toHaveAttribute(
+    "data-metric",
+    "v",
+  );
+  await expect(page.locator(".katex-error")).toHaveCount(0);
+});
+
 async function layoutViolations(page: Page) {
   return page.locator("phy-experiment-page").evaluate((el) => {
     const root = (el as ExperimentPage).instance!.element.shadowRoot!;
@@ -158,11 +207,12 @@ test("wave controls fit the desktop viewport in both languages and themes", asyn
           await page
             .getByRole("button", { name: /^(切换语言|Switch language)$/ })
             .click();
-        for (const model of [0, 1]) {
+        for (const model of [0, 1, 2]) {
           await page.locator(".mode-switch button").nth(model).click();
-          for (const source of [0, 1]) {
+          for (const source of model === 2 ? [0] : [0, 1]) {
             await page.locator(".parameter-tabs button").nth(0).click();
-            await page.locator(".source-tabs button").nth(source).click();
+            if (model !== 2)
+              await page.locator(".source-tabs button").nth(source).click();
             for (const group of [0, 1]) {
               await page.locator(".parameter-tabs button").nth(group).click();
               for (const view of [0, 1]) {

@@ -12,6 +12,8 @@ import {
   format,
   clamp,
   harmonic,
+  standingSites,
+  standingAmplitude,
   type WaveParameters,
   type WaveMode,
 } from "./model/physics";
@@ -305,16 +307,20 @@ export class WaveExperiment extends LitElement {
       d = derived(p);
     return html`${
         this.data.parameterTab === "source"
-          ? html` <div
-                class="source-tabs"
-                role="group"
-                aria-label=${t.sourceType}
-              >
-                ${(["pulse", "sine"] as const).map((source) => html`<button class=${p.source === source ? "selected" : ""} aria-pressed=${p.source === source} @click=${() => this.changeParameter("source", source)}>${t[source]}</button>`)}
-              </div>
+          ? html` ${
+                p.mode !== "standing"
+                  ? html`<div
+                      class="source-tabs"
+                      role="group"
+                      aria-label=${t.sourceType}
+                    >
+                      ${(["pulse", "sine"] as const).map((source) => html`<button class=${p.source === source ? "selected" : ""} aria-pressed=${p.source === source} @click=${() => this.changeParameter("source", source)}>${t[source]}</button>`)}
+                    </div> `
+                  : ""
+              }
               ${this.parameter("amplitude", "A", 0, 0.4, 0.01, "m")}
               ${
-                p.source === "pulse"
+                !harmonic(p)
                   ? html`${this.parameter("duration", "τ", 0.4, 2, 0.05, "s")}
                       <div class="emit-actions">
                         <button
@@ -333,7 +339,7 @@ export class WaveExperiment extends LitElement {
                   : this.parameter("frequency", "f", 0.2, 2, 0.05, "Hz")
               }
               <p class="parameter-note">
-                ${p.source === "pulse" ? t.sourceHint : t.rampHint}
+                ${p.mode === "standing" ? t.preparedHint : p.source === "pulse" ? t.sourceHint : t.rampHint}
               </p>`
           : html`${this.parameter("speed", "c", 1, 6, 0.1, "m/s")}${this.parameter("length", "L", 4, 12, 0.5, "m")}
             ${
@@ -373,6 +379,13 @@ export class WaveExperiment extends LitElement {
       d = derived(p),
       pulse = p.source === "pulse";
     const lead = pulse ? p.duration / 2 : 0;
+    if (p.mode === "standing") {
+      const start = timeWindow(p, this.data.time).start;
+      return html`<div class="moments">
+        ${([1, 2, 3] as const).map((n) => html`<button @click=${() => this.seek(start + (n * d.period) / 4)}>${n === 1 ? t.quarter : n === 2 ? t.half : t.threeQuarter}</button>`)}
+        ${(["node", "antinode"] as const).map((kind) => html`<button ?disabled=${!standingSites(p, kind).length} title=${standingSites(p, kind).length ? "" : p.amplitude === 0 ? t.zero : kind === "node" ? t.noNode : t.noAntinode} @click=${() => this.selectSite(kind)}>${kind === "node" ? t.pickNode : t.pickAntinode}</button>`)}
+      </div>`;
+    }
     return html`<div class="moments">
       <button @click=${() => this.seek(pulse ? lead : d.period)}>
         ${pulse ? t.launchCenter : t.launchSine}</button
@@ -424,10 +437,28 @@ export class WaveExperiment extends LitElement {
             </div>`
           : ""
       }
-      <p class="view-note">
-        ${this.p.amplitude === 0 ? t.zero : !harmonic(this.p) && this.data.time >= duration(this.p) ? t.endHint : this.data.observation === "profile" ? (!this.data.layers.total && !this.data.layers.incident && !(this.data.layers.reflected && this.p.mode !== "travel") ? t.allHidden : t.layersHint) : this.p.mode === "reflection" ? t.reflectionExplain : t.travelExplain}
-      </p>
+      <p class="view-note">${this.observationNote}</p>
     </div>`;
+  }
+  private get observationNote() {
+    const t = texts(this.locale),
+      p = this.p,
+      layers = this.data.layers;
+    if (p.amplitude === 0) return t.zero;
+    if (
+      this.data.observation === "profile" &&
+      !layers.total &&
+      !layers.incident &&
+      !(layers.reflected && p.mode !== "travel")
+    )
+      return t.allHidden;
+    if (p.mode === "standing") return t.standingHint;
+    if (!harmonic(p) && this.data.time >= duration(p)) return t.endHint;
+    return this.data.observation === "profile"
+      ? t.layersHint
+      : p.mode === "reflection"
+        ? t.reflectionExplain
+        : t.travelExplain;
   }
   private observationKeys = async (e: KeyboardEvent) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
@@ -440,7 +471,7 @@ export class WaveExperiment extends LitElement {
           : this.data.observation === "record"
             ? "profile"
             : "record";
-    this.set({ observation });
+    this.set({ observation, support: "formula" });
     await this.updateComplete;
     this.renderRoot
       .querySelector<HTMLButtonElement>(
@@ -452,18 +483,133 @@ export class WaveExperiment extends LitElement {
     const t = texts(this.locale);
     return html`<div class="layer-controls" role="group" aria-label=${t.layers}>
       ${(["total", "incident", "reflected"] as const).map((layer) => html`<label><input type="checkbox" ?disabled=${layer === "reflected" && this.p.mode === "travel"} .checked=${this.data.layers[layer]} @change=${(e: Event) => this.set({ layers: { ...this.data.layers, [layer]: (e.target as HTMLInputElement).checked } })} /><span aria-hidden="true" class=${"swatch " + layer}></span>${t[layer]}</label>`)}
+      ${this.p.mode === "standing" ? html`<label><input type="checkbox" .checked=${this.data.layers.sites} @change=${(e: Event) => this.set({ layers: { ...this.data.layers, sites: (e.target as HTMLInputElement).checked } })} />${t.markers}</label>` : ""}
     </div>`;
   }
   private equations() {
-    const t = texts(this.locale);
-    return html`<section class="support">
-      <div class="equation">
-        ${math(this.p.mode === "travel" ? String.raw`y(x,t)=s(t-x/c)` : String.raw`y=y_{\mathrm{i}}+y_{\mathrm{r}}`)}
-      </div>
-      ${this.p.mode !== "travel" ? html`<div class="equation">${math(String.raw`y_{\mathrm{r}}=R\,s\!\left(t-\frac{2L-x}{c}\right)`)}</div>` : ""}
+    const t = texts(this.locale),
+      p = this.p;
+    const formula =
+      p.mode === "travel"
+        ? String.raw`y(x,t)=s(t-x/c)`
+        : p.mode === "reflection"
+          ? String.raw`y=y_{\mathrm{i}}+y_{\mathrm{r}}`
+          : p.boundary === "fixed"
+            ? String.raw`y=2A\sin[q(L-x)]\cos(\omega t)`
+            : String.raw`y=2A\cos[q(L-x)]\sin(\omega t)`;
+    return html` <div class="equation">${math(formula)}</div>
+      ${p.mode === "reflection" ? html`<div class="equation">${math(String.raw`y_{\mathrm{r}}=R\,s\!\left(t-\frac{2L-x}{c}\right)`)}</div>` : p.mode === "standing" ? html`<div class="equation">${math(String.raw`q=\frac{2\pi}{\lambda},\quad \lambda=\frac{c}{f}`)}</div>` : ""}
       <p class="explanation">
-        ${this.p.mode === "travel" ? t.travelExplain : t.reflectionExplain}
-      </p>
+        ${p.mode === "travel" ? t.travelExplain : p.mode === "reflection" ? t.reflectionExplain : t.standingExplain}
+      </p>`;
+  }
+  private selectSite(kind: "node" | "antinode") {
+    const sites = standingSites(this.p, kind),
+      x = this.point.x;
+    const next = sites.find((site) => site > x + 1e-7) ?? sites[0];
+    if (next !== undefined) this.setProbe(next / this.p.length);
+  }
+  private async applyTask(index: number) {
+    this.pause();
+    const p = parameters({
+      mode: index === 0 ? "travel" : index === 1 ? "reflection" : "standing",
+    });
+    const d = derived(p),
+      probe =
+        index === 2
+          ? (p.length - d.wavelength / 4) / p.length
+          : index === 1
+            ? 0.7
+            : 0.5;
+    const time =
+      index === 2
+        ? d.period / 4
+        : index === 1
+          ? (2 - probe) * d.transit + p.duration / 2
+          : probe * d.transit + p.duration / 3;
+    this.set({
+      params: p,
+      time,
+      probe,
+      support: "formula",
+      observation: index === 1 ? "profile" : "record",
+      metric: "v",
+      parameterTab: index === 1 ? "medium" : "source",
+      layers: {
+        ...this.data.layers,
+        total: true,
+        incident: index === 1,
+        reflected: index === 1,
+        sites: true,
+      },
+    });
+    await this.updateComplete;
+    this.renderRoot
+      .querySelector<HTMLButtonElement>(
+        ".observation-tabs [aria-selected=true]",
+      )
+      ?.focus();
+  }
+  private supportPanel() {
+    const t = texts(this.locale);
+    return html`<section
+      class=${"support" + (this.data.support === "tasks" ? " exploring" : "")}
+    >
+      <div
+        class="support-tabs"
+        role="tablist"
+        aria-label=${t.support}
+        @keydown=${async (e: KeyboardEvent) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key))
+            return;
+          e.preventDefault();
+          this.set({
+            support:
+              e.key === "Home"
+                ? "formula"
+                : e.key === "End"
+                  ? "tasks"
+                  : this.data.support === "formula"
+                    ? "tasks"
+                    : "formula",
+          });
+          await this.updateComplete;
+          this.renderRoot
+            .querySelector<HTMLButtonElement>(
+              ".support-tabs [aria-selected=true]",
+            )
+            ?.focus();
+        }}
+      >
+        ${(["formula", "tasks"] as const).map((support) => html`<button role="tab" aria-selected=${this.data.support === support} tabindex=${this.data.support === support ? 0 : -1} aria-controls="wave-support" class=${this.data.support === support ? "selected" : ""} @click=${() => this.set({ support })}>${support === "formula" ? t.equations : t.tasks}</button>`)}
+      </div>
+      <div
+        id="wave-support"
+        class="support-body"
+        role="tabpanel"
+        aria-label=${this.data.support === "formula" ? t.equations : t.tasks}
+      >
+        ${
+          this.data.support === "formula"
+            ? this.equations()
+            : html`<div class="task-grid">
+                ${[
+                  [t.task1, t.task1Hint, t.task1Action],
+                  [t.task2, t.task2Hint, t.task2Action],
+                  [t.task3, t.task3Hint, t.task3Action],
+                ].map(
+                  ([title, hint, action], index) =>
+                    html`<article class="task">
+                      <h3>${title}</h3>
+                      <p>${hint}</p>
+                      <button @click=${() => this.applyTask(index)}>
+                        ${action}
+                      </button>
+                    </article>`,
+                )}
+              </div>`
+        }
+      </div>
     </section>`;
   }
   private helpDialog() {
@@ -489,6 +635,7 @@ export class WaveExperiment extends LitElement {
       <p>${t.helpIntro}</p>
       <p>${t.helpPulse}</p>
       <p>${t.helpBoundary}</p>
+      <p>${t.helpStanding}</p>
       <p>${t.probeHelp}</p>
       <div class="help-formulas">
         ${math(String.raw`y_{\mathrm{i}}(x,t)=s(t-x/c)`)}${math(String.raw`\lambda=c/f,\qquad T=1/f`)}${math(String.raw`v_y=\frac{\partial y}{\partial t},\qquad a_y=\frac{\partial^2y}{\partial t^2}`)}
@@ -503,10 +650,12 @@ export class WaveExperiment extends LitElement {
     return html`<div class="heading">
         <div class="heading-copy">
           <h1>${t.title}</h1>
-          <p class="intro">${t.assumptions}</p>
+          <p class="intro">
+            ${p.mode === "standing" ? t.prepared : t.assumptions}
+          </p>
         </div>
         <div class="mode-switch" role="group" aria-label=${t.model}>
-          ${(["travel", "reflection"] as const).map((mode) => html`<button class=${p.mode === mode ? "selected" : ""} aria-pressed=${p.mode === mode} @click=${() => this.changeMode(mode)}>${t[mode]}</button>`)}
+          ${(["travel", "reflection", "standing"] as const).map((mode) => html`<button class=${p.mode === mode ? "selected" : ""} aria-pressed=${p.mode === mode} @click=${() => this.changeMode(mode)}>${t[mode]}</button>`)}
         </div>
       </div>
       <div class="lab">
@@ -533,14 +682,17 @@ export class WaveExperiment extends LitElement {
         <section class="panel stage">
           <div class="scene-heading">
             <span>${t.spaceTitle} <span class="mono">y(x,t)</span></span
-            ><small>${t.spaceHint}</small>
+            ><small
+              >${p.mode === "standing" ? `${t.nodes} ${standingSites(p, "node").length} · ${t.antinodes} ${standingSites(p, "antinode").length}` : t.spaceHint}</small
+            >
           </div>
           ${this.layerControls()}
           <div class="scene-wrap">
             ${renderScene({ params: p, time: this.data.time, probe: this.data.probe, layers: this.data.layers, locale: this.locale, width: this.sceneWidth, height: this.sceneHeight, pointerDown: this.beginProbe, pointerMove: this.moveProbe, keyDown: this.probeKeys, emit: () => this.emit() })}
           </div>
           <div class="scene-foot">
-            <span>${t.scale}</span
+            <span
+              >${p.mode === "standing" ? `${t.pointAmplitude} ${format(standingAmplitude(p, s.x), 3)} m · ${t.nodeSpacing} ${format(derived(p).wavelength / 2)} m` : t.scale}</span
             ><label
               ><input
                 type="checkbox"
@@ -588,16 +740,20 @@ export class WaveExperiment extends LitElement {
             aria-label=${t.observation}
             @keydown=${this.observationKeys}
           >
-            ${(["record", "profile"] as const).map((observation) => html`<button role="tab" aria-selected=${this.data.observation === observation} aria-controls="wave-observation" tabindex=${this.data.observation === observation ? 0 : -1} class=${this.data.observation === observation ? "selected" : ""} @click=${() => this.set({ observation })}>${t[observation]}</button>`)}
+            ${(["record", "profile"] as const).map((observation) => html`<button role="tab" aria-selected=${this.data.observation === observation} aria-controls="wave-observation" tabindex=${this.data.observation === observation ? 0 : -1} class=${this.data.observation === observation ? "selected" : ""} @click=${() => this.set({ observation, support: "formula" })}>${t[observation]}</button>`)}
           </div>
-          <div
-            id="wave-observation"
-            role="tabpanel"
-            class="observation-content"
-          >
-            ${this.plotPanel()}
-          </div>
-          ${this.equations()}
+          ${
+            this.data.support === "formula"
+              ? html`<div
+                  id="wave-observation"
+                  role="tabpanel"
+                  class="observation-content"
+                >
+                  ${this.plotPanel()}
+                </div>`
+              : ""
+          }
+          ${this.supportPanel()}
         </aside>
       </div>
       ${this.helpOpen ? this.helpDialog() : ""}`;

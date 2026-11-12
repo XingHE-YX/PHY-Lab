@@ -1,5 +1,56 @@
 import { css } from "lit";
 export const styles = css`
+  .support-tabs {
+    display: flex;
+    gap: 5px;
+    padding: 8px 12px 0;
+  }
+  .support-tabs button {
+    min-height: 30px;
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+  .support-body {
+    padding: 10px 12px;
+  }
+  .support.exploring {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  .support.exploring .support-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+  .task-grid {
+    display: grid;
+    gap: 12px;
+  }
+  .task {
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 12px;
+  }
+  .task h3 {
+    font-size: 13px;
+    font-weight: 550;
+    line-height: 1.6;
+    margin: 0 0 8px;
+  }
+  .task p {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.8;
+    margin: 0 0 10px;
+  }
+  .task button {
+    font-size: 11px;
+  }
+  .source-handle[role="img"] {
+    cursor: default;
+  }
   .boundary-label {
     margin: 0 0 8px;
     font-size: 11px;
@@ -458,7 +509,7 @@ export const styles = css`
   }
   .support {
     border-top: 1px solid var(--border);
-    padding: 12px;
+    padding: 0;
     flex-shrink: 0;
   }
   .equation {
@@ -519,9 +570,6 @@ export const styles = css`
     .plot {
       padding: 10px;
       gap: 9px;
-    }
-    .support {
-      padding: 10px 12px;
     }
     .explanation {
       font-size: 10px;

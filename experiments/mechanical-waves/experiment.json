@@ -5,11 +5,11 @@
   "stateVersion": 1,
   "title": { "zh-CN": "机械波实验台", "en": "Mechanical waves" },
   "description": {
-    "zh-CN": "发出波包，跟踪质点，对比固定端与自由端的反射。",
-    "en": "Send a pulse, track a particle, and compare fixed and free reflections."
+    "zh-CN": "发出波包，跟踪质点，探索反射、叠加与驻波。",
+    "en": "Send a pulse, track a particle, and explore reflection and standing waves."
   },
   "tags": {
-    "zh-CN": ["力学", "机械波", "传播", "反射"],
-    "en": ["Mechanics", "Waves", "Propagation", "Reflection"]
+    "zh-CN": ["力学", "机械波", "反射", "驻波"],
+    "en": ["Mechanics", "Waves", "Reflection", "Standing waves"]
   }
 }
