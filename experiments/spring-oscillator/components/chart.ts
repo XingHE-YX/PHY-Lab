@@ -3,10 +3,10 @@ import {
   sample,
   stateAt,
   type OscillatorParameters as Parameters,
+  type Metric,
 } from "../model/dynamics";
 import { format } from "../model/physics";
-export type Metric =
-  "x" | "v" | "a" | "kinetic" | "potential" | "total" | "dissipated" | "work";
+export type { Metric } from "../model/dynamics";
 const colors: Record<Metric, string> = {
   x: "var(--blue)",
   v: "var(--green)",

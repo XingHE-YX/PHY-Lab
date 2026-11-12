@@ -31,7 +31,10 @@ async function candidateExperiment(broken = false) {
     ),
     manifest = JSON.parse(original) as ExperimentManifest;
   const buildId = "test" + Date.now(),
-    prefix = "/experiments/" + manifest.id + "/0.1.1/" + buildId + "/";
+    parts = manifest.version.split(".").map(Number),
+    version = `${parts[0]}.${parts[1]}.${parts[2] + 1}`,
+    prefix =
+      "/experiments/" + manifest.id + "/" + version + "/" + buildId + "/";
   const path = join(dist, prefix.slice(1));
   await mkdir(path, { recursive: true });
   const resources = [];
@@ -51,7 +54,7 @@ async function candidateExperiment(broken = false) {
   }
   const next: ExperimentManifest = {
     ...manifest,
-    version: "0.1.1",
+    version,
     buildId,
     entry: prefix + "entry.js",
     thumbnail: prefix + "thumbnail.svg",
@@ -62,7 +65,7 @@ async function candidateExperiment(broken = false) {
   catalog.revision = buildId;
   catalog.experiments[0] = {
     ...catalog.experiments[0],
-    version: "0.1.1",
+    version,
     title: next.title,
     thumbnail: next.thumbnail,
     manifest: prefix + "manifest.json",

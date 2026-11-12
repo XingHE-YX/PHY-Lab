@@ -8,6 +8,8 @@ import {
 } from "./physics";
 
 export type PhysicalModel = "ideal" | "damped" | "driven";
+export type Metric =
+  "x" | "v" | "a" | "kinetic" | "potential" | "total" | "dissipated" | "work";
 export type Moment = "right" | "left" | "equilibrium" | "equal";
 export interface OscillatorParameters extends Parameters {
   model: PhysicalModel;

@@ -3,14 +3,7 @@ import type {
   ExperimentContext,
   Locale,
 } from "../../src/infra/platform/contract";
-import {
-  defaults,
-  format,
-  clamp,
-  TAU,
-  phaseAt,
-  timeAtPhase,
-} from "./model/physics";
+import { format, clamp, TAU, phaseAt, timeAtPhase } from "./model/physics";
 import {
   parameters,
   stateAt,
@@ -38,22 +31,12 @@ import {
   type ChallengeIndex,
 } from "./model/exploration";
 import { math, mathStyles } from "./components/math";
-export interface Snapshot {
-  params: Parameters;
-  time: number;
-  speed: number;
-  mode: string;
-  velocity: boolean;
-  acceleration: boolean;
-  phasor?: boolean;
-  previous: Parameters | null;
-  curves: Record<Metric, boolean>;
-  exploration?: {
-    version: 1;
-    completed: boolean[];
-    active: Challenge | null;
-  };
-}
+import {
+  normalizeSnapshot,
+  restoreSnapshot,
+  type Snapshot,
+} from "./model/snapshot";
+export type { Snapshot } from "./model/snapshot";
 export class SpringExperiment extends LitElement {
   static properties = {
     locale: { type: String },
@@ -96,7 +79,7 @@ export class SpringExperiment extends LitElement {
   declare velocity: boolean;
   declare acceleration: boolean;
   declare phasor: boolean;
-  declare mode: string;
+  declare mode: Snapshot["mode"];
   declare previous: Parameters | null;
   declare moment: string;
   declare curves: Record<Metric, boolean>;
@@ -111,15 +94,16 @@ export class SpringExperiment extends LitElement {
   private chartHeight = 210;
   constructor() {
     super();
-    this.completedTasks = [false, false, false];
-    this.activeChallenge = null;
-    this.supportTab = "formula";
+    const saved = normalizeSnapshot(null);
+    this.completedTasks = saved.exploration.completed;
+    this.activeChallenge = saved.exploration.active;
+    this.supportTab = saved.supportTab;
     this.locale = "zh-CN";
-    this.params = parameters(defaults);
-    this.parameterTab = "structure";
-    this.energyView = "split";
+    this.params = saved.params;
+    this.parameterTab = saved.parameterTab;
+    this.energyView = saved.energyView;
     this.helpOpen = false;
-    this.responseView = "amplitude";
+    this.responseView = saved.responseView;
     this.time = 0;
     this.playing = false;
     this.speed = 1;
@@ -131,56 +115,27 @@ export class SpringExperiment extends LitElement {
     this.mode = "motion";
     this.previous = null;
     this.moment = "";
-    this.curves = {
-      x: true,
-      v: true,
-      a: true,
-      kinetic: true,
-      potential: true,
-      total: true,
-      dissipated: true,
-      work: true,
-    };
+    this.curves = saved.curves;
   }
   initialize(context: ExperimentContext) {
     this.context = context;
     this.locale = context.locale;
-    const saved = context.storage.read<Partial<Snapshot>>({});
-    if (saved.exploration?.version === 1) {
-      this.completedTasks = [0, 1, 2].map(
-        (index) => saved.exploration?.completed?.[index] === true,
-      );
-      const active = saved.exploration.active;
-      if (
-        active &&
-        [0, 1, 2].includes(active.index) &&
-        active.baseline &&
-        !this.completedTasks[active.index]
-      )
-        this.activeChallenge = {
-          index: active.index,
-          baseline: parameters(active.baseline),
-        };
-    }
-    this.params = parameters(saved?.params);
-    this.time =
-      typeof saved?.time === "number" && Number.isFinite(saved.time)
-        ? clamp(saved.time, 0, 1e6)
-        : 0;
-    this.speed =
-      typeof saved?.speed === "number" && [0.25, 0.5, 1].includes(saved.speed)
-        ? saved.speed
-        : 1;
-    this.mode = ["motion", "changes", "energy"].includes(saved?.mode ?? "")
-      ? saved.mode!
-      : "motion";
-    this.velocity = saved?.velocity !== false;
-    this.acceleration = saved?.acceleration !== false;
-    this.phasor = saved?.phasor === true;
-    this.previous = saved?.previous ? parameters(saved.previous) : null;
-    if (saved?.curves && typeof saved.curves === "object")
-      for (const key of Object.keys(this.curves) as Metric[])
-        this.curves[key] = saved.curves[key] !== false;
+    const saved = restoreSnapshot(context.storage);
+    this.params = saved.params;
+    this.time = saved.time;
+    this.speed = saved.speed;
+    this.mode = saved.mode;
+    this.velocity = saved.velocity;
+    this.acceleration = saved.acceleration;
+    this.phasor = saved.phasor;
+    this.previous = saved.previous;
+    this.curves = saved.curves;
+    this.parameterTab = saved.parameterTab;
+    this.energyView = saved.energyView;
+    this.responseView = saved.responseView;
+    this.supportTab = saved.supportTab;
+    this.completedTasks = saved.exploration.completed;
+    this.activeChallenge = saved.exploration.active;
   }
   updated(changed: Map<PropertyKey, unknown>) {
     const plot = this.renderRoot.querySelector(".chart-stack");
@@ -286,6 +241,7 @@ export class SpringExperiment extends LitElement {
   }
   snapshot(): Snapshot {
     return {
+      version: 2,
       params: { ...this.params },
       time: this.time,
       speed: this.speed,
@@ -295,6 +251,10 @@ export class SpringExperiment extends LitElement {
       phasor: this.phasor,
       previous: this.previous,
       curves: this.curves,
+      parameterTab: this.parameterTab,
+      energyView: this.energyView,
+      responseView: this.responseView,
+      supportTab: this.supportTab,
       exploration: {
         version: 1,
         completed: [...this.completedTasks],
@@ -502,15 +462,15 @@ export class SpringExperiment extends LitElement {
       keyboard: (event) => this.keyDrag(event),
     });
   }
+  private get observationModes(): Snapshot["mode"][] {
+    return this.params.model === "driven"
+      ? ["motion", "changes", "energy", "resonance"]
+      : ["motion", "changes", "energy"];
+  }
   private tabKeys = async (event: KeyboardEvent) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
-    const modes = [
-      "motion",
-      "changes",
-      "energy",
-      ...(this.params.model === "driven" ? ["resonance"] : []),
-    ];
+    const modes = this.observationModes;
     let index = modes.indexOf(this.mode);
     index =
       event.key === "Home"
@@ -520,6 +480,7 @@ export class SpringExperiment extends LitElement {
           : (index + (event.key === "ArrowRight" ? 1 : modes.length - 1)) %
             modes.length;
     this.mode = modes[index];
+    this.supportTab = "formula";
     this.persist();
     await this.updateComplete;
     this.renderRoot
@@ -1199,6 +1160,7 @@ export class SpringExperiment extends LitElement {
                 : this.supportTab === "formula"
                   ? "tasks"
                   : "formula";
+          this.persist();
           void this.updateComplete.then(() =>
             this.renderRoot
               .querySelector<HTMLButtonElement>(
@@ -1216,7 +1178,10 @@ export class SpringExperiment extends LitElement {
               tabindex=${this.supportTab === tab ? 0 : -1}
               aria-controls="support-content"
               class=${this.supportTab === tab ? "selected" : ""}
-              @click=${() => (this.supportTab = tab)}
+              @click=${() => {
+                this.supportTab = tab;
+                this.persist();
+              }}
             >
               ${tab === "formula" ? (zh ? "公式" : "Equations") : texts(this.locale).tasks}
             </button>`,
@@ -1257,7 +1222,35 @@ export class SpringExperiment extends LitElement {
               >${this.dragging ? t.holding : this.playing ? t.play : t.pause}</span
             >
           </div>
-          ${!ideal ? html`<div class="parameter-tabs" role="group" aria-label=${l.parameterGroup}>${(["structure", "initial", ...(p.model === "driven" ? ["drive" as const] : [])] as const).map((tab) => html`<button class=${this.parameterTab === tab ? "selected" : ""} aria-pressed=${this.parameterTab === tab} @click=${() => (this.parameterTab = tab)}>${l[tab]}</button>`)}</div>` : ""}
+          ${
+            !ideal
+              ? html`<div
+                  class="parameter-tabs"
+                  role="group"
+                  aria-label=${l.parameterGroup}
+                >
+                  ${(
+                    [
+                      "structure",
+                      "initial",
+                      ...(p.model === "driven" ? ["drive" as const] : []),
+                    ] as const
+                  ).map(
+                    (tab) =>
+                      html`<button
+                        class=${this.parameterTab === tab ? "selected" : ""}
+                        aria-pressed=${this.parameterTab === tab}
+                        @click=${() => {
+                          this.parameterTab = tab;
+                          this.persist();
+                        }}
+                      >
+                        ${l[tab]}
+                      </button>`,
+                  )}
+                </div>`
+              : ""
+          }
           <div class="parameter-body">${this.parameterPanel()}</div>
           <div class="parameter-footer">
             <button @click=${() => (this.helpOpen = true)}>${l.help}</button
@@ -1338,12 +1331,7 @@ export class SpringExperiment extends LitElement {
             aria-label=${t.show}
             @keydown=${this.tabKeys}
           >
-            ${[
-              "motion",
-              "changes",
-              "energy",
-              ...(p.model === "driven" ? ["resonance"] : []),
-            ].map(
+            ${this.observationModes.map(
               (mode) =>
                 html`<button
                   role="tab"
