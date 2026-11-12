@@ -73,6 +73,46 @@ test("wave propagation, point readouts and chart markers share one time", async 
   ).toBeFocused();
 });
 
+test("fixed and free boundaries reflect correctly and layers preserve the physical state", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "波的反射", exact: true }).click();
+  await range(page, "跟踪位置 xₚ", 1);
+  await page.getByRole("button", { name: "波峰到右端", exact: true }).click();
+  await expect(page.locator(".readout").first()).toContainText("0.000");
+  await page.getByRole("button", { name: "自由端", exact: true }).click();
+  await page.getByRole("button", { name: "波峰到右端", exact: true }).click();
+  await expect(page.locator(".boundary-ring")).toHaveAttribute(
+    "data-y",
+    "0.44",
+  );
+  await expect(page.locator(".readout").first()).toContainText("0.440");
+  await page.getByRole("tab", { name: "空间剖面", exact: true }).click();
+  await expect(page.locator(".component-values")).toContainText("0.220");
+  const before = await snapshot(page);
+  await page.getByLabel("入射波 →", { exact: true }).check();
+  await page.getByLabel("反射波 ←", { exact: true }).check();
+  await expect(page.locator(".wave-incident")).toBeVisible();
+  await expect(page.locator(".wave-reflected")).toBeVisible();
+  await page.getByLabel("合成波", { exact: true }).uncheck();
+  expect((await snapshot(page)).time).toBe(before.time);
+  expect((await snapshot(page)).params).toEqual(before.params);
+  await expect(page.locator(".tracked-particle")).toHaveAttribute(
+    "data-y",
+    "0.44",
+  );
+  await page.getByLabel("入射波 →", { exact: true }).uncheck();
+  await page.getByLabel("反射波 ←", { exact: true }).uncheck();
+  await expect(page.locator(".view-note").last()).toContainText("图层已隐藏");
+  await page.getByRole("button", { name: "固定端", exact: true }).click();
+  await range(page, "跟踪位置 xₚ", 0.5);
+  await page
+    .getByRole("button", { name: "反射波峰到探针", exact: true })
+    .click();
+  await expect(page.locator(".readout").first()).toContainText("-0.220");
+});
+
 async function layoutViolations(page: Page) {
   return page.locator("phy-experiment-page").evaluate((el) => {
     const root = (el as ExperimentPage).instance!.element.shadowRoot!;
@@ -118,19 +158,25 @@ test("wave controls fit the desktop viewport in both languages and themes", asyn
           await page
             .getByRole("button", { name: /^(切换语言|Switch language)$/ })
             .click();
-        for (const source of [0, 1]) {
-          await page.locator(".parameter-tabs button").nth(0).click();
-          await page.locator(".source-tabs button").nth(source).click();
-          for (const group of [0, 1]) {
-            await page.locator(".parameter-tabs button").nth(group).click();
-            for (const view of [0, 1]) {
-              await page.locator(".observation-tabs button").nth(view).click();
-              await expect
-                .poll(() => layoutViolations(page), {
-                  message: `${size.width} ${theme} ${locale} ${source} ${group} ${view}`,
-                })
-                .toEqual([]);
-              await expect(page.locator(".wave-chart")).toBeVisible();
+        for (const model of [0, 1]) {
+          await page.locator(".mode-switch button").nth(model).click();
+          for (const source of [0, 1]) {
+            await page.locator(".parameter-tabs button").nth(0).click();
+            await page.locator(".source-tabs button").nth(source).click();
+            for (const group of [0, 1]) {
+              await page.locator(".parameter-tabs button").nth(group).click();
+              for (const view of [0, 1]) {
+                await page
+                  .locator(".observation-tabs button")
+                  .nth(view)
+                  .click();
+                await expect
+                  .poll(() => layoutViolations(page), {
+                    message: `${size.width} ${theme} ${locale} ${model} ${source} ${group} ${view}`,
+                  })
+                  .toEqual([]);
+                await expect(page.locator(".wave-chart")).toBeVisible();
+              }
             }
           }
         }

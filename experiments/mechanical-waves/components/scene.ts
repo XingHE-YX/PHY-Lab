@@ -63,12 +63,14 @@ export function renderScene(o: SceneOptions) {
     py = g.y(probe.y);
   const velocityBound = Math.max(
     0.01,
-    p.amplitude *
+    (p.mode === "travel" ? 1 : 2) *
+      p.amplitude *
       (p.source === "pulse"
         ? Math.PI / p.duration
         : 2.5 * Math.PI * p.frequency),
   );
   const arrow = (-probe.v / velocityBound) * Math.min(60, height * 0.15);
+  const arrowSide = o.probe > 0.9 ? -1 : 1;
   return svg`<svg class="wave-scene" viewBox=${`0 0 ${width} ${height}`} role="group" aria-label=${t.spaceTitle}>
     <defs>
       <radialGradient id="wave-bead" cx="30%" cy="25%" r="78%"><stop stop-color="#b4d3ff"/><stop offset=".25" stop-color="#5a98ff"/><stop offset=".65" stop-color="#286eed"/><stop offset="1" stop-color="#103778"/></radialGradient>
@@ -80,6 +82,8 @@ export function renderScene(o: SceneOptions) {
     <text x="12" y="28" class="axis-text">y (m)</text><text x=${g.right} y=${g.bottom + 44} text-anchor="end" class="axis-text">x (m)</text>
     <text x=${g.left + 8} y="28" class="scene-direction">${t.incident}  c = ${format(p.speed)} m/s</text>
     <path class="probe-guide" d=${`M${px} ${g.top - 5}V${g.bottom + 3}`} stroke="var(--blue)" opacity=".5" stroke-dasharray="4 5"/>
+    ${layers.incident ? svg`<path class="wave-incident" d=${path("incident")} stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="8 5" fill="none"/>` : ""}
+    ${layers.reflected && p.mode !== "travel" ? svg`<path class="wave-reflected" d=${path("reflected")} stroke="var(--text)" stroke-width="1.5" stroke-dasharray="2 4" fill="none"/>` : ""}
     ${layers.total ? svg`<path d=${path("y")} stroke="var(--blue)" stroke-width="9" fill="none" opacity=".1" filter="url(#wave-glow)"/><path class="wave-total" d=${path("y")} stroke="var(--blue)" stroke-width="2.3" fill="none"/>` : ""}
     ${Array.from({ length: 49 }, (_, i) => {
       const s = waveAt(p, (p.length * i) / 48, time);
@@ -98,9 +102,9 @@ export function renderScene(o: SceneOptions) {
       <title>${t.emit}</title>
     </g>
     <text x=${g.left} y=${g.bottom + 44} text-anchor="middle" class="axis-text">${t.sourceLabel}</text>
-    <path d=${`M${g.right + 7} ${g.top}V${g.bottom}`} stroke="var(--muted)" stroke-dasharray="3 5"/>
-    <text x=${g.right - 4} y="28" text-anchor="end" class="axis-text">${t.absorber}</text>
-    ${layers.velocity && Math.abs(probe.v) > 1e-7 ? svg`<path class="particle-velocity" d=${`M${px + 18} ${py}v${arrow}`} stroke="var(--green)" stroke-width="2" marker-end="url(#wave-v-arrow)"/><text x=${px + 28} y=${py + arrow / 2} fill="var(--green)" font-size="12">vᵧ</text>` : ""}
+    ${p.mode === "travel" ? svg`<path d=${`M${g.right + 7} ${g.top}V${g.bottom}`} stroke="var(--muted)" stroke-dasharray="3 5"/>` : p.boundary === "fixed" ? svg`<path class="fixed-boundary" d=${`M${g.right} ${g.middle - 27}h7v54h-7z`} fill="var(--subtle)" stroke="var(--muted)"/><path d=${`M${g.right + 7} ${g.middle - 26}l10 -8m-10 20 10 -8m-10 20 10 -8m-10 20 10 -8m-10 20 10 -8`} stroke="var(--muted)"/>` : svg`<path d=${`M${g.right} ${g.top}V${g.bottom}`} stroke="var(--muted)" stroke-width="2"/><circle class="boundary-ring" data-y=${waveAt(p, p.length, time).y} cx=${g.right} cy=${g.y(waveAt(p, p.length, time).y)} r="6" fill="var(--surface)" stroke="var(--text)" stroke-width="2"/>`}
+    <text x=${g.right - 4} y="28" text-anchor="end" class="axis-text">${p.mode === "travel" ? t.absorber : t[p.boundary]}</text>
+    ${layers.velocity && Math.abs(probe.v) > 1e-7 ? svg`<path class="particle-velocity" d=${`M${px + 18 * arrowSide} ${py}v${arrow}`} stroke="var(--green)" stroke-width="2" marker-end="url(#wave-v-arrow)"/><text x=${px + 28 * arrowSide} y=${py + arrow / 2} text-anchor=${arrowSide < 0 ? "end" : "start"} fill="var(--green)" font-size="12">vᵧ</text>` : ""}
     <g class="probe-handle" role="slider" tabindex="0" aria-label=${t.probe} aria-valuemin="0" aria-valuemax=${p.length} aria-valuenow=${Number(format(probe.x, 3))} aria-valuetext=${format(probe.x) + " m. " + t.probeHelp}
       @pointerdown=${o.pointerDown} @pointermove=${o.pointerMove} @keydown=${o.keyDown}>
       <circle cx=${px} cy=${py} r="22" fill="transparent"/>

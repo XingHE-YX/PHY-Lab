@@ -1,4 +1,5 @@
 import { svg } from "lit";
+import type { Snapshot } from "../model/snapshot";
 import {
   temporalSamples,
   spatialSamples,
@@ -56,6 +57,7 @@ export function profileChart(
   probe: number,
   height: number,
   setProbe: (fraction: number) => void,
+  layers: Snapshot["layers"],
 ) {
   const points = spatialSamples(p, time);
   const s = waveAt(p, probe * p.length, time);
@@ -64,7 +66,11 @@ export function profileChart(
       u: s.x,
       values: { y: s.y, incident: s.incident, reflected: s.reflected },
     })),
-    p.mode === "travel" ? ["y"] : ["incident", "reflected", "y"],
+    [
+      ...(layers.incident ? ["incident"] : []),
+      ...(layers.reflected && p.mode !== "travel" ? ["reflected"] : []),
+      ...(layers.total ? ["y"] : []),
+    ] as Metric[],
     0,
     p.length,
     Math.max(0.01, p.amplitude * (p.mode === "travel" ? 1 : 2)) * 1.15,
@@ -125,7 +131,7 @@ function plot(
       const u = start + ((end - start) * i) / 4;
       return svg`<path d=${`M${x(u)} ${top}V${bottom}`} stroke="var(--border)" stroke-dasharray="3 5"/><text x=${x(u)} y=${bottom + 17} text-anchor="middle" class="axis-text">${format(u, 1)}</text>`;
     })}
-    ${metrics.map((metric) => svg`<path d=${points.map((s, i) => `${i ? "L" : "M"}${x(s.u).toFixed(2)},${y(s.values[metric] ?? 0).toFixed(2)}`).join(" ")} fill="none" stroke=${colors[metric]} stroke-width=${metric === "y" ? 2 : 1.5} stroke-dasharray=${metric === "reflected" ? "4 4" : ""}/>`)}
+    ${metrics.map((metric) => svg`<path d=${points.map((s, i) => `${i ? "L" : "M"}${x(s.u).toFixed(2)},${y(s.values[metric] ?? 0).toFixed(2)}`).join(" ")} fill="none" stroke=${colors[metric]} stroke-width=${metric === "y" ? 2 : 1.5} stroke-dasharray=${metric === "reflected" ? "2 4" : metric === "incident" ? "8 5" : ""}/>`)}
     <path d=${`M${x(cursor)} ${top}V${bottom}`} stroke="var(--primary)" stroke-dasharray="3 4"/>
     ${metrics.map((metric) => svg`<circle class="chart-point" data-metric=${metric} data-value=${cursorValues[metric] ?? 0} cx=${x(cursor)} cy=${y(cursorValues[metric] ?? 0)} r="3" fill=${colors[metric]}/>`)}
     <text x=${right} y=${bottom + 30} text-anchor="end" class="axis-text">${xlabel}</text>

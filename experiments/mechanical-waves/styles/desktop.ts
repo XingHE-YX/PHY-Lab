@@ -1,5 +1,36 @@
 import { css } from "lit";
 export const styles = css`
+  .boundary-label {
+    margin: 0 0 8px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .layer-controls {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 15px;
+    padding: 10px 14px;
+    font-size: 11px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .swatch {
+    width: 16px;
+    height: 0;
+    border-top: 1px solid var(--muted);
+  }
+  .swatch.total {
+    border-color: var(--blue);
+    border-width: 2px;
+  }
+  .swatch.incident {
+    border-top-style: dashed;
+  }
+  .swatch.reflected {
+    border-color: var(--text);
+    border-top-style: dotted;
+  }
   :host {
     display: grid;
     height: 100%;
