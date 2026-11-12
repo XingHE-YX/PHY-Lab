@@ -63,7 +63,7 @@ export function responseAt(p: OscillatorParameters, ratio = p.ratio) {
   };
 }
 export function resonanceRatio(p: OscillatorParameters) {
-  return p.zeta > 0 && p.zeta < Math.SQRT1_2
+  return p.force > 0 && p.zeta > 0 && p.zeta < Math.SQRT1_2
     ? Math.sqrt(1 - 2 * p.zeta ** 2)
     : null;
 }
@@ -165,26 +165,34 @@ function compile(p: OscillatorParameters) {
       ? { x: p.A * Math.cos(p.phi), v: -p.A * omega * Math.sin(p.phi) }
       : { x: p.x0, v: p.v0 };
   const initialEnergy = 0.5 * (p.m * initial.v ** 2 + p.k * initial.x ** 2);
-  const resonant = force > 0 && gamma === 0 && f === omega;
+  const undampedDrive = force > 0 && gamma === 0;
   const d = omega * omega - f * f,
     denominator = d * d + 4 * gamma * gamma * f * f;
-  const c = !resonant && force ? ((force / p.m) * d) / denominator : 0;
+  const c = !undampedDrive && force ? ((force / p.m) * d) / denominator : 0;
   const q =
-    !resonant && force ? ((force / p.m) * 2 * gamma * f) / denominator : 0;
+    !undampedDrive && force ? ((force / p.m) * 2 * gamma * f) / denominator : 0;
   const free = homogeneous(omega, gamma, initial.x - c, initial.v - q * f);
   const at = (t: number) => {
     const h = free.at(t),
       cosine = Math.cos(f * t),
       sine = Math.sin(f * t);
+    // The sinc form includes exact resonance and avoids subtracting two huge
+    // almost-equal particular/transient solutions near undamped resonance.
+    const half = ((omega - f) * t) / 2;
+    const sinc = half === 0 ? 1 : Math.sin(half) / half;
+    const middle = (omega + f) / 2;
+    const gain = force / p.m / (omega + f);
     const x =
       h.x +
-      (resonant
-        ? (force / (2 * p.m * omega)) * t * sine
+      (undampedDrive
+        ? gain * t * Math.sin(middle * t) * sinc
         : c * cosine + q * sine);
     const v =
       h.v +
-      (resonant
-        ? (force / (2 * p.m * omega)) * (sine + omega * t * cosine)
+      (undampedDrive
+        ? gain *
+          (middle * t * Math.cos(middle * t) * sinc +
+            Math.sin(middle * t) * Math.cos(half))
         : f * (-c * sine + q * cosine));
     return { x, v, a: (force * cosine - b * v - p.k * x) / p.m };
   };
@@ -278,8 +286,8 @@ export function momentTime(
     const s = motionAt(p, t);
     return (
       p.m * s.v ** 2 + p.k * s.x ** 2 > 1e-14 &&
-      (target !== "right" || (s.x > 0 && s.a < 0)) &&
-      (target !== "left" || (s.x < 0 && s.a > 0))
+      (target !== "right" || s.a < 0) &&
+      (target !== "left" || s.a > 0)
     );
   };
   if (Math.abs(fn(after)) < 1e-10 && valid(after)) return after;

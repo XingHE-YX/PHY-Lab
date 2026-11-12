@@ -1,7 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
 import type { ExperimentPage } from "../../src/pages/experiment-page";
 import type { Snapshot } from "../../experiments/spring-oscillator/experiment";
-import { stateAt } from "../../experiments/spring-oscillator/model/dynamics";
+import {
+  stateAt,
+  responseAt,
+} from "../../experiments/spring-oscillator/model/dynamics";
 
 async function open(page: Page) {
   await page.goto("/#/experiments/spring-oscillator");
@@ -100,71 +103,146 @@ test("critical relaxation reports unavailable events and dragging releases from 
   ).toBeFocused();
 });
 
+test("frequency response has an editable working point and distinguishes steady state", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "受迫振动", exact: true }).click();
+  await page.getByRole("tab", { name: "看运动", exact: true }).focus();
+  await page.keyboard.press("End");
+  await expect(page.getByRole("tab", { name: "看共振" })).toBeFocused();
+  await range(page, "共振图频率比", 0.8);
+  let saved = await snapshot(page);
+  const expected = responseAt(saved.params);
+  await expect(page.locator(".resonance-point")).toHaveAttribute(
+    "data-value",
+    String(expected.amplitude),
+  );
+  await expect(page.locator(".observation-note")).toContainText("仅表示稳态");
+  await page.getByRole("button", { name: "相频", exact: true }).click();
+  await expect
+    .poll(async () =>
+      Number(await page.locator(".resonance-point").getAttribute("data-value")),
+    )
+    .toBeCloseTo((expected.phase! * 180) / Math.PI, 8);
+  const target = await page.locator(".response-chart").evaluate((el) => {
+    const svg = el as SVGSVGElement;
+    const point = new DOMPoint(52 + (1.4 / 3) * (394 - 52), 70).matrixTransform(
+      svg.getScreenCTM()!,
+    );
+    return { x: point.x, y: point.y };
+  });
+  await page.mouse.click(target.x, target.y);
+  saved = await snapshot(page);
+  expect(saved.params.ratio).toBeCloseTo(1.4, 2);
+  expect(saved.time).toBe(0);
+  expect(saved.previous?.ratio).toBe(0.8);
+  await page.getByRole("tab", { name: "看运动", exact: true }).click();
+  await page.getByRole("button", { name: "▷ 播放", exact: true }).click();
+  await expect
+    .poll(async () => (await snapshot(page)).time)
+    .toBeGreaterThan(0.1);
+  await page.getByRole("button", { name: "Ⅱ 暂停", exact: true }).click();
+  const time = (await snapshot(page)).time;
+  await page.getByRole("tab", { name: "看共振", exact: true }).click();
+  expect((await snapshot(page)).time).toBe(time);
+});
+
+test("undamped resonance and zero drive have honest finite displays", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: "受迫振动", exact: true }).click();
+  await range(page, "阻尼比", 0);
+  await page.getByRole("tab", { name: "看共振", exact: true }).click();
+  await range(page, "共振图频率比", 1);
+  await expect(page.locator(".response-values")).toContainText("无有限稳态");
+  await expect(page.locator(".response-values")).toContainText("无确定相位");
+  await expect(page.locator(".observation-note")).toContainText("持续增长");
+  await expect(page.locator(".resonance-point")).toHaveCount(0);
+  await page.getByRole("button", { name: "驱动", exact: true }).click();
+  await range(page, "驱动力幅值", 0);
+  await page.getByRole("button", { name: "相频", exact: true }).click();
+  await expect(page.locator(".response-chart")).not.toContainText("∞");
+  await expect(page.locator(".plot")).not.toContainText(/NaN|Infinity/);
+  await expect(page.locator(".katex-error")).toHaveCount(0);
+});
+
+async function layoutViolations(page: Page) {
+  return page.locator("phy-experiment-page").evaluate((el) => {
+    const root = (el as ExperimentPage).instance!.element.shadowRoot!;
+    const selectors = [
+      ".heading",
+      ".parameter-body",
+      ".stage",
+      ".plot",
+      ".timeline",
+      ".readouts",
+      ".moments",
+      ".support",
+    ];
+    return selectors.flatMap((selector) => {
+      const node = root.querySelector<HTMLElement>(selector)!;
+      const box = node.getBoundingClientRect();
+      return box.top < 0 ||
+        box.bottom > innerHeight + 1 ||
+        node.scrollHeight > node.clientHeight + 1 ||
+        node.scrollWidth > node.clientWidth + 1
+        ? [selector]
+        : [];
+    });
+  });
+}
+
 test("core controls and charts fit desktop viewports in both languages and themes", async ({
   page,
 }, testInfo) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "light" });
   await open(page);
   for (const size of [
     { width: 1280, height: 720 },
     { width: 1440, height: 900 },
   ]) {
     await page.setViewportSize(size);
-    for (const locale of ["zh", "en"]) {
-      for (const model of [0, 1, 2]) {
-        await page.locator(".model-switch button").nth(model).click();
-        for (const mode of [0, 1, 2]) {
-          await page.locator(".tabs button").nth(mode).click();
-          const violations = await page
-            .locator("phy-experiment-page")
-            .evaluate((el) => {
-              const root = (el as ExperimentPage).instance!.element.shadowRoot!;
-              const selectors = [
-                ".parameter-body",
-                ".stage",
-                ".plot",
-                ".timeline",
-                ".readouts",
-                ".moments",
-              ];
-              return selectors.flatMap((selector) => {
-                const node = root.querySelector<HTMLElement>(selector)!;
-                const box = node.getBoundingClientRect();
-                return box.top < 0 ||
-                  box.bottom > innerHeight + 1 ||
-                  node.scrollHeight > node.clientHeight + 1 ||
-                  node.scrollWidth > node.clientWidth + 1
-                  ? [selector]
-                  : [];
-              });
-            });
-          expect(
-            violations,
-            `${size.width}×${size.height} ${locale} model=${model} view=${mode}`,
-          ).toEqual([]);
-          await expect(page.locator(".chart").first()).toBeVisible();
-        }
-      }
-      if (locale === "zh")
+    for (const theme of ["light", "dark"]) {
+      if ((await page.locator("html").getAttribute("data-theme")) !== theme)
         await page
-          .getByRole("button", { name: "切换语言", exact: true })
+          .getByRole("button", { name: /^(切换明暗|Toggle theme)$/ })
           .click();
+      for (const locale of ["zh-CN", "en"]) {
+        if ((await page.locator("html").getAttribute("lang")) !== locale)
+          await page
+            .getByRole("button", { name: /^(切换语言|Switch language)$/ })
+            .click();
+        for (const model of [0, 1, 2]) {
+          await page.locator(".model-switch button").nth(model).click();
+          const tabs = page.locator(".parameter-tabs button");
+          for (let i = 0; i < (await tabs.count()); i++) {
+            await tabs.nth(i).click();
+            await expect.poll(() => layoutViolations(page)).toEqual([]);
+          }
+          for (const mode of model === 2 ? [0, 1, 2, 3] : [0, 1, 2]) {
+            await page.locator(".tabs button").nth(mode).click();
+            const variants = page.locator(".energy-tabs button");
+            const count = Math.max(1, await variants.count());
+            for (let i = 0; i < count; i++) {
+              if (await variants.count()) await variants.nth(i).click();
+              await expect
+                .poll(() => layoutViolations(page), {
+                  message: `${size.width}×${size.height} ${theme} ${locale} model=${model} view=${mode}`,
+                })
+                .toEqual([]);
+              await expect(page.locator(".chart").first()).toBeVisible();
+            }
+          }
+        }
+        await page.screenshot({
+          path: testInfo.outputPath(
+            `spring-${size.width}-${theme}-${locale}.png`,
+          ),
+          animations: "disabled",
+        });
+      }
     }
-    await page
-      .getByRole("button", { name: "Toggle theme", exact: true })
-      .click();
-    await page.evaluate(async () => {
-      for (const animation of document.getAnimations()) animation.finish();
-      await new Promise<void>((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      );
-    });
-    await page.screenshot({
-      path: testInfo.outputPath(`spring-${size.width}.png`),
-      animations: "disabled",
-    });
-    await page
-      .getByRole("button", { name: "Switch language", exact: true })
-      .click();
   }
 });

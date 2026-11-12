@@ -19,10 +19,13 @@ import {
   timeWindow,
   coefficients,
   regime,
+  responseAt,
+  resonanceRatio,
   type OscillatorParameters as Parameters,
   type OscillatorState as PhysicsState,
   type PhysicalModel,
 } from "./model/dynamics";
+import { responseChart, type ResponseView } from "./components/response";
 import { labTexts } from "./locales/dynamics";
 import { chart, type Metric } from "./components/chart";
 import { renderScene } from "./components/scene";
@@ -71,6 +74,7 @@ export class SpringExperiment extends LitElement {
     parameterTab: { state: true },
     energyView: { state: true },
     helpOpen: { state: true },
+    responseView: { state: true },
     completedTasks: { state: true },
     activeChallenge: { state: true },
   };
@@ -78,6 +82,7 @@ export class SpringExperiment extends LitElement {
   declare parameterTab: "structure" | "initial" | "drive";
   declare energyView: "split" | "balance";
   declare helpOpen: boolean;
+  declare responseView: ResponseView;
   declare completedTasks: boolean[];
   declare activeChallenge: Challenge | null;
   declare supportTab: "formula" | "tasks";
@@ -114,6 +119,7 @@ export class SpringExperiment extends LitElement {
     this.parameterTab = "structure";
     this.energyView = "split";
     this.helpOpen = false;
+    this.responseView = "amplitude";
     this.time = 0;
     this.playing = false;
     this.speed = 1;
@@ -499,19 +505,25 @@ export class SpringExperiment extends LitElement {
   private tabKeys = async (event: KeyboardEvent) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
-    const modes = ["motion", "changes", "energy"];
+    const modes = [
+      "motion",
+      "changes",
+      "energy",
+      ...(this.params.model === "driven" ? ["resonance"] : []),
+    ];
     let index = modes.indexOf(this.mode);
     index =
       event.key === "Home"
         ? 0
         : event.key === "End"
-          ? 2
-          : (index + (event.key === "ArrowRight" ? 1 : 2)) % 3;
+          ? modes.length - 1
+          : (index + (event.key === "ArrowRight" ? 1 : modes.length - 1)) %
+            modes.length;
     this.mode = modes[index];
     this.persist();
     await this.updateComplete;
     this.renderRoot
-      .querySelectorAll<HTMLButtonElement>("[role=tab]")
+      .querySelectorAll<HTMLButtonElement>(".tabs [role=tab]")
       [index]?.focus();
   };
   parameter(
@@ -690,7 +702,86 @@ export class SpringExperiment extends LitElement {
         )}
       </div>`;
   }
+  private editFrequency = (ratio: number) => {
+    if (!this.editing) {
+      this.pause();
+      this.previous = { ...this.params };
+      this.editing = true;
+    }
+    this.params = parameters({
+      ...this.params,
+      ratio: Math.round(ratio * 1000) / 1000,
+    });
+    this.time = 0;
+    this.moment = "";
+  };
+  private commitFrequency = () => {
+    this.editing = false;
+    this.persist();
+  };
+  resonancePanel() {
+    const p = this.params,
+      l = labTexts(this.locale),
+      r = responseAt(p),
+      peak = resonanceRatio(p);
+    return html`<div
+        class="energy-tabs"
+        role="group"
+        aria-label=${l.responseType}
+      >
+        ${(["amplitude", "phase"] as const).map(
+          (view) =>
+            html`<button
+              class=${this.responseView === view ? "selected" : ""}
+              aria-pressed=${this.responseView === view}
+              @click=${() => {
+                this.responseView = view;
+                this.persist();
+              }}
+            >
+              ${view === "amplitude" ? l.amplitudeResponse : l.phaseResponse}
+            </button>`,
+        )}
+      </div>
+      <label class="response-frequency"
+        ><span>${l.ratio}<b class="mono">${format(p.ratio, 3)}</b></span
+        ><input
+          type="range"
+          min="0"
+          max="3"
+          step=".001"
+          .value=${String(p.ratio)}
+          aria-label=${l.sweepFrequency}
+          @input=${(e: Event) => this.editFrequency(Number((e.target as HTMLInputElement).value))}
+          @change=${this.commitFrequency}
+      /></label>
+      <div class="chart-stack">
+        ${responseChart(p, this.responseView, this.locale, this.chartHeight, this.editFrequency, this.commitFrequency)}
+      </div>
+      <div class="response-values">
+        <div>
+          <small>${l.steadyAmplitude}</small
+          ><strong
+            >${r.amplitude === null ? l.noSteady : format(r.amplitude, 3) + " m"}</strong
+          >
+        </div>
+        <div>
+          <small>${l.phaseLag}</small
+          ><strong
+            >${r.phase === null ? l.noPhase : format((r.phase * 180) / Math.PI, 1) + "°"}</strong
+          >
+        </div>
+      </div>
+      <p class="response-peak">
+        ${l.peakFrequency}: ${peak === null ? l.noPeak : format(peak, 3)}
+      </p>
+      <p class="observation-note">
+        ${r.amplitude === null ? l.resonanceHint : p.force === 0 ? l.driveZero : p.zeta === 0 ? l.undampedResponse : l.transient}
+      </p>
+      <p class="response-hint">${l.responseHint}</p>`;
+  }
   plotPanel() {
+    if (this.mode === "resonance") return this.resonancePanel();
     const t = texts(this.locale),
       l = labTexts(this.locale),
       p = this.effectiveParameters,
@@ -853,9 +944,13 @@ export class SpringExperiment extends LitElement {
     const p = this.params,
       l = labTexts(this.locale);
     const formula =
-      this.mode === "energy"
-        ? String.raw`E_k+E_p+E_d=E_0+W`
-        : String.raw`m\ddot{x}+b\dot{x}+kx=${p.model === "driven" ? String.raw`F_0\cos(\Omega t)` : "0"}`;
+      this.mode === "resonance"
+        ? this.responseView === "amplitude"
+          ? String.raw`X=\frac{F_0/k}{\sqrt{(1-r^2)^2+(2\zeta r)^2}}`
+          : String.raw`\delta=\operatorname{atan2}(2\zeta r,1-r^2)`
+        : this.mode === "energy"
+          ? String.raw`E_k+E_p+E_d=E_0+W`
+          : String.raw`m\ddot{x}+b\dot{x}+kx=${p.model === "driven" ? String.raw`F_0\cos(\Omega t)` : "0"}`;
     return html`<section class="theory">
       <div class="equation">${math(formula)}</div>
       <p class="explanation">
@@ -953,7 +1048,12 @@ export class SpringExperiment extends LitElement {
       <div class="moment-buttons">
         ${[
           ["right", t.right],
-          ["equilibrium", t.center],
+          [
+            "equilibrium",
+            this.params.model === "driven"
+              ? labTexts(this.locale).crossZero
+              : t.center,
+          ],
           ["left", t.left],
           ["equal", t.equal],
         ].map(
@@ -1238,7 +1338,12 @@ export class SpringExperiment extends LitElement {
             aria-label=${t.show}
             @keydown=${this.tabKeys}
           >
-            ${["motion", "changes", "energy"].map(
+            ${[
+              "motion",
+              "changes",
+              "energy",
+              ...(p.model === "driven" ? ["resonance"] : []),
+            ].map(
               (mode) =>
                 html`<button
                   role="tab"

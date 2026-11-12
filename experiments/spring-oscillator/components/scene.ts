@@ -159,7 +159,7 @@ export function renderScene(options: SceneOptions) {
         <path d=${`M${ox} ${oy + 88}H${x}M${ox} ${oy + 84}v8M${x} ${oy + 84}v8`} stroke="var(--blue)"/>
         <text x=${(ox + x) / 2} y=${oy + 108} text-anchor="middle" fill="var(--blue)" font-family="var(--mono)" font-size="12">x = ${format(s.x, 3)} m</text>
       `
-          : svg`<text x=${ox} y=${oy + 103} text-anchor="middle" fill="var(--muted)" font-size="12">${t.equilibrium}</text>`
+          : svg`<text x=${ox} y=${oy + 103} text-anchor="middle" fill="var(--muted)" font-size="12">${p.model === "driven" ? l.naturalLength : t.equilibrium}</text>`
       }
     </svg>
   `;

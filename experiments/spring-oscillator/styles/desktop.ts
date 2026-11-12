@@ -666,6 +666,37 @@ export const styles = css`
   .task-check {
     color: var(--green);
   }
+  .response-frequency {
+    display: grid;
+    gap: 8px;
+    font-size: 11px;
+  }
+  .response-frequency > span {
+    display: flex;
+    justify-content: space-between;
+  }
+  .response-values {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .response-values small {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .response-values strong {
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .response-peak,
+  .response-hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.6;
+  }
   .help-dialog {
     width: 720px;
     max-width: calc(100vw - 80px);

@@ -128,4 +128,28 @@ describe("damped and driven oscillator", () => {
     expect(resonanceRatio({ ...p, zeta: 0.2 })).toBeCloseTo(Math.sqrt(0.92));
     expect(resonanceRatio({ ...p, zeta: 1 })).toBeNull();
   });
+  test("near-resonant undamped motion converges without cancellation", () => {
+    const p = parameters({ model: "driven", zeta: 0, x0: -0.3, v0: 0.2 });
+    for (const ratio of [1 - 1e-12, 1 + 1e-12])
+      for (const time of [0, 0.1, 1, 50]) {
+        const a = stateAt({ ...p, ratio }, time),
+          b = stateAt(p, time);
+        expect(a.x).toBeCloseTo(b.x, 8);
+        expect(a.v).toBeCloseTo(b.v, 8);
+      }
+  });
+  test("a constant drive can have two positive turning points", () => {
+    const p = parameters({ model: "driven", zeta: 0.15, ratio: 0, x0: 0.05 });
+    const right = momentTime(p, "right")!;
+    const left = momentTime(p, "left", right + 0.01)!;
+    expect(right).toBeGreaterThan(0);
+    expect(left).toBeGreaterThan(right);
+    expect(stateAt(p, right).v).toBeCloseTo(0, 8);
+    expect(stateAt(p, left).v).toBeCloseTo(0, 8);
+    expect(stateAt(p, left).x).toBeGreaterThan(0);
+    expect(stateAt(p, left).a).toBeGreaterThan(0);
+    expect(momentTime(p, "equilibrium")).toBeNull();
+    expect(resonanceRatio({ ...p, force: 0 })).toBeNull();
+    expect(responseAt({ ...p, force: 0 }).amplitude).toBe(0);
+  });
 });

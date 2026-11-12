@@ -28,6 +28,7 @@ const zh = {
   amplitudeResponse: "幅频",
   phaseResponse: "相频",
   responseType: "响应图",
+  sweepFrequency: "共振图频率比",
   steadyAmplitude: "稳态振幅",
   phaseLag: "位移滞后",
   peakFrequency: "振幅峰值频率比",
@@ -37,6 +38,8 @@ const zh = {
   responseHint: "拖动曲线工作点改变驱动频率，实验从初始状态重新开始。",
   transient: "当前运动包含暂态；响应图仅表示稳态。",
   resonanceHint: "无阻尼精确共振时，振幅持续增长，没有有限稳态。",
+  undampedResponse:
+    "无阻尼时自由分量不衰减；响应图表示周期特解，并非完整运动。",
   dampingModel: "水平线性弹簧 · 黏性阻尼 · 无外力驱动",
   drivenModel: "水平线性弹簧 · 黏性阻尼 · 简谐外力",
   phasorOnly: "旋转矢量仅适用于理想简谐模式",
@@ -80,6 +83,8 @@ const zh = {
   selectModel: "选择阻尼或受迫模式，可探索衰减与共振。",
   window: "两个固有周期 · 参考时间窗",
   zeroDrive: "零频率时驱动力恒定",
+  crossZero: "经过 x=0",
+  naturalLength: "弹簧原长 x=0",
   equilibriumForce: "x = 0 时只有弹簧力为零，合力仍可能非零。",
   finiteScene: "比例尺随观察窗标注；数据未截断",
   previous: "上一轮曲线",
@@ -115,6 +120,7 @@ const en: typeof zh = {
   amplitudeResponse: "Amplitude",
   phaseResponse: "Phase",
   responseType: "Response chart",
+  sweepFrequency: "Response frequency ratio",
   steadyAmplitude: "Steady amplitude",
   phaseLag: "Displacement lag",
   peakFrequency: "Peak frequency ratio",
@@ -127,6 +133,8 @@ const en: typeof zh = {
     "Motion includes transients; response charts show steady state only.",
   resonanceHint:
     "Undamped exact resonance grows without a finite steady amplitude.",
+  undampedResponse:
+    "Without damping, free motion persists. The chart shows the periodic particular response, not the full motion.",
   dampingModel: "Linear horizontal spring · Viscous damping · No drive",
   drivenModel: "Linear horizontal spring · Viscous damping · Harmonic force",
   phasorOnly: "Rotating vector applies to ideal harmonic motion only",
@@ -174,6 +182,8 @@ const en: typeof zh = {
   selectModel: "Select Damped or Driven to explore decay and resonance.",
   window: "Two natural periods · Reference window",
   zeroDrive: "Zero frequency gives a constant force",
+  crossZero: "Cross x=0",
+  naturalLength: "Natural length x=0",
   equilibriumForce:
     "At x = 0 only the spring force vanishes; net force may remain.",
   finiteScene: "Scale follows the labeled window; values are not clipped",
