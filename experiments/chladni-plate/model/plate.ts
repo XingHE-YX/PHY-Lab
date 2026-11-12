@@ -24,7 +24,7 @@ export function parameters(value: unknown): Parameters {
   return {
     length: n("length", 0.36, 0.24, 0.5),
     thickness: n("thickness", 0.001, 0.0006, 0.0015),
-    frequency: n("frequency", 300, 20, 3000),
+    frequency: n("frequency", 300, 5, 3000),
     force: n("force", 0.035, 0, 0.15),
     damping: n("damping", 0.012, 0.005, 0.08),
     driveX: n("driveX", 0.72, -0.94, 0.94),

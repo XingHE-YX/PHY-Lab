@@ -144,6 +144,41 @@ export function field(plate: PlateModes, r: Response, size = 65): Field {
   );
   return { size, real, imaginary, amplitude, peak };
 }
+export function responseCurve(
+  plate: PlateModes,
+  p: Parameters,
+  min: number,
+  max: number,
+) {
+  const frequencies = plate.modes.map((m) => frequency(m, p)),
+    mass = (MATERIAL.density * p.thickness * p.length ** 2) / 4;
+  const coupling = plate.modes.map(
+    (m) => (p.force * modeAt(plate, m, p.driveX, p.driveY).value) / mass,
+  );
+  const samples = Array.from(
+    { length: 181 },
+    (_, i) => min + ((max - min) * i) / 180,
+  );
+  frequencies.forEach((f) =>
+    [-2, -1, -0.5, 0, 0.5, 1, 2].forEach((offset) =>
+      samples.push(f * (1 + offset * p.damping)),
+    ),
+  );
+  samples.push(p.frequency);
+  return [...new Set(samples.filter((f) => f >= min && f <= max))]
+    .sort((a, b) => a - b)
+    .map((f) => {
+      const w = 2 * Math.PI * f;
+      let squared = 0;
+      frequencies.forEach((f0, i) => {
+        const natural = 2 * Math.PI * f0,
+          a = natural ** 2 - w * w,
+          b = 2 * p.damping * natural * w;
+        squared += coupling[i] ** 2 / (a * a + b * b);
+      });
+      return { frequency: f, amplitude: Math.sqrt(squared) / 2 };
+    });
+}
 export function sample(
   grid: Field,
   values: Float32Array,

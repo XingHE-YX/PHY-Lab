@@ -1,4 +1,4 @@
-import table from "./modes.json";
+import table from "./modes.json" with { type: "json" };
 import type { PlateModes } from "./plate";
 // Geometry and Poisson ratio are fixed; dimensional changes scale these modes.
 // The expensive eigensolve is reproducible offline, never part of animation.
