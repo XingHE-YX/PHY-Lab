@@ -74,6 +74,8 @@ just catalog
 
 ## 文档
 
+- [实验制作顺序](docs/experiment-roadmap.md)
+- [实验制作规范](docs/experiment-guidelines.md)：后续实验的技术、语言、视觉、单屏交互与验收基线。
 - [实施计划](docs/plan.md)
 - [设计规范](DESIGN.md)
 - [贡献指南](CONTRIBUTING.md)
