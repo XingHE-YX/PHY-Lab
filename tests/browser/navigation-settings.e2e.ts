@@ -338,6 +338,14 @@ test("every retained settings page refreshes when reopened after background chan
   await expect(current).toContainText("Mechanical waves");
   await expect(current).toContainText("XingHE-YX");
   await expect(current).not.toContainText("yuanzui-cf");
+  await page.evaluate(() => {
+    location.hash = "#/experiments/spring-oscillator";
+  });
+  await expect(current).toContainText("Spring oscillator");
+  await expect(current).toContainText("yuanzui-cf");
+  await expect(
+    dialog.getByRole("tab", { name: "About", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("Escape");
   await page.goto("/");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
