@@ -1,8 +1,16 @@
+import type { DialogHandle } from "../../src/infra/platform/protocols/v2/api/dialog";
+import type {
+  TabsElement,
+  RadioGroupElement,
+  SliderElement,
+  SelectElement,
+  CheckboxElement,
+} from "../../src/infra/platform/protocols/v2/components";
 import { LitElement, html, render } from "lit";
 import type {
   ExperimentContext,
   Locale,
-} from "../../src/infra/platform/contract";
+} from "../../src/infra/platform/protocols/v2";
 import { format, clamp, TAU, phaseAt, timeAtPhase } from "./model/physics";
 import {
   parameters,
@@ -30,7 +38,6 @@ import {
   type Challenge,
   type ChallengeIndex,
 } from "./model/exploration";
-import { math, mathStyles } from "./components/math";
 import {
   normalizeSnapshot,
   restoreSnapshot,
@@ -61,7 +68,7 @@ export class SpringExperiment extends LitElement {
     completedTasks: { state: true },
     activeChallenge: { state: true },
   };
-  static styles = [mathStyles, styles];
+  static styles = styles;
   declare parameterTab: "structure" | "initial" | "drive";
   declare energyView: "split" | "balance";
   declare helpOpen: boolean;
@@ -84,6 +91,8 @@ export class SpringExperiment extends LitElement {
   declare moment: string;
   declare curves: Record<Metric, boolean>;
   context!: ExperimentContext;
+  private helpHandle?: DialogHandle;
+  private readonly helpContent = document.createElement("div");
   private toolbarControls?: HTMLDivElement;
   private frame = 0;
   private last = 0;
@@ -182,10 +191,7 @@ export class SpringExperiment extends LitElement {
       );
       this.pause();
     }
-    if (changed.has("helpOpen") && this.helpOpen)
-      (
-        this.renderRoot.querySelector(".help-dialog") as HTMLDialogElement
-      )?.showModal();
+    if (changed.has("helpOpen") || changed.has("locale")) this.syncHelp();
     if (!this.context?.toolbar) return;
     if (!this.toolbarControls) {
       this.toolbarControls = document.createElement("div");
@@ -210,20 +216,20 @@ export class SpringExperiment extends LitElement {
         >${this.playing ? "Ⅱ" : "▷"}
         ${this.playing ? t.pause : t.play}</phy-button
       ><phy-button @click=${() => this.restart()}>↺ ${t.reset}</phy-button>
-      <select
-        aria-label=${t.speed}
+      <phy-select
+        label=${t.speed}
         .value=${String(this.speed)}
-        style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:7px;font-size:12px"
+        .options=${[
+          { value: "1", label: "1×" },
+          { value: "0.5", label: "0.5×" },
+          { value: "0.25", label: "0.25×" },
+        ]}
         @change=${(event: Event) => {
-          this.speed = Number((event.target as HTMLSelectElement).value);
+          this.speed = Number((event.target as SelectElement).value);
           this.last = 0;
           this.persist();
         }}
-      >
-        <option value="1">1×</option>
-        <option value="0.5">0.5×</option>
-        <option value="0.25">0.25×</option>
-      </select>`;
+      ></phy-select>`;
   }
   get effectiveParameters(): Parameters {
     return this.dragging
@@ -467,26 +473,6 @@ export class SpringExperiment extends LitElement {
       ? ["motion", "changes", "energy", "resonance"]
       : ["motion", "changes", "energy"];
   }
-  private tabKeys = async (event: KeyboardEvent) => {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-    event.preventDefault();
-    const modes = this.observationModes;
-    let index = modes.indexOf(this.mode);
-    index =
-      event.key === "Home"
-        ? 0
-        : event.key === "End"
-          ? modes.length - 1
-          : (index + (event.key === "ArrowRight" ? 1 : modes.length - 1)) %
-            modes.length;
-    this.mode = modes[index];
-    this.supportTab = "formula";
-    this.persist();
-    await this.updateComplete;
-    this.renderRoot
-      .querySelectorAll<HTMLButtonElement>(".tabs [role=tab]")
-      [index]?.focus();
-  };
   parameter(
     name: Exclude<keyof Parameters, "model">,
     label: string,
@@ -505,14 +491,13 @@ export class SpringExperiment extends LitElement {
         ><span class="val"
           >${format(this.params[name], name === "k" ? 0 : 2)} ${unit}</span
         ></label
-      ><input
+      ><phy-slider
         id=${name}
-        aria-label=${label}
-        type="range"
+        label=${label}
         min=${min}
         max=${max}
         step=${step}
-        .value=${String(this.params[name])}
+        .value=${this.params[name]}
         @input=${(e: Event) => {
           if (!this.editing) {
             this.pause();
@@ -521,7 +506,7 @@ export class SpringExperiment extends LitElement {
           }
           this.params = parameters({
             ...this.params,
-            [name]: Number((e.target as HTMLInputElement).value),
+            [name]: Number((e.target as SliderElement).value),
           });
           this.time = 0;
           this.moment = "";
@@ -530,7 +515,7 @@ export class SpringExperiment extends LitElement {
           this.editing = false;
           this.persist();
         }}
-      />
+      ></phy-slider>
       <div class="limits mono">
         <span>${min} ${unit}</span
         ><span>${name === "phi" ? "2π" : max} ${unit}</span>
@@ -685,37 +670,33 @@ export class SpringExperiment extends LitElement {
       l = labTexts(this.locale),
       r = responseAt(p),
       peak = resonanceRatio(p);
-    return html`<div
+    return html`<phy-radio-group
         class="energy-tabs"
-        role="group"
-        aria-label=${l.responseType}
-      >
-        ${(["amplitude", "phase"] as const).map(
-          (view) =>
-            html`<button
-              class=${this.responseView === view ? "selected" : ""}
-              aria-pressed=${this.responseView === view}
-              @click=${() => {
-                this.responseView = view;
-                this.persist();
-              }}
-            >
-              ${view === "amplitude" ? l.amplitudeResponse : l.phaseResponse}
-            </button>`,
-        )}
-      </div>
+        variant="segmented"
+        label=${l.responseType}
+        .value=${this.responseView}
+        .options=${[
+          { value: "amplitude", label: l.amplitudeResponse },
+          { value: "phase", label: l.phaseResponse },
+        ]}
+        @change=${(event: Event) => {
+          this.responseView = (event.currentTarget as RadioGroupElement)
+            .value as ResponseView;
+          this.persist();
+        }}
+      ></phy-radio-group>
       <label class="response-frequency"
         ><span>${l.ratio}<b class="mono">${format(p.ratio, 3)}</b></span
-        ><input
-          type="range"
+        ><phy-slider
           min="0"
           max="3"
           step=".001"
-          .value=${String(p.ratio)}
-          aria-label=${l.sweepFrequency}
-          @input=${(e: Event) => this.editFrequency(Number((e.target as HTMLInputElement).value))}
+          .value=${p.ratio}
+          label=${l.sweepFrequency}
+          @input=${(e: Event) => this.editFrequency(Number((e.target as SliderElement).value))}
           @change=${this.commitFrequency}
-      /></label>
+        ></phy-slider
+      ></label>
       <div class="chart-stack">
         ${responseChart(p, this.responseView, this.locale, this.chartHeight, this.editFrequency, this.commitFrequency)}
       </div>
@@ -784,18 +765,16 @@ export class SpringExperiment extends LitElement {
             ? html`<div class="toggles">
                 ${keys.map(
                   (key) =>
-                    html`<label
-                      ><input
-                        type="checkbox"
-                        .checked=${this.curves[key]}
-                        @change=${(e: Event) => {
-                          this.curves = {
-                            ...this.curves,
-                            [key]: (e.target as HTMLInputElement).checked,
-                          };
-                          this.persist();
-                        }}
-                      />${labels[key]}</label
+                    html`<phy-checkbox
+                      .checked=${this.curves[key]}
+                      @change=${(e: Event) => {
+                        this.curves = {
+                          ...this.curves,
+                          [key]: (e.target as CheckboxElement).checked,
+                        };
+                        this.persist();
+                      }}
+                      >${labels[key]}</phy-checkbox
                     >`,
                 )}
               </div>`
@@ -804,21 +783,21 @@ export class SpringExperiment extends LitElement {
       </div>
       ${
         this.mode === "energy" && p.model !== "ideal"
-          ? html`<div class="energy-tabs" role="group" aria-label=${l.balance}>
-              ${(["split", "balance"] as const).map(
-                (view) =>
-                  html`<button
-                    class=${this.energyView === view ? "selected" : ""}
-                    aria-pressed=${this.energyView === view}
-                    @click=${() => {
-                      this.energyView = view;
-                      this.persist();
-                    }}
-                  >
-                    ${view === "split" ? t.energy : l.balance}
-                  </button>`,
-              )}
-            </div>`
+          ? html`<phy-radio-group
+              class="energy-tabs"
+              variant="segmented"
+              label=${l.balance}
+              .value=${this.energyView}
+              .options=${[
+                { value: "split", label: t.energy },
+                { value: "balance", label: l.balance },
+              ]}
+              @change=${(event: Event) => {
+                this.energyView = (event.currentTarget as RadioGroupElement)
+                  .value as typeof this.energyView;
+                this.persist();
+              }}
+            ></phy-radio-group>`
           : ""
       }
       <div class=${"chart-stack " + this.mode}>
@@ -913,40 +892,64 @@ export class SpringExperiment extends LitElement {
           ? String.raw`E_k+E_p+E_d=E_0+W`
           : String.raw`m\ddot{x}+b\dot{x}+kx=${p.model === "driven" ? String.raw`F_0\cos(\Omega t)` : "0"}`;
     return html`<section class="theory">
-      <div class="equation">${math(formula)}</div>
+      <div class="equation"><phy-math .source=${formula}></phy-math></div>
       <p class="explanation">
         ${this.mode === "energy" ? l.energyExplain : p.model === "driven" ? l.drivenExplain : l.dampingExplain}
       </p>
     </section>`;
   }
-  helpDialog() {
+  private syncHelp() {
+    if (!this.helpOpen) {
+      this.helpHandle?.close();
+      return;
+    }
     const l = labTexts(this.locale);
-    return html`<dialog
-      class="help-dialog"
-      @close=${() => {
-        this.helpOpen = false;
-        this.renderRoot
-          .querySelector<HTMLButtonElement>(".parameter-footer button")
-          ?.focus();
-      }}
-    >
-      <div class="dialog-heading">
-        <h2>${l.help}</h2>
-        <button
-          aria-label=${l.close}
-          @click=${() => (this.renderRoot.querySelector(".help-dialog") as HTMLDialogElement).close()}
-        >
-          ×
-        </button>
-      </div>
-      <p>${l.helpIntro}</p>
-      <p>${l.helpDamping}</p>
-      <p>${l.helpDriven}</p>
-      <p>${l.phasorOnly}</p>
-      <div class="derivation-steps">
-        ${[String.raw`m\ddot{x}+b\dot{x}+kx=F_0\cos(\Omega t)`, String.raw`\omega_0=\sqrt{k/m},\quad \zeta=\frac{b}{2\sqrt{mk}}`, String.raw`T_0=2\pi\sqrt{m/k}`, String.raw`X=\frac{F_0/k}{\sqrt{(1-r^2)^2+(2\zeta r)^2}},\quad r=\Omega/\omega_0`].map((source) => html`<div>${math(source)}</div>`)}
-      </div>
-    </dialog>`;
+    const root =
+      this.helpContent.shadowRoot ??
+      this.helpContent.attachShadow({ mode: "open" });
+    render(
+      html`<style>
+          :host {
+            color: var(--muted);
+          }
+          p {
+            margin: 0 0 16px;
+          }
+          .derivation-steps {
+            display: grid;
+            gap: 20px;
+            margin-top: 24px;
+            font-size: 15px;
+          }
+        </style>
+        <p>${l.helpIntro}</p>
+        <p>${l.helpDamping}</p>
+        <p>${l.helpDriven}</p>
+        <p>${l.phasorOnly}</p>
+        <div class="derivation-steps">
+          ${[String.raw`m\ddot{x}+b\dot{x}+kx=F_0\cos(\Omega t)`, String.raw`\omega_0=\sqrt{k/m},\quad \zeta=\frac{b}{2\sqrt{mk}}`, String.raw`T_0=2\pi\sqrt{m/k}`, String.raw`X=\frac{F_0/k}{\sqrt{(1-r^2)^2+(2\zeta r)^2}},\quad r=\Omega/\omega_0`].map((source) => html`<div><phy-math .source=${source}></phy-math></div>`)}
+        </div> `,
+      root,
+    );
+    if (this.helpHandle) this.helpHandle.update({ title: l.help });
+    else {
+      const handle = this.context.dialog.open({
+        title: l.help,
+        content: this.helpContent,
+        width: "md",
+        returnFocus:
+          this.renderRoot.querySelector<HTMLElement>(
+            ".parameter-footer button",
+          ) ?? undefined,
+      });
+      this.helpHandle = handle;
+      void handle.closed.then(() => {
+        if (this.helpHandle === handle) {
+          this.helpHandle = undefined;
+          this.helpOpen = false;
+        }
+      });
+    }
   }
   equations() {
     const t = texts(this.locale),
@@ -972,9 +975,9 @@ export class SpringExperiment extends LitElement {
     return html`<section class="theory">
       <div class="formula-main">
         <div class="equation">
-          ${formulas.map(([source, color]) => html`<span style=${"color:" + color}>${math(source)}</span>`)}
+          ${formulas.map(([source, color]) => html`<span style=${"color:" + color}><phy-math .source=${source}></phy-math></span>`)}
         </div>
-        ${this.mode === "energy" ? html`<div class="conservation">${math(String.raw`E = E_{\mathrm{k}} + E_{\mathrm{p}} = \frac{1}{2}kA^2`)}</div>` : ""}
+        ${this.mode === "energy" ? html`<div class="conservation"><phy-math .source=${String.raw`E = E_{\mathrm{k}} + E_{\mathrm{p}} = \frac{1}{2}kA^2`}></phy-math></div>` : ""}
         <p class="explanation">
           ${this.mode === "motion" ? t.positionExplain : this.mode === "changes" ? t.velocityExplain : t.energyExplain}
         </p>
@@ -1030,24 +1033,20 @@ export class SpringExperiment extends LitElement {
       ${hint ? html`<p class="moment-hint" title=${hint}>${hint}</p>` : ""}
       <div class="toggles">
         <div class="toggle-group">
-          <label
-            ><input
-              type="checkbox"
-              .checked=${this.velocity}
-              @change=${(e: Event) => {
-                this.velocity = (e.target as HTMLInputElement).checked;
-                this.persist();
-              }}
-            />${t.velocity}</label
-          ><label
-            ><input
-              type="checkbox"
-              .checked=${this.acceleration}
-              @change=${(e: Event) => {
-                this.acceleration = (e.target as HTMLInputElement).checked;
-                this.persist();
-              }}
-            />${t.acceleration}</label
+          <phy-checkbox
+            .checked=${this.velocity}
+            @change=${(e: Event) => {
+              this.velocity = (e.target as CheckboxElement).checked;
+              this.persist();
+            }}
+            >${t.velocity}</phy-checkbox
+          ><phy-checkbox
+            .checked=${this.acceleration}
+            @change=${(e: Event) => {
+              this.acceleration = (e.target as CheckboxElement).checked;
+              this.persist();
+            }}
+            >${t.acceleration}</phy-checkbox
           >
         </div>
       </div>
@@ -1143,58 +1142,25 @@ export class SpringExperiment extends LitElement {
   }
   supportPanel() {
     const zh = this.locale === "zh-CN";
-    return html`<section class="panel support">
-      <div
-        class="support-tabs"
-        role="tablist"
-        aria-label=${zh ? "公式与探索" : "Equations and exploration"}
-        @keydown=${(event: KeyboardEvent) => {
-          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key))
-            return;
-          event.preventDefault();
-          this.supportTab =
-            event.key === "Home"
-              ? "formula"
-              : event.key === "End"
-                ? "tasks"
-                : this.supportTab === "formula"
-                  ? "tasks"
-                  : "formula";
-          this.persist();
-          void this.updateComplete.then(() =>
-            this.renderRoot
-              .querySelector<HTMLButtonElement>(
-                ".support-tabs [aria-selected=true]",
-              )
-              ?.focus(),
-          );
-        }}
-      >
-        ${(["formula", "tasks"] as const).map(
-          (tab) =>
-            html`<button
-              role="tab"
-              aria-selected=${this.supportTab === tab}
-              tabindex=${this.supportTab === tab ? 0 : -1}
-              aria-controls="support-content"
-              class=${this.supportTab === tab ? "selected" : ""}
-              @click=${() => {
-                this.supportTab = tab;
-                this.persist();
-              }}
-            >
-              ${tab === "formula" ? (zh ? "公式" : "Equations") : texts(this.locale).tasks}
-            </button>`,
-        )}
-      </div>
-      <div
-        id="support-content"
-        role="tabpanel"
-        aria-label=${this.supportTab === "formula" ? (zh ? "公式" : "Equations") : texts(this.locale).tasks}
-      >
+    return html`<phy-tabs
+      class="panel support support-tabs"
+      label=${zh ? "公式与探索" : "Equations and exploration"}
+      .value=${this.supportTab}
+      .items=${[
+        { value: "formula", label: zh ? "公式" : "Equations" },
+        { value: "tasks", label: texts(this.locale).tasks },
+      ]}
+      @change=${(event: Event) => {
+        if (event.target !== event.currentTarget) return;
+        this.supportTab = (event.currentTarget as TabsElement)
+          .value as typeof this.supportTab;
+        this.persist();
+      }}
+    >
+      <div id="support-content" slot=${this.supportTab}>
         ${this.supportTab === "formula" ? this.equations() : this.params.model === "ideal" ? this.tasks() : html`<p class="explore-copy">${this.params.model === "damped" ? labTexts(this.locale).dampingTasks : labTexts(this.locale).drivenTasks}</p>`}
       </div>
-    </section>`;
+    </phy-tabs>`;
   }
   render() {
     const t = texts(this.locale),
@@ -1210,12 +1176,17 @@ export class SpringExperiment extends LitElement {
             ${ideal ? t.model : p.model === "damped" ? l.dampingModel : l.drivenModel}
           </p>
         </div>
-        <div class="model-switch" role="group" aria-label=${l.physicalModel}>
-          ${(["ideal", "damped", "driven"] as const).map((model) => html`<button aria-pressed=${p.model === model} class=${p.model === model ? "selected" : ""} @click=${() => this.changeModel(model)}>${l[model]}</button>`)}
-        </div>
+        <phy-radio-group
+          class="model-switch"
+          variant="segmented"
+          label=${l.physicalModel}
+          .value=${p.model}
+          .options=${(["ideal", "damped", "driven"] as const).map((value) => ({ value, label: l[value] }))}
+          @change=${(event: Event) => this.changeModel((event.currentTarget as RadioGroupElement).value as PhysicalModel)}
+        ></phy-radio-group>
       </div>
       <div class="lab-grid bench">
-        <aside class="panel parameters">
+        <phy-box role="complementary" class="panel parameters">
           <div class="panel-heading">
             ${t.parameters}<span
               class=${"status " + (this.playing ? "running" : "")}
@@ -1223,57 +1194,44 @@ export class SpringExperiment extends LitElement {
             >
           </div>
           ${
-            !ideal
-              ? html`<div
+            ideal
+              ? html`<div class="parameter-body">${this.parameterPanel()}</div>`
+              : html` <phy-tabs
                   class="parameter-tabs"
-                  role="group"
-                  aria-label=${l.parameterGroup}
+                  variant="segmented"
+                  label=${l.parameterGroup}
+                  .value=${this.parameterTab}
+                  .items=${(["structure", "initial", ...(p.model === "driven" ? ["drive" as const] : [])] as const).map((value) => ({ value, label: l[value] }))}
+                  @change=${(event: Event) => {
+                    if (event.target !== event.currentTarget) return;
+                    this.parameterTab = (event.currentTarget as TabsElement)
+                      .value as typeof this.parameterTab;
+                    this.persist();
+                  }}
                 >
-                  ${(
-                    [
-                      "structure",
-                      "initial",
-                      ...(p.model === "driven" ? ["drive" as const] : []),
-                    ] as const
-                  ).map(
-                    (tab) =>
-                      html`<button
-                        class=${this.parameterTab === tab ? "selected" : ""}
-                        aria-pressed=${this.parameterTab === tab}
-                        @click=${() => {
-                          this.parameterTab = tab;
-                          this.persist();
-                        }}
-                      >
-                        ${l[tab]}
-                      </button>`,
-                  )}
-                </div>`
-              : ""
+                  <div class="parameter-body" slot=${this.parameterTab}>
+                    ${this.parameterPanel()}
+                  </div>
+                </phy-tabs>`
           }
-          <div class="parameter-body">${this.parameterPanel()}</div>
           <div class="parameter-footer">
             <button @click=${() => (this.helpOpen = true)}>${l.help}</button
             ><small>${ideal ? t.conserved : l[regime(p)]}</small>
           </div>
-        </aside>
-        <section class="panel stage">
+        </phy-box>
+        <phy-box class="panel stage">
           <div class="scene-header">
-            <label
+            <phy-switch
               class="phasor-toggle"
               title=${ideal ? t.projection : l.phasorOnly}
-              ><input
-                type="checkbox"
-                role="switch"
-                aria-controls="phasor-layer"
-                ?disabled=${!ideal}
-                .checked=${ideal && this.phasor}
-                @change=${(event: Event) => {
-                  this.phasor = (event.target as HTMLInputElement).checked;
-                  this.phaseDragging = false;
-                  this.persist();
-                }}
-              /><span>${t.phasor}</span></label
+              ?disabled=${!ideal}
+              .checked=${ideal && this.phasor}
+              @change=${(event: Event) => {
+                this.phasor = (event.target as CheckboxElement).checked;
+                this.phaseDragging = false;
+                this.persist();
+              }}
+              ><span>${t.phasor}</span></phy-switch
             >
             <span class="mono phase-readout"
               >${ideal ? `θ = ${format((phaseAt(p, this.dragging ? 0 : this.time) / TAU) * 360, 1)}°` : `${l.displacementRange} ±${format(this.sceneMetrics.extent)} m`}</span
@@ -1307,60 +1265,48 @@ export class SpringExperiment extends LitElement {
           ${this.context.toolbar ? "" : this.playbackButtons()}
           <div class="timeline">
             <span>${format(start, 1)}s</span
-            ><input
-              type="range"
+            ><phy-slider
               min=${start}
               max=${end}
               step=".001"
-              .value=${String(this.time)}
-              aria-label=${t.timeline}
-              @input=${(e: Event) => this.seek(Number((e.target as HTMLInputElement).value))}
-            /><span>${format(end, 1)}s</span
+              .value=${this.time}
+              label=${t.timeline}
+              @input=${(e: Event) => this.seek(Number((e.target as SliderElement).value))}
+            ></phy-slider
+            ><span>${format(end, 1)}s</span
             ><span class="time-label" aria-label=${t.time}
               >t = ${format(this.time)} s</span
             >
           </div>
           ${this.moments()}
-        </section>
-        <aside
+        </phy-box>
+        <phy-box
+          role="complementary"
           class=${"panel observation" + (this.supportTab === "tasks" ? " exploring" : "")}
         >
-          <div
-            class="tabs"
-            role="tablist"
-            aria-label=${t.show}
-            @keydown=${this.tabKeys}
+          <phy-tabs
+            class="observation-tabs"
+            label=${t.show}
+            .value=${this.mode}
+            .items=${this.observationModes.map((value) => ({ value, label: value === "motion" ? t.motion : value === "changes" ? t.changes : value === "energy" ? t.energy : l.resonance }))}
+            @change=${(event: Event) => {
+              if (event.target !== event.currentTarget) return;
+              this.mode = (event.currentTarget as TabsElement)
+                .value as typeof this.mode;
+              this.supportTab = "formula";
+              this.persist();
+            }}
           >
-            ${this.observationModes.map(
-              (mode) =>
-                html`<button
-                  role="tab"
-                  tabindex=${this.mode === mode ? 0 : -1}
-                  aria-controls="observations"
-                  aria-selected=${this.mode === mode}
-                  class=${this.mode === mode ? "active" : ""}
-                  @click=${() => {
-                    this.mode = mode;
-                    this.supportTab = "formula";
-                    this.persist();
-                  }}
-                >
-                  ${mode === "motion" ? t.motion : mode === "changes" ? t.changes : mode === "energy" ? t.energy : l.resonance}
-                </button>`,
-            )}
-          </div>
-          <div
-            class="plot"
-            id="observations"
-            role="tabpanel"
-            aria-label=${this.mode === "motion" ? t.motion : this.mode === "changes" ? t.changes : this.mode === "energy" ? t.energy : l.resonance}
-            ?hidden=${this.supportTab === "tasks"}
-          >
-            ${this.plotPanel()}
-          </div>
+            <div
+              class="plot"
+              slot=${this.mode}
+              ?hidden=${this.supportTab === "tasks"}
+            >
+              ${this.plotPanel()}
+            </div>
+          </phy-tabs>
           ${this.supportPanel()}
-        </aside>
-      </div>
-      ${this.helpOpen ? this.helpDialog() : ""}`;
+        </phy-box>
+      </div> `;
   }
 }

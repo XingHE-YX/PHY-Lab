@@ -1,4 +1,4 @@
-import type { ExperimentContext } from "../../../src/infra/platform/contract";
+import type { ExperimentStorage } from "../../../src/infra/platform/protocols/v2/api/storage";
 import { parameters, type OscillatorParameters, type Metric } from "./dynamics";
 import { clamp, parameters as idealParameters } from "./physics";
 import type { Challenge, ChallengeIndex } from "./exploration";
@@ -101,9 +101,7 @@ export function normalizeSnapshot(value: unknown): Snapshot {
   };
 }
 
-export function restoreSnapshot(
-  storage: ExperimentContext["storage"],
-): Snapshot {
+export function restoreSnapshot(storage: ExperimentStorage): Snapshot {
   const current = record(storage.read<unknown>(null));
   const saved =
     current?.version === 2 && record(current.params)

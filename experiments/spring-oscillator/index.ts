@@ -1,7 +1,7 @@
 import type {
   ExperimentContext,
   ExperimentInstance,
-} from "../../src/infra/platform/contract";
+} from "../../src/infra/platform/protocols/v2";
 import { SpringExperiment } from "./experiment";
 export async function mount(
   context: ExperimentContext,

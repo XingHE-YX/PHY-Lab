@@ -104,13 +104,6 @@ export const styles = css`
     gap: 8px;
     min-height: 0;
   }
-  .panel {
-    min-height: 0;
-    min-width: 0;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-  }
   .parameters,
   .stage,
   .observation {
@@ -138,13 +131,6 @@ export const styles = css`
     display: flex;
     gap: 5px;
   }
-  .parameter-tabs {
-    padding: 10px 12px 0;
-  }
-  .parameter-tabs button {
-    flex: 1;
-    padding: 5px;
-  }
   .parameter-body {
     padding: 16px 14px;
     flex: 1;
@@ -164,13 +150,6 @@ export const styles = css`
   .val {
     font-size: 11px;
     white-space: nowrap;
-  }
-  input[type="range"] {
-    accent-color: var(--primary);
-    width: 100%;
-    height: 16px;
-    margin: 0;
-    cursor: pointer;
   }
   .limits {
     display: flex;
@@ -238,35 +217,6 @@ export const styles = css`
     gap: 8px;
     cursor: pointer;
     white-space: nowrap;
-  }
-  .phasor-toggle input {
-    appearance: none;
-    width: 28px;
-    height: 16px;
-    margin: 0;
-    border: 1px solid var(--muted);
-    border-radius: 3px;
-    background: var(--subtle);
-    cursor: pointer;
-    position: relative;
-  }
-  .phasor-toggle input::after {
-    content: "";
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 8px;
-    height: 8px;
-    border-radius: 1px;
-    background: var(--muted);
-  }
-  .phasor-toggle input:checked {
-    border-color: var(--primary);
-    background: var(--primary-soft);
-  }
-  .phasor-toggle input:checked::after {
-    transform: translateX(12px);
-    background: var(--primary);
   }
   .phase-readout {
     color: var(--muted);
@@ -364,7 +314,7 @@ export const styles = css`
     font: 10px var(--mono);
     flex-shrink: 0;
   }
-  .timeline input {
+  .timeline phy-slider {
     flex: 1;
     min-width: 0;
   }
@@ -422,36 +372,13 @@ export const styles = css`
     font-size: 11px;
     color: var(--muted);
   }
-  .toggles label {
+  .toggles phy-checkbox {
     display: inline-flex;
     align-items: center;
     gap: 4px;
   }
-  .toggles input {
-    margin: 0;
-    accent-color: var(--primary);
-  }
-  .tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .tabs button {
-    flex: 1;
-    border: 0;
-    border-bottom: 2px solid transparent;
-    border-radius: 0;
-    padding: 12px 3px;
-    color: var(--muted);
-    background: none;
-    font-size: 12px;
-  }
-  .tabs button.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
-    background: var(--primary-soft);
-  }
   .plot {
+    height: 100%;
     padding: 12px;
     flex: 1;
     min-height: 0;
@@ -535,12 +462,6 @@ export const styles = css`
     font-size: 10px;
     flex-shrink: 0;
   }
-  .energy-tabs button {
-    flex: 1;
-    min-height: 30px;
-    padding: 3px;
-    font-size: 11px;
-  }
   .observation-note {
     color: var(--muted);
     font-size: 11px;
@@ -560,21 +481,38 @@ export const styles = css`
     min-height: 28px;
     font-size: 10px;
   }
+  .parameter-tabs {
+    flex: 1;
+    min-height: 0;
+    padding-top: 10px;
+  }
+  .parameter-tabs::part(tabs) {
+    padding: 0 12px;
+  }
+  .parameter-tabs .parameter-body {
+    height: 100%;
+  }
+  .observation-tabs {
+    flex: 1;
+    min-height: 0;
+  }
+  .exploring .observation-tabs {
+    flex: 0;
+  }
+  .support-tabs {
+    --tab-font-size: 11px;
+  }
+  .support-tabs::part(tabs) {
+    padding: 6px 12px 0;
+  }
+  .equation phy-math {
+    font-size: 0.87em;
+  }
   .support {
     border: 0;
     border-top: 1px solid var(--border);
     border-radius: 0;
     flex-shrink: 0;
-  }
-  .support-tabs {
-    display: flex;
-    padding: 8px 12px 0;
-    gap: 5px;
-  }
-  .support-tabs button {
-    font-size: 11px;
-    min-height: 30px;
-    padding: 4px 10px;
   }
   #support-content {
     padding: 12px;
@@ -589,9 +527,6 @@ export const styles = css`
     gap: 5px 10px;
     font-size: 13px;
     align-items: center;
-  }
-  .equation .katex {
-    font-size: 1.05em;
   }
   .conservation {
     font-size: 12px;
@@ -697,35 +632,6 @@ export const styles = css`
     font-size: 10px;
     line-height: 1.6;
   }
-  .help-dialog {
-    width: 720px;
-    max-width: calc(100vw - 80px);
-    max-height: calc(100dvh - 80px);
-    padding: 24px;
-    background: var(--surface);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    overflow: auto;
-  }
-  .help-dialog::backdrop {
-    background: #0008;
-  }
-  .dialog-heading h2 {
-    font-size: 17px;
-    margin: 0;
-  }
-  .help-dialog p {
-    font-size: 13px;
-    color: var(--muted);
-    line-height: 1.9;
-  }
-  .derivation-steps {
-    display: grid;
-    gap: 20px;
-    margin-top: 24px;
-    font-size: 15px;
-  }
   @media (max-height: 800px) {
     .parameter {
       margin-bottom: 13px;
@@ -742,9 +648,6 @@ export const styles = css`
     .plot {
       gap: 7px;
       padding: 10px;
-    }
-    .support-tabs {
-      padding-top: 6px;
     }
     #support-content {
       padding: 10px 12px;

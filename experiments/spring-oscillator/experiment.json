@@ -1,9 +1,12 @@
 {
   "id": "spring-oscillator",
   "version": "0.2.0",
-  "apiVersion": 1,
+  "apiVersion": 2,
   "stateVersion": 2,
-  "title": { "zh-CN": "弹簧振子", "en": "Spring oscillator" },
+  "title": {
+    "zh-CN": "弹簧振子",
+    "en": "Spring oscillator"
+  },
   "description": {
     "zh-CN": "拉动小球，探索理想振动、阻尼衰减与受迫共振。",
     "en": "Pull, release, and explore harmonic motion, damping and resonance."
@@ -11,5 +14,6 @@
   "tags": {
     "zh-CN": ["力学", "阻尼", "共振", "能量"],
     "en": ["Mechanics", "Damping", "Resonance", "Energy"]
-  }
+  },
+  "apiRevision": 0
 }
