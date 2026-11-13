@@ -1,11 +1,11 @@
+import { parseExperimentManifest } from "../src/infra/platform/compatibility";
 import { join } from "node:path";
 import { readFile } from "node:fs/promises";
 import type {
   AppRelease,
   Catalog,
-  ExperimentManifest,
   Resource,
-} from "../src/infra/platform/contract";
+} from "../src/infra/platform/types";
 import { dist, base, json, hash } from "./shared";
 async function verify(list: Resource[]) {
   for (const resource of list) {
@@ -20,10 +20,8 @@ await verify((await json<AppRelease>(join(dist, "release.json"))).resources);
 for (const entry of (await json<Catalog>(join(dist, "catalog.json")))
   .experiments)
   await verify(
-    (
-      await json<ExperimentManifest>(
-        join(dist, entry.manifest.slice(base.length)),
-      )
+    parseExperimentManifest(
+      await json<unknown>(join(dist, entry.manifest.slice(base.length))),
     ).resources,
   );
 console.log("Release resources verified.");

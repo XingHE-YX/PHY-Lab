@@ -1,3 +1,4 @@
+import { settingsPage, type SettingsPage } from "./helpers/settings";
 import { test, expect, type Page } from "@playwright/test";
 import type { ExperimentPage } from "../../src/pages/experiment-page";
 import type { Snapshot } from "../../experiments/spring-oscillator/experiment";
@@ -20,12 +21,29 @@ async function range(page: Page, name: string, value: string) {
     input.dispatchEvent(new Event("change", { bubbles: true }));
   }, value);
 }
+async function expectFirstSettingsSection(page: Page, label: string) {
+  const target: SettingsPage = ["外观", "Appearance"].includes(label)
+    ? "appearance"
+    : "experiment";
+  const dialog = await settingsPage(page, target);
+  const heading = dialog.getByRole("heading", {
+    name: label,
+    exact: true,
+    level: 2,
+  });
+  await expect(heading).toBeVisible();
+  const headingBox = (await heading.boundingBox())!;
+  const panelBox = (await dialog
+    .getByRole("tabpanel", { name: label, exact: true })
+    .boundingBox())!;
+  expect(Math.abs(headingBox.y - panelBox.y)).toBeLessThanOrEqual(1);
+}
 test("workspace search, navigation and locale persistence", async ({
   page,
 }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "全部实验" })).toBeVisible();
-  const search = page.getByRole("textbox");
+  const search = page.getByRole("searchbox");
   await search.fill("不存在");
   await expect(
     page.getByRole("heading", { name: "没有找到匹配的实验" }),
@@ -56,8 +74,14 @@ test("theme transition, settings dialog and focus restoration", async ({
   const settings = page.getByRole("button", { name: "设置", exact: true });
   await settings.click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.getByRole("dialog")).toContainText("PHY Lab v0.1.0");
-  await expect(page.locator("footer")).toHaveCount(0);
+  await settingsPage(page, "about");
+  await expect(page.getByRole("dialog")).toContainText("PHY Lab v0.2.0");
+  await settingsPage(page, "appearance");
+  await expect(page.locator("phy-app footer")).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "实验设置", exact: true }),
+  ).toHaveCount(0);
+  await expectFirstSettingsSection(page, "外观");
   await page.getByLabel("减少界面动画").check();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -165,7 +189,7 @@ test("first home visit preloads an unopened experiment for offline refresh", asy
   context,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await settingsPage(page, "cache");
   await expect(page.getByText("✓ 可离线使用", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "关闭", exact: true }).click();
   await context.setOffline(true);
@@ -228,15 +252,20 @@ test("console content aligns with toolbar and experiment navigation is minimal",
     await page.setViewportSize({ width, height: 1000 });
     const toolbar = await page.locator(".toolbar").boundingBox();
     const grid = await page.locator(".grid").boundingBox();
-    expect(grid!.x).toBe(toolbar!.x + 30);
-    expect(grid!.width).toBe(toolbar!.width - 60 - 4);
+    const sidebar = (await page
+      .locator(".category-tabs")
+      .getByRole("tablist")
+      .boundingBox())!;
+    expect(sidebar.x).toBe(toolbar!.x + 30);
+    expect(grid!.x).toBe(sidebar.x + sidebar.width + 24);
+    expect(grid!.x + grid!.width).toBe(toolbar!.x + toolbar!.width - 30 - 4);
   }
-  await page.getByRole("textbox").fill("energy");
+  await page.getByRole("searchbox").fill("energy");
   await page.getByRole("link", { name: /弹簧振子/ }).click();
   await expect(
     page.getByRole("heading", { name: "弹簧振子", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("textbox")).toHaveCount(0);
+  await expect(page.getByRole("searchbox")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "打开导航" })).toHaveCount(0);
   await expect(page.locator(".toolbar .brand")).toHaveCount(0);
   await expect(page.locator("phy-experiment-page .top")).toHaveCount(0);
@@ -246,7 +275,7 @@ test("console content aligns with toolbar and experiment navigation is minimal",
       .getByRole("button", { name: "▷ 播放", exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "返回控制台" }).click();
-  await expect(page.getByRole("textbox")).toHaveValue("energy");
+  await expect(page.getByRole("searchbox")).toHaveValue("energy");
 });
 
 test.describe("toolbar API", () => {
@@ -258,7 +287,14 @@ test.describe("toolbar API", () => {
     await page.route("**/manifest.json", async (route) => {
       const response = await route.fetch();
       const manifest = await response.json();
+      const oldEntry = manifest.entry;
       manifest.entry = "/toolbar-fixture.js";
+      manifest.resources = manifest.resources.map(
+        (resource: { url: string }) =>
+          resource.url === oldEntry
+            ? { ...resource, url: manifest.entry }
+            : resource,
+      );
       await route.fulfill({ response, json: manifest });
     });
     await page.route("**/toolbar-fixture.js", (route) =>
@@ -284,7 +320,7 @@ test.describe("toolbar API", () => {
       page.getByRole("heading", { name: "Control clicked" }),
     ).toBeVisible();
     await page.getByRole("link", { name: "返回控制台" }).click();
-    await expect(page.getByRole("textbox")).toBeVisible();
+    await expect(page.getByRole("searchbox")).toBeVisible();
     await page.evaluate(() => {
       const context = (
         window as unknown as {
@@ -602,7 +638,14 @@ test.describe("experiment settings API", () => {
     await page.route("**/manifest.json", async (route) => {
       const response = await route.fetch();
       const manifest = await response.json();
+      const oldEntry = manifest.entry;
       manifest.entry = "/settings-fixture.js";
+      manifest.resources = manifest.resources.map(
+        (resource: { url: string }) =>
+          resource.url === oldEntry
+            ? { ...resource, url: manifest.entry }
+            : resource,
+      );
       await route.fulfill({ response, json: manifest });
     });
     await page.route("**/settings-fixture.js", (route) =>
@@ -630,13 +673,15 @@ test.describe("experiment settings API", () => {
     await expect(
       page.getByRole("heading", { name: "Settings fixture" }),
     ).toBeVisible();
-    const openSettings = () =>
-      page
-        .getByRole("button", { name: /^(设置|Settings)$/, exact: true })
-        .click();
+    const openSettings = (target: SettingsPage = "experiment") =>
+      settingsPage(page, target);
     await openSettings();
     const region = page.getByRole("region", { name: "实验设置", exact: true });
-    await expect(region).toContainText("弹簧振子");
+    await expect(region.getByRole("heading", { level: 2 })).toHaveText(
+      "实验设置",
+    );
+    await expect(region).not.toContainText("弹簧振子");
+    await expectFirstSettingsSection(page, "实验设置");
     await region.getByRole("checkbox", { name: "显示轨迹" }).check();
     await expect(
       page.getByRole("heading", { name: "Settings fixture" }),
@@ -646,25 +691,34 @@ test.describe("experiment settings API", () => {
     await expect(
       region.getByRole("checkbox", { name: "显示轨迹" }),
     ).toBeChecked();
+    await settingsPage(page, "appearance");
     await page
       .getByRole("dialog")
       .getByRole("combobox", { name: "切换语言" })
       .selectOption("en");
+    await settingsPage(page, "experiment");
     await expect(
       page
         .getByRole("region", { name: "Experiment settings", exact: true })
         .getByRole("checkbox", { name: "Show trail" }),
     ).toBeChecked();
+    await expect(
+      page
+        .getByRole("region", { name: "Experiment settings", exact: true })
+        .getByRole("heading", { level: 2 }),
+    ).toHaveText("Experiment settings");
     await page.evaluate(() =>
       (window as any).settingsFixture.context.settings.setControls(null),
     );
     await expect(
       page.getByRole("region", { name: "Experiment settings", exact: true }),
     ).toHaveCount(0);
+    await expectFirstSettingsSection(page, "Appearance");
     await page.evaluate(() => {
       const fixture = (window as any).settingsFixture;
       fixture.context.settings.setControls(fixture.panel);
     });
+    await settingsPage(page, "experiment");
     await expect(
       page.getByRole("checkbox", { name: "Show trail" }),
     ).toBeChecked();
@@ -672,12 +726,12 @@ test.describe("experiment settings API", () => {
     await page
       .getByRole("link", { name: "Back to console", exact: true })
       .click();
-    await expect(page.getByRole("textbox")).toBeVisible();
+    await expect(page.getByRole("searchbox")).toBeVisible();
     await page.evaluate(() => {
       const fixture = (window as any).settingsFixture;
       fixture.context.settings.setControls(fixture.panel);
     });
-    await openSettings();
+    await openSettings("appearance");
     await expect(
       page.getByRole("region", { name: "Experiment settings", exact: true }),
     ).toHaveCount(0);
@@ -686,9 +740,51 @@ test.describe("experiment settings API", () => {
     await expect(
       page.getByText("Fixture mount failed", { exact: true }),
     ).toBeVisible();
-    await openSettings();
+    await openSettings("appearance");
     await expect(
       page.getByRole("region", { name: "Experiment settings", exact: true }),
     ).toHaveCount(0);
   });
+});
+
+test("observation tabs remain clickable while exploration is open", async ({
+  page,
+}) => {
+  for (const size of [
+    { width: 1280, height: 720 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(size);
+    for (const experiment of [
+      {
+        id: "spring-oscillator",
+        title: "弹簧振子",
+        exploration: "探索任务",
+        observation: "看能量",
+      },
+      {
+        id: "mechanical-waves",
+        title: "机械波实验台",
+        exploration: "探索",
+        observation: "空间剖面",
+      },
+    ]) {
+      await page.goto(`/#/experiments/${experiment.id}`);
+      await expect(
+        page.getByRole("heading", { name: experiment.title, exact: true }),
+      ).toBeVisible();
+      await page
+        .getByRole("tab", { name: experiment.exploration, exact: true })
+        .click();
+      const observation = page.getByRole("tab", {
+        name: experiment.observation,
+        exact: true,
+      });
+      await observation.click();
+      await expect(observation).toHaveAttribute("aria-selected", "true");
+      await expect(
+        page.getByRole("tab", { name: "公式", exact: true }),
+      ).toHaveAttribute("aria-selected", "true");
+    }
+  }
 });

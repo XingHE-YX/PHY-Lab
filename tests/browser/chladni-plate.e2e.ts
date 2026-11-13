@@ -1,3 +1,4 @@
+import { settingsPage } from "./helpers/settings";
 import { test, expect, type Page } from "@playwright/test";
 import type { ExperimentPage } from "../../src/pages/experiment-page";
 import type { Snapshot } from "../../experiments/chladni-plate/model/snapshot";
@@ -46,7 +47,7 @@ test("Chladni WebGL, probes, overlays and charts share one physical state", asyn
   await page.emulateMedia({ reducedMotion: "reduce" });
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await page.getByRole("textbox").fill("克拉尼");
+  await page.getByRole("searchbox").fill("克拉尼");
   await page.getByRole("link", { name: /克拉尼图形/ }).click();
   await expect(page.locator(".webgl")).toBeVisible();
   await range(page, "振动周期数", 24.183);
@@ -73,7 +74,7 @@ test("Chladni WebGL, probes, overlays and charts share one physical state", asyn
   const hash = await sandHash(page);
   await page.getByLabel("低振幅线", { exact: true }).check();
   await page.getByLabel("振幅场", { exact: true }).check();
-  await page.getByRole("button", { name: "倾斜", exact: true }).click();
+  await page.getByRole("radio", { name: "倾斜", exact: true }).click();
   await page.getByRole("tab", { name: "看振型", exact: true }).click();
   expect((await saved(page)).cycles).toBe(before.cycles);
   expect((await saved(page)).params).toEqual(before.params);
@@ -158,12 +159,12 @@ test("surface picking and dragging match the physical probe in both viewpoints",
 }) => {
   await open(page);
   await range(page, "振动周期数", 18.18);
-  await page.getByRole("button", { name: "移动测点", exact: true }).click();
+  await page.getByRole("radio", { name: "移动测点", exact: true }).click();
   const before = await saved(page),
     hash = await sandHash(page);
   for (const tilt of [false, true]) {
     if (tilt)
-      await page.getByRole("button", { name: "倾斜", exact: true }).click();
+      await page.getByRole("radio", { name: "倾斜", exact: true }).click();
     const box = (await page.locator(".scene-wrap").boundingBox())!,
       cam = geometry(box.width, box.height, tilt),
       g = field(plate, response(plate, before.params)),
@@ -209,7 +210,7 @@ test("surface picking and dragging match the physical probe in both viewpoints",
   await expect(
     page.getByRole("spinbutton", { name: "测点横坐标", exact: true }),
   ).toHaveValue("18.0");
-  await page.getByRole("button", { name: "俯视", exact: true }).click();
+  await page.getByRole("radio", { name: "俯视", exact: true }).click();
   const exciter = page.getByRole("button", {
       name: "移动激励点 S",
       exact: true,
@@ -236,7 +237,7 @@ test("leaving and losing the GPU context preserve a paused recoverable state", a
 }) => {
   await open(page);
   await range(page, "振动周期数", 22.22);
-  await page.getByRole("button", { name: "倾斜", exact: true }).click();
+  await page.getByRole("radio", { name: "倾斜", exact: true }).click();
   const before = await saved(page),
     hash = await sandHash(page);
   await page.locator(".webgl").evaluate((node) => {
@@ -292,9 +293,14 @@ test("Chladni controls fit both desktop sizes, languages and themes", async ({
             .click();
         for (let group = 0; group < 2; group++)
           for (let observation = 0; observation < 3; observation++) {
-            await page.locator(".parameter-tabs button").nth(group).click();
             await page
-              .locator(".observation-tabs button")
+              .locator(".parameter-tabs")
+              .getByRole("tab")
+              .nth(group)
+              .click();
+            await page
+              .locator(".observation-tabs")
+              .getByRole("tab")
               .nth(observation)
               .click();
             await expect
@@ -345,7 +351,7 @@ test("an unvisited Chladni experiment loads offline with isolated state", async 
   context,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await settingsPage(page, "cache");
   await expect(page.getByText("✓ 可离线使用", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "关闭", exact: true }).click();
   await context.setOffline(true);
@@ -384,7 +390,7 @@ test("unavailable WebGL falls back to an operable planar experiment", async ({
   await open(page);
   await expect(page.locator(".fallback")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "倾斜", exact: true }),
+    page.getByRole("radio", { name: "倾斜", exact: true }),
   ).toBeDisabled();
   await range(page, "振动周期数", 20.12);
   expect((await saved(page)).cycles).toBe(20.12);
@@ -455,9 +461,9 @@ test("vibration audio follows drive frequency, mutes in settings and releases on
       }),
     )
     .toBeGreaterThan(0.001);
-  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await settingsPage(page, "experiment");
   const settings = page.getByRole("region", { name: "实验设置", exact: true });
-  await settings.getByRole("checkbox", { name: "静音", exact: true }).check();
+  await settings.getByRole("switch", { name: "静音", exact: true }).check();
   expect((await saved(page)).muted).toBe(true);
   const before = (await saved(page)).cycles;
   await expect
@@ -468,20 +474,22 @@ test("vibration audio follows drive frequency, mutes in settings and releases on
   await expect
     .poll(async () => (await saved(page)).cycles)
     .toBeGreaterThan(before);
-  await settings.getByRole("checkbox", { name: "静音", exact: true }).uncheck();
+  await settings.getByRole("switch", { name: "静音", exact: true }).uncheck();
   await expect
     .poll(() =>
       page.evaluate(() => (window as any).plateAudio[0].context.state),
     )
     .toBe("running");
+  await settingsPage(page, "appearance");
   await page
     .getByRole("dialog")
     .getByRole("combobox", { name: "切换语言", exact: true })
     .selectOption("en");
+  await settingsPage(page, "experiment");
   await expect(
     page
       .getByRole("region", { name: "Experiment settings", exact: true })
-      .getByRole("checkbox", { name: "Mute", exact: true }),
+      .getByRole("switch", { name: "Mute", exact: true }),
   ).not.toBeChecked();
   await page.keyboard.press("Escape");
   await page
@@ -506,8 +514,8 @@ test("vibration audio follows drive frequency, mutes in settings and releases on
       page.evaluate(() => (window as any).plateAudio[0].tone.frequency.value),
     )
     .toBeCloseTo(changedFrequency, 3);
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await page.getByRole("checkbox", { name: "Mute", exact: true }).check();
+  await settingsPage(page, "experiment");
+  await page.getByRole("switch", { name: "Mute", exact: true }).check();
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "Chladni figures", exact: true }),
@@ -515,11 +523,11 @@ test("vibration audio follows drive frequency, mutes in settings and releases on
   expect((await saved(page)).muted).toBe(true);
   await page.getByRole("button", { name: "▷ Play", exact: true }).click();
   expect(await page.evaluate(() => (window as any).plateAudio.length)).toBe(0);
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await settingsPage(page, "experiment");
   await expect(
-    page.getByRole("checkbox", { name: "Mute", exact: true }),
+    page.getByRole("switch", { name: "Mute", exact: true }),
   ).toBeChecked();
-  await page.getByRole("checkbox", { name: "Mute", exact: true }).uncheck();
+  await page.getByRole("switch", { name: "Mute", exact: true }).uncheck();
   await expect
     .poll(() =>
       page.evaluate(() => (window as any).plateAudio[0]?.context.state),
@@ -535,7 +543,7 @@ test("vibration audio follows drive frequency, mutes in settings and releases on
       page.evaluate(() => (window as any).plateAudio[0].context.state),
     )
     .toBe("closed");
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await settingsPage(page, "appearance");
   await expect(
     page.getByRole("region", { name: "Experiment settings", exact: true }),
   ).toHaveCount(0);
@@ -552,9 +560,9 @@ test("unavailable audio leaves the experiment operable with a localized explanat
   await open(page);
   await page.getByRole("button", { name: "▷ 开始", exact: true }).click();
   await expect.poll(async () => (await saved(page)).cycles).toBeGreaterThan(0);
-  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await settingsPage(page, "experiment");
   await expect(
-    page.getByRole("checkbox", { name: "静音", exact: true }),
+    page.getByRole("switch", { name: "静音", exact: true }),
   ).toBeDisabled();
   await expect(
     page.getByText("当前浏览器无法播放声音，其他实验操作仍可使用。", {

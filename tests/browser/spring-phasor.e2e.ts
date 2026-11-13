@@ -1,3 +1,4 @@
+import { settingsPage } from "./helpers/settings";
 import { test, expect, type Page } from "@playwright/test";
 import type { ExperimentPage } from "../../src/pages/experiment-page";
 import type { Snapshot } from "../../experiments/spring-oscillator/experiment";
@@ -240,7 +241,7 @@ test("desktop phasor scene remains readable in both themes and offline", async (
   await expect(
     page.getByRole("switch", { name: "Rotating vector" }),
   ).toBeChecked();
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await settingsPage(page, "cache");
   await expect(
     page.getByText("✓ Ready for offline use", { exact: true }),
   ).toBeVisible();

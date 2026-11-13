@@ -27,7 +27,7 @@ test("wave propagation, point readouts and chart markers share one time", async 
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("textbox").fill("机械波");
+  await page.getByRole("searchbox").fill("机械波");
   await page.getByRole("link", { name: /机械波实验台/ }).click();
   await range(page, "拖动时间游标", 2.6);
   const saved = await snapshot(page),
@@ -77,11 +77,11 @@ test("fixed and free boundaries reflect correctly and layers preserve the physic
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "波的反射", exact: true }).click();
+  await page.getByRole("radio", { name: "波的反射", exact: true }).click();
   await range(page, "跟踪位置 xₚ", 1);
   await page.getByRole("button", { name: "波峰到右端", exact: true }).click();
   await expect(page.locator(".readout").first()).toContainText("0.000");
-  await page.getByRole("button", { name: "自由端", exact: true }).click();
+  await page.getByRole("radio", { name: "自由端", exact: true }).click();
   await page.getByRole("button", { name: "波峰到右端", exact: true }).click();
   await expect(page.locator(".boundary-ring")).toHaveAttribute(
     "data-y",
@@ -105,7 +105,7 @@ test("fixed and free boundaries reflect correctly and layers preserve the physic
   await page.getByLabel("入射波 →", { exact: true }).uncheck();
   await page.getByLabel("反射波 ←", { exact: true }).uncheck();
   await expect(page.locator(".view-note").last()).toContainText("图层已隐藏");
-  await page.getByRole("button", { name: "固定端", exact: true }).click();
+  await page.getByRole("radio", { name: "固定端", exact: true }).click();
   await range(page, "跟踪位置 xₚ", 0.5);
   await page
     .getByRole("button", { name: "反射波峰到探针", exact: true })
@@ -119,7 +119,7 @@ test("standing nodes stay at rest and a straight profile can still have moving a
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await open(page);
-  await page.getByRole("button", { name: "驻波", exact: true }).click();
+  await page.getByRole("radio", { name: "驻波", exact: true }).click();
   await expect(page.locator(".node-marker")).toHaveCount(5);
   await expect(page.locator(".antinode-marker")).toHaveCount(4);
   await page.getByRole("button", { name: "定位波节", exact: true }).click();
@@ -148,7 +148,7 @@ test("standing nodes stay at rest and a straight profile can still have moving a
   await page.getByLabel("波节与波腹", { exact: true }).uncheck();
   await expect(page.locator(".node-marker")).toHaveCount(0);
   expect((await snapshot(page)).time).toBe(saved.time);
-  await page.getByRole("button", { name: "波源", exact: true }).click();
+  await page.getByRole("tab", { name: "波源", exact: true }).click();
   await range(page, "入射振幅", 0);
   await expect(
     page.getByRole("button", { name: "定位波节", exact: true }),
@@ -219,16 +219,33 @@ test("wave controls fit the desktop viewport in both languages and themes", asyn
             .getByRole("button", { name: /^(切换语言|Switch language)$/ })
             .click();
         for (const model of [0, 1, 2]) {
-          await page.locator(".mode-switch button").nth(model).click();
+          await page
+            .locator(".mode-switch")
+            .getByRole("radio")
+            .nth(model)
+            .click();
           for (const source of model === 2 ? [0] : [0, 1]) {
-            await page.locator(".parameter-tabs button").nth(0).click();
+            await page
+              .locator(".parameter-tabs")
+              .getByRole("tab")
+              .nth(0)
+              .click();
             if (model !== 2)
-              await page.locator(".source-tabs button").nth(source).click();
+              await page
+                .locator(".source-tabs")
+                .getByRole("radio")
+                .nth(source)
+                .click();
             for (const group of [0, 1]) {
-              await page.locator(".parameter-tabs button").nth(group).click();
+              await page
+                .locator(".parameter-tabs")
+                .getByRole("tab")
+                .nth(group)
+                .click();
               for (const view of [0, 1]) {
                 await page
-                  .locator(".observation-tabs button")
+                  .locator(".observation-tabs")
+                  .getByRole("tab")
                   .nth(view)
                   .click();
                 await expect

@@ -1,3 +1,4 @@
+import { settingsPage } from "./helpers/settings";
 import { test, expect } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
 import { resolve } from "node:path";
@@ -40,7 +41,7 @@ test("a cached production page retires its worker when the same origin becomes d
   try {
     preview = await start("scripts/preview.ts", { PORT: "5184" });
     await page.goto(origin);
-    await page.getByRole("button", { name: "设置", exact: true }).click();
+    await settingsPage(page, "cache");
     await expect(page.getByText("✓ 可离线使用", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "关闭", exact: true }).click();
     await page.getByRole("link", { name: /弹簧振子/ }).click();
@@ -107,7 +108,7 @@ test("a cached production page retires its worker when the same origin becomes d
     expect(restored.mode).toBe("energy");
     expect(restored.time).toBeCloseTo(original.time, 6);
     expect(await page.evaluate(() => caches.keys())).toEqual(cachedBefore);
-    await page.getByRole("button", { name: "设置", exact: true }).click();
+    await settingsPage(page, "cache");
     await expect(
       page.getByText("开发模式 · 离线缓存未启用", { exact: true }),
     ).toBeVisible();
@@ -127,7 +128,7 @@ test("fresh development pages never register an offline worker", async ({
   try {
     development = await start("scripts/dev.ts", { PHY_DEV_PORT: "5184" });
     await page.goto(origin);
-    await page.getByRole("button", { name: "设置", exact: true }).click();
+    await settingsPage(page, "cache");
     await expect(
       page.getByText("开发模式 · 离线缓存未启用", { exact: true }),
     ).toBeVisible();

@@ -1,4 +1,8 @@
-import type { Catalog, ExperimentManifest } from "./contract";
+import { parseThumbnail } from "./metadata";
+import { thumbnailUrls } from "./thumbnails";
+import { collectCategories } from "./categories";
+import { parseExperimentManifest } from "./compatibility";
+import type { Catalog, ExperimentManifest } from "./types";
 export const base = import.meta.env.BASE_URL;
 export function scopedUrl(value: string) {
   const url = new URL(value, location.href);
@@ -25,7 +29,10 @@ export async function loadCatalog(): Promise<Catalog> {
       throw new Error("Invalid catalog entry");
     ids.add(e.id);
     scopedUrl(e.manifest);
+    e.thumbnail = parseThumbnail(e.thumbnail);
+    for (const url of thumbnailUrls(e.thumbnail)) scopedUrl(url);
   }
+  collectCategories(catalog.experiments);
   return catalog;
 }
 export async function loadManifest(
@@ -34,20 +41,10 @@ export async function loadManifest(
 ): Promise<ExperimentManifest> {
   const response = await fetch(scopedUrl(url));
   if (!response.ok) throw new Error("Experiment unavailable");
-  const manifest = (await response.json()) as ExperimentManifest;
-  if (
-    manifest.id !== id ||
-    manifest.apiVersion !== 1 ||
-    !Array.isArray(manifest.resources) ||
-    !manifest.buildId ||
-    !Number.isInteger(manifest.stateVersion)
-  )
-    throw new Error("Incompatible experiment");
+  const manifest = parseExperimentManifest(await response.json());
+  if (manifest.id !== id) throw new Error("Experiment identity mismatch");
   scopedUrl(manifest.entry);
-  for (const resource of manifest.resources) {
-    scopedUrl(resource.url);
-    if (!/^[a-f0-9]{64}$/.test(resource.sha256))
-      throw new Error("Invalid resource fingerprint");
-  }
+  for (const url of thumbnailUrls(manifest.thumbnail)) scopedUrl(url);
+  for (const resource of manifest.resources) scopedUrl(resource.url);
   return manifest;
 }

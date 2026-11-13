@@ -1,3 +1,4 @@
+import { settingsPage } from "./helpers/settings";
 import { test, expect, type Page } from "@playwright/test";
 import type { ExperimentPage } from "../../src/pages/experiment-page";
 import {
@@ -77,22 +78,22 @@ test("an unopened experiment and all new mode preferences work through an offlin
   context,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await settingsPage(page, "cache");
   await expect(page.getByText("✓ 可离线使用", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "关闭", exact: true }).click();
   await context.setOffline(true);
   await page.getByRole("link", { name: /弹簧振子/ }).click();
-  await page.getByRole("button", { name: "受迫振动", exact: true }).click();
+  await page.getByRole("radio", { name: "受迫振动", exact: true }).click();
   await range(page, "阻尼比", 0.35);
-  await page.getByRole("button", { name: "初始", exact: true }).click();
+  await page.getByRole("tab", { name: "初始", exact: true }).click();
   await range(page, "初始位移", -0.45);
   await range(page, "初始速度", 0.6);
-  await page.getByRole("button", { name: "驱动", exact: true }).click();
+  await page.getByRole("tab", { name: "驱动", exact: true }).click();
   await range(page, "驱动力幅值", 2);
   await page.getByRole("tab", { name: "看能量", exact: true }).click();
-  await page.getByRole("button", { name: "能量收支", exact: true }).click();
+  await page.getByRole("radio", { name: "能量收支", exact: true }).click();
   await page.getByRole("tab", { name: "看共振", exact: true }).click();
-  await page.getByRole("button", { name: "相频", exact: true }).click();
+  await page.getByRole("radio", { name: "相频", exact: true }).click();
   await range(page, "共振图频率比", 0.85);
   await range(page, "拖动时间游标", 0.623);
   await page.getByRole("tab", { name: "探索任务", exact: true }).click();
@@ -101,20 +102,20 @@ test("an unopened experiment and all new mode preferences work through an offlin
   await expect(page.locator(".model-switch")).toBeVisible();
   expect(await snapshot(page)).toEqual(before);
   await expect(
-    page.getByRole("button", { name: "受迫振动", exact: true }),
-  ).toHaveClass("selected");
+    page.getByRole("radio", { name: "受迫振动", exact: true }),
+  ).toBeChecked();
   await expect(
     page.getByRole("tab", { name: "探索任务", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
   await page.getByRole("tab", { name: "公式", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "相频", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+    page.getByRole("radio", { name: "相频", exact: true }),
+  ).toBeChecked();
   await expect(page.locator(".resonance-point")).toBeVisible();
   await page.getByRole("tab", { name: "看能量", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "能量收支", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+    page.getByRole("radio", { name: "能量收支", exact: true }),
+  ).toBeChecked();
   expect((await snapshot(page)).time).toBe(before.time);
 });
 

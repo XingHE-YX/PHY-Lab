@@ -31,7 +31,7 @@ test("all physical modes share the clock, scene, forces and energy", async ({
 }) => {
   await open(page);
   await page.getByRole("switch", { name: "旋转矢量" }).check();
-  await page.getByRole("button", { name: "阻尼振动", exact: true }).click();
+  await page.getByRole("radio", { name: "阻尼振动", exact: true }).click();
   await expect(page.getByRole("switch", { name: "旋转矢量" })).toBeDisabled();
   await expect(page.locator("#phasor-layer")).toHaveAttribute(
     "aria-hidden",
@@ -52,11 +52,11 @@ test("all physical modes share the clock, scene, forces and energy", async ({
     expected.x.toFixed(3),
   );
   await page.getByRole("tab", { name: "看能量" }).click();
-  await page.getByRole("button", { name: "能量收支", exact: true }).click();
+  await page.getByRole("radio", { name: "能量收支", exact: true }).click();
   await expect(page.locator(".energy-values")).toContainText("累计耗散");
   expect((await snapshot(page)).time).toBe(saved.time);
-  await page.getByRole("button", { name: "受迫振动", exact: true }).click();
-  await page.getByRole("button", { name: "驱动", exact: true }).click();
+  await page.getByRole("radio", { name: "受迫振动", exact: true }).click();
+  await page.getByRole("tab", { name: "驱动", exact: true }).click();
   await range(page, "驱动力幅值", 1.8);
   await range(page, "驱动频率比", 0.8);
   await range(page, "拖动时间游标", 1.15);
@@ -64,7 +64,7 @@ test("all physical modes share the clock, scene, forces and energy", async ({
   saved = await snapshot(page);
   expect(saved.params.force).toBe(1.8);
   expect(saved.params.ratio).toBe(0.8);
-  await page.getByRole("button", { name: "理想振动", exact: true }).click();
+  await page.getByRole("radio", { name: "理想振动", exact: true }).click();
   await expect(page.getByRole("switch", { name: "旋转矢量" })).toBeChecked();
   await expect(page.locator("#phasor-layer")).toHaveAttribute(
     "aria-hidden",
@@ -76,7 +76,7 @@ test("critical relaxation reports unavailable events and dragging releases from 
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "阻尼振动", exact: true }).click();
+  await page.getByRole("radio", { name: "阻尼振动", exact: true }).click();
   await page.getByRole("button", { name: "临界阻尼", exact: true }).click();
   await page.getByRole("button", { name: "左端点", exact: true }).click();
   await expect(page.locator(".moment-hint")).toContainText("未找到");
@@ -107,7 +107,7 @@ test("frequency response has an editable working point and distinguishes steady 
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "受迫振动", exact: true }).click();
+  await page.getByRole("radio", { name: "受迫振动", exact: true }).click();
   await page.getByRole("tab", { name: "看运动", exact: true }).focus();
   await page.keyboard.press("End");
   await expect(page.getByRole("tab", { name: "看共振" })).toBeFocused();
@@ -119,7 +119,7 @@ test("frequency response has an editable working point and distinguishes steady 
     String(expected.amplitude),
   );
   await expect(page.locator(".observation-note")).toContainText("仅表示稳态");
-  await page.getByRole("button", { name: "相频", exact: true }).click();
+  await page.getByRole("radio", { name: "相频", exact: true }).click();
   await expect
     .poll(async () =>
       Number(await page.locator(".resonance-point").getAttribute("data-value")),
@@ -152,7 +152,7 @@ test("undamped resonance and zero drive have honest finite displays", async ({
   page,
 }) => {
   await open(page);
-  await page.getByRole("button", { name: "受迫振动", exact: true }).click();
+  await page.getByRole("radio", { name: "受迫振动", exact: true }).click();
   await range(page, "阻尼比", 0);
   await page.getByRole("tab", { name: "看共振", exact: true }).click();
   await range(page, "共振图频率比", 1);
@@ -160,9 +160,9 @@ test("undamped resonance and zero drive have honest finite displays", async ({
   await expect(page.locator(".response-values")).toContainText("无确定相位");
   await expect(page.locator(".observation-note")).toContainText("持续增长");
   await expect(page.locator(".resonance-point")).toHaveCount(0);
-  await page.getByRole("button", { name: "驱动", exact: true }).click();
+  await page.getByRole("tab", { name: "驱动", exact: true }).click();
   await range(page, "驱动力幅值", 0);
-  await page.getByRole("button", { name: "相频", exact: true }).click();
+  await page.getByRole("radio", { name: "相频", exact: true }).click();
   await expect(page.locator(".response-chart")).not.toContainText("∞");
   await expect(page.locator(".plot")).not.toContainText(/NaN|Infinity/);
   await expect(page.locator(".katex-error")).toHaveCount(0);
@@ -215,15 +215,23 @@ test("core controls and charts fit desktop viewports in both languages and theme
             .getByRole("button", { name: /^(切换语言|Switch language)$/ })
             .click();
         for (const model of [0, 1, 2]) {
-          await page.locator(".model-switch button").nth(model).click();
-          const tabs = page.locator(".parameter-tabs button");
+          await page
+            .locator(".model-switch")
+            .getByRole("radio")
+            .nth(model)
+            .click();
+          const tabs = page.locator(".parameter-tabs").getByRole("tab");
           for (let i = 0; i < (await tabs.count()); i++) {
             await tabs.nth(i).click();
             await expect.poll(() => layoutViolations(page)).toEqual([]);
           }
           for (const mode of model === 2 ? [0, 1, 2, 3] : [0, 1, 2]) {
-            await page.locator(".tabs button").nth(mode).click();
-            const variants = page.locator(".energy-tabs button");
+            await page
+              .locator(".observation-tabs")
+              .getByRole("tab")
+              .nth(mode)
+              .click();
+            const variants = page.locator(".energy-tabs").getByRole("radio");
             const count = Math.max(1, await variants.count());
             for (let i = 0; i < count; i++) {
               if (await variants.count()) await variants.nth(i).click();

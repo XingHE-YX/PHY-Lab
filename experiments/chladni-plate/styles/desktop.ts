@@ -45,27 +45,6 @@ export const styles = css`
     outline: 2px solid var(--primary);
     outline-offset: 3px;
   }
-  input[type="range"] {
-    display: block;
-    width: 100%;
-    margin: 0;
-    accent-color: var(--primary);
-    cursor: pointer;
-    height: 18px;
-  }
-  input[type="checkbox"] {
-    accent-color: var(--primary);
-    margin: 0;
-  }
-  select {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    min-height: 36px;
-    color: var(--text);
-    font-size: 12px;
-    padding: 4px;
-  }
   .heading,
   .heading-copy,
   .panel-heading,
@@ -103,13 +82,6 @@ export const styles = css`
     gap: 8px;
     min-height: 0;
   }
-  .panel {
-    min-width: 0;
-    min-height: 0;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    background: var(--surface);
-  }
   .parameter-panel,
   .stage,
   .observation-panel {
@@ -137,13 +109,33 @@ export const styles = css`
     gap: 5px;
   }
   .parameter-tabs {
-    padding: 10px 12px 0;
+    flex: 1;
+    min-height: 0;
+    padding-top: 10px;
   }
-  .parameter-tabs button,
-  .pair button,
-  .metric-tabs button {
+  .parameter-tabs::part(tabs) {
+    padding: 0 12px;
+  }
+  .parameter-tabs .parameter-body {
+    height: 100%;
+  }
+  .pair button {
     flex: 1;
     padding: 4px 6px;
+  }
+  .observation-tabs {
+    --tab-height: 42px;
+    flex: 1;
+    min-height: 0;
+  }
+  .coordinate phy-input {
+    flex: 1;
+    min-width: 0;
+    width: 40px;
+    --input-font-size: 11px;
+  }
+  .equation phy-math {
+    font-size: 0.87em;
   }
   .parameter-body {
     padding: 16px 14px 10px;
@@ -238,12 +230,6 @@ export const styles = css`
   .scene-tools {
     padding: 8px 12px;
     flex-shrink: 0;
-  }
-  .scene-tools .pair button,
-  .camera button {
-    min-height: 32px;
-    font-size: 11px;
-    padding: 4px 8px;
   }
   .camera {
     gap: 4px;
@@ -361,7 +347,7 @@ export const styles = css`
     font-size: 11px;
     flex-shrink: 0;
   }
-  .layer-controls label {
+  .layer-controls phy-checkbox {
     display: flex;
     align-items: center;
     gap: 5px;
@@ -409,7 +395,7 @@ export const styles = css`
     font: 10px var(--mono);
     color: var(--muted);
   }
-  .timeline input {
+  .timeline phy-slider {
     flex: 1;
     min-width: 0;
   }
@@ -421,26 +407,8 @@ export const styles = css`
     padding-left: 9px;
     color: var(--text);
   }
-  .observation-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .observation-tabs button {
-    flex: 1;
-    border: 0;
-    border-bottom: 2px solid transparent;
-    border-radius: 0;
-    min-height: 42px;
-    color: var(--muted);
-    background: none;
-  }
-  .observation-tabs button.selected {
-    border-bottom-color: var(--primary);
-    color: var(--primary);
-    background: var(--primary-soft);
-  }
   .observation-content {
+    height: 100%;
     flex: 1;
     min-height: 0;
     display: flex;
@@ -473,10 +441,6 @@ export const styles = css`
     color: var(--muted);
     margin: 0;
     flex-shrink: 0;
-  }
-  .metric-tabs button {
-    min-height: 30px;
-    font-size: 11px;
   }
   .chart-wrap {
     flex: 1;
@@ -517,18 +481,6 @@ export const styles = css`
     white-space: nowrap;
     font-size: 10px;
   }
-  .coordinate input {
-    min-width: 0;
-    flex: 1;
-    width: 40px;
-    min-height: 28px;
-    padding: 3px 4px;
-    font: 11px var(--mono);
-    color: var(--text);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-  }
   .support {
     padding: 12px 14px;
     border-top: 1px solid var(--border);
@@ -537,9 +489,6 @@ export const styles = css`
   .equation {
     font-size: 12px;
     line-height: 1.8;
-  }
-  .equation .katex {
-    font-size: 1.05em;
   }
   .support p {
     font-size: 11px;
@@ -586,43 +535,6 @@ export const styles = css`
   .warning {
     color: var(--red) !important;
   }
-  .help-dialog {
-    width: 740px;
-    max-width: calc(100vw - 80px);
-    max-height: calc(100dvh - 80px);
-    overflow: auto;
-    background: var(--surface);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 24px;
-  }
-  .help-dialog::backdrop {
-    background: #0008;
-  }
-  .help-dialog h2 {
-    font-size: 18px;
-    margin: 0;
-  }
-  .help-dialog p {
-    font-size: 13px;
-    line-height: 1.9;
-    color: var(--muted);
-  }
-  .help-formulas {
-    display: grid;
-    gap: 18px;
-    margin: 20px 0;
-  }
-  .help-tasks {
-    display: grid;
-    gap: 10px;
-    border-top: 1px solid var(--border);
-    padding-top: 18px;
-  }
-  .help-tasks p {
-    margin: 0;
-  }
   @media (max-height: 800px) {
     .intro {
       display: none;
@@ -643,8 +555,8 @@ export const styles = css`
       font-size: 19px;
     }
     .observation-content {
-      gap: 8px;
-      padding: 11px 12px;
+      gap: 6px;
+      padding: 8px 12px;
     }
     .facts {
       gap: 10px;
@@ -652,17 +564,21 @@ export const styles = css`
     .facts b {
       font-size: 12px;
     }
+    .facts small {
+      margin-bottom: 4px;
+    }
     .support {
-      padding: 9px 12px;
+      padding: 6px 12px;
     }
     .support p {
       font-size: 10px;
+      margin-top: 5px;
     }
     .preset-block {
-      padding: 8px 12px;
+      padding: 6px 12px;
     }
     .preset-heading {
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .preset {
       min-height: 36px;

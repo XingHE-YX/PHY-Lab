@@ -8,6 +8,7 @@ const paths: Record<string, string> = {
   arrow: "M5 12h14m-6-6 6 6-6 6",
   back: "M19 12H5m6-6-6 6 6 6",
   chevronLeft: "m15 6-6 6 6 6",
+  chevronDown: "m6 9 6 6 6-6",
   close: "m6 6 12 12M18 6 6 18",
   play: "m8 5 11 7-11 7Z",
   pause: "M8 5v14M16 5v14",

@@ -1,7 +1,7 @@
 import { base } from "../infra/platform/registry";
 import { retireDevelopmentRegistration } from "./development";
 export interface OfflineStatus {
-  state: "dev" | "loading" | "ready" | "error" | "unavailable";
+  state: "dev" | "loading" | "ready" | "empty" | "error" | "unavailable";
   complete: number;
   total: number;
   version: string;
@@ -59,9 +59,12 @@ class OfflineService extends EventTarget {
     try {
       navigator.serviceWorker.addEventListener("message", (event) => {
         if (
-          ["CACHE_READY", "CACHE_PROGRESS", "CACHE_ERROR"].includes(
-            event.data?.type,
-          )
+          [
+            "CACHE_READY",
+            "CACHE_PROGRESS",
+            "CACHE_ERROR",
+            "CACHE_CLEARED",
+          ].includes(event.data?.type)
         )
           void this.refresh();
         if (event.data?.type === "CACHE_READY")
