@@ -221,6 +221,7 @@ test("console content aligns with toolbar and experiment navigation is minimal",
   page,
 }) => {
   await page.goto("/");
+  await expect(page.getByRole("link", { name: /弹簧振子/ })).toBeVisible();
   await expect(page.locator(".card").first()).toBeVisible();
   await expect(page.locator(".hero, .method, .number")).toHaveCount(0);
   for (const width of [1280, 1920]) {
@@ -317,8 +318,11 @@ test("spring toolbar and exploration preserve experiment actions", async ({
   await expect(page.getByText("两周期观察窗口", { exact: true })).toHaveCount(
     0,
   );
-  await page.getByText("查看推导", { exact: true }).click();
+  await page
+    .getByRole("button", { name: "模型说明与推导", exact: true })
+    .click();
   await expect(page.locator(".derivation-steps")).toBeVisible();
+  await page.keyboard.press("Escape");
   await page.getByRole("tab", { name: "探索任务", exact: true }).click();
   await expect(page.locator(".task")).toHaveCount(3);
   const tasks = page.locator(".task");
@@ -362,7 +366,8 @@ test("spring toolbar and exploration preserve experiment actions", async ({
       .evaluateAll((nodes) =>
         nodes.map((node) => node.getBoundingClientRect().y),
       );
-    expect(new Set(positions).size).toBe(1);
+    expect(positions[1]).toBeGreaterThan(positions[0]);
+    expect(positions[2]).toBeGreaterThan(positions[1]);
   }
   await page.screenshot({
     path: "/tmp/phy-lab-challenges-completed.png",
@@ -385,6 +390,7 @@ test("workspace scrollbar stays below toolbar and spring remains inside viewport
   page,
 }) => {
   await page.goto("/");
+  await expect(page.getByRole("link", { name: /弹簧振子/ })).toBeVisible();
   await expect(page.locator(".card").first()).toBeVisible();
   const before = await page.locator(".toolbar").boundingBox();
   const gridBefore = await page.locator(".grid").boundingBox();
@@ -418,7 +424,9 @@ test("workspace scrollbar stays below toolbar and spring remains inside viewport
   await expect(page.locator(".timeline span")).toHaveCount(3);
   const title = await page.locator(".heading-copy h1").boundingBox();
   const subtitle = await page.locator(".heading-copy .intro").boundingBox();
-  expect(title!.y + title!.height).toBe(subtitle!.y + subtitle!.height);
+  expect(
+    Math.abs(title!.y + title!.height - subtitle!.y - subtitle!.height),
+  ).toBeLessThan(8);
   await expect(
     page.getByText("各箭头按自身峰值缩放", { exact: true }),
   ).toHaveCount(0);
@@ -448,20 +456,15 @@ test("workspace scrollbar stays below toolbar and spring remains inside viewport
       }
 
       await page.getByRole("tab", { name: "公式", exact: true }).click();
-      const details = page.locator(".derivation");
-      await details.evaluate((el) => ((el as HTMLDetailsElement).open = true));
       const momentButtons = await page.locator(".moment-buttons").boundingBox();
       const arrows = await page.locator(".moments .toggles").boundingBox();
       const footer = await page.locator(".moments").boundingBox();
-      expect(arrows!.x + arrows!.width).toBe(footer!.x + footer!.width - 14);
-      expect(
-        Math.abs(
-          momentButtons!.y +
-            momentButtons!.height / 2 -
-            arrows!.y -
-            arrows!.height / 2,
-        ),
-      ).toBeLessThan(1);
+      expect(arrows!.x + arrows!.width).toBeLessThanOrEqual(
+        footer!.x + footer!.width,
+      );
+      expect(arrows!.y).toBeGreaterThanOrEqual(
+        momentButtons!.y + momentButtons!.height,
+      );
       await expect(
         page.getByText("调整参数，看看什么发生了变化。", { exact: true }),
       ).toHaveCount(0);
@@ -569,17 +572,20 @@ test("TeX formulas render with local fonts, live values and accessible math", as
     );
     await expect(page.locator(".katex-error")).toHaveCount(0);
   }
-  await page.getByText("查看推导", { exact: true }).click();
+  await page
+    .getByRole("button", { name: "模型说明与推导", exact: true })
+    .click();
   await expect(page.locator(".derivation-steps .katex")).toHaveCount(4);
   await expect(page.locator(".derivation-steps .katex").last()).toBeVisible();
+  await page.keyboard.press("Escape");
   await range(page, "振幅", "0.6");
-  await expect(page.locator(".formula-value").last()).toContainText("1.800");
+  await expect(page.locator(".energy-values")).toContainText("1.800");
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "弹簧振子", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".equation .katex").first()).toBeVisible();
-  await expect(page.locator(".formula-value").last()).toContainText("1.800");
+  await expect(page.locator(".energy-values")).toContainText("1.800");
   expect(remote).toEqual([]);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.getByRole("button", { name: "切换明暗" }).click();

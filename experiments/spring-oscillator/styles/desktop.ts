@@ -4,10 +4,10 @@ export const styles = css`
     display: grid;
     height: 100%;
     min-height: 0;
-    overflow: hidden;
-    grid-template-rows: auto minmax(0, 1fr) clamp(150px, 23vh, 220px);
-    font-family: var(--font);
+    grid-template-rows: 38px minmax(0, 1fr);
+    gap: 10px;
     color: var(--text);
+    font-family: var(--font);
   }
   *,
   *::before,
@@ -19,35 +19,22 @@ export const styles = css`
   select {
     font: inherit;
   }
-  button,
-  input,
-  select,
-  summary,
-  [tabindex] {
-    outline-offset: 3px;
-  }
-  button:focus-visible,
-  input:focus-visible,
-  select:focus-visible,
-  summary:focus-visible,
-  [tabindex]:focus-visible {
-    outline: 2px solid var(--primary);
-  }
   button {
     cursor: pointer;
     color: var(--text);
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 3px;
-    min-height: 34px;
-    padding: 7px 11px;
+    min-height: 36px;
+    padding: 6px 10px;
     font-size: 12px;
   }
   button:hover {
     background: var(--subtle);
   }
-  button:disabled {
-    opacity: 0.4;
+  button:disabled,
+  input:disabled {
+    opacity: 0.45;
     cursor: default;
   }
   button.selected {
@@ -55,193 +42,207 @@ export const styles = css`
     background: var(--primary-soft);
     border-color: var(--primary);
   }
-  .mono {
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+  }
+  .mono,
+  .val,
+  .value,
+  strong,
+  .derived-row span:last-child {
     font-family: var(--mono);
     font-variant-numeric: tabular-nums;
   }
-  .muted {
+  .muted,
+  .unit {
     color: var(--muted);
   }
-  ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+  .unit {
+    font: 11px var(--font);
+    margin-left: 4px;
   }
-  ::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 2px;
-  }
-  @supports not selector(::-webkit-scrollbar) {
-    * {
-      scrollbar-width: thin;
-    }
-  }
-  .heading {
+  .heading,
+  .heading-copy,
+  .model-switch,
+  .scene-header,
+  .panel-heading,
+  .plot-top,
+  .compare,
+  .dialog-heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 30px;
-    margin: 0 0 10px;
-  }
-  .heading-copy {
-    display: flex;
-    align-items: flex-end;
-    gap: 18px;
+    gap: 10px;
     min-width: 0;
   }
+  .heading-copy {
+    justify-content: flex-start;
+    align-items: baseline;
+    gap: 14px;
+  }
   h1 {
-    font-weight: 550;
     font-size: 20px;
-    letter-spacing: -0.8px;
+    font-weight: 550;
+    letter-spacing: -0.6px;
     margin: 0;
+    white-space: nowrap;
   }
   .intro {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--muted);
     margin: 0;
-    line-height: 1.6;
+    line-height: 1.5;
   }
-  .lab-meta {
-    display: flex;
-    gap: 22px;
-    align-items: center;
-  }
-  .status {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 11px;
-    font-family: var(--mono);
-    padding: 7px 11px;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-  }
-  .status-dot {
-    width: 5px;
-    height: 5px;
-    background: var(--muted);
-    border-radius: 50%;
-  }
-  .running .status-dot {
-    background: var(--blue);
-    box-shadow: 0 0 8px var(--blue);
+  .model-switch {
+    gap: 4px;
+    flex-shrink: 0;
   }
   .lab-grid {
     display: grid;
-    grid-template-columns: 218px minmax(480px, 1fr) 354px;
-    gap: 0;
+    grid-template-columns: 224px minmax(420px, 1fr) 350px;
+    gap: 8px;
     min-height: 0;
-    align-items: stretch;
   }
   .panel {
-    border: 1px solid var(--border);
-    border-radius: 0;
     min-height: 0;
+    min-width: 0;
     background: var(--surface);
-    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 3px;
   }
-  .panel-heading {
-    padding: 16px 18px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 12px;
-    font-weight: 550;
-  }
-  .panel-heading span {
-    font-weight: 400;
-    font-size: 10px;
-    color: var(--muted);
-    letter-spacing: 0.8px;
-  }
-  .parameters {
+  .parameters,
+  .stage,
+  .observation {
     display: flex;
     flex-direction: column;
   }
+  .panel-heading {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 550;
+    flex-shrink: 0;
+  }
+  .status {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 400;
+  }
+  .running {
+    color: var(--primary);
+  }
+  .parameter-tabs,
+  .energy-tabs,
+  .presets {
+    display: flex;
+    gap: 5px;
+  }
+  .parameter-tabs {
+    padding: 10px 12px 0;
+  }
+  .parameter-tabs button {
+    flex: 1;
+    padding: 5px;
+  }
   .parameter-body {
+    padding: 16px 14px;
+    flex: 1;
     min-height: 0;
-    overflow: auto;
-    scrollbar-gutter: stable;
-    padding: 16px 18px;
   }
   .parameter {
     margin-bottom: 18px;
   }
   .parameter label {
     display: flex;
+    justify-content: space-between;
+    gap: 6px;
     align-items: center;
-    justify-content: space-between;
     font-size: 12px;
-    margin-bottom: 8px;
-    gap: 8px;
+    margin-bottom: 9px;
   }
-  .parameter .val {
-    font-family: var(--mono);
+  .val {
     font-size: 11px;
-  }
-  .limits {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 5px;
-    font-family: var(--mono);
-    font-size: 9px;
-    color: var(--muted);
+    white-space: nowrap;
   }
   input[type="range"] {
     accent-color: var(--primary);
     width: 100%;
-    height: 15px;
+    height: 16px;
     margin: 0;
     cursor: pointer;
   }
+  .limits {
+    display: flex;
+    justify-content: space-between;
+    color: var(--muted);
+    font-size: 10px;
+    margin-top: 4px;
+  }
   .derived {
-    border-top: 1px solid var(--border);
-    padding-top: 18px;
     display: grid;
-    gap: 14px;
+    gap: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    margin-top: 16px;
   }
   .derived-row {
     display: flex;
     justify-content: space-between;
+    gap: 4px;
     font-size: 11px;
+    line-height: 1.5;
+  }
+  .derived-row span:first-child {
+    color: var(--muted);
   }
   .derived-row span:last-child {
-    font-family: var(--mono);
+    white-space: nowrap;
   }
-  details {
-    font-size: 12px;
+  .presets {
+    margin: -2px 0 14px;
   }
-  summary {
-    cursor: pointer;
+  .presets button {
+    flex: 1;
+    padding: 4px;
+    font-size: 11px;
+  }
+  .parameter-note {
+    font-size: 11px;
+    line-height: 1.8;
     color: var(--muted);
-    line-height: 1.7;
+    margin: 0;
   }
-  .stage {
-    display: flex;
-    flex-direction: column;
+  .parameter-footer {
+    border-top: 1px solid var(--border);
+    padding: 10px 14px;
+    display: grid;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .parameter-footer small {
+    color: var(--muted);
+    font-size: 10px;
+    text-align: center;
   }
   .scene-header {
-    padding: 16px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    font-size: 11px;
-    color: var(--muted);
+    height: 40px;
+    padding: 0 14px;
     border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    flex-shrink: 0;
   }
   .phasor-toggle {
     display: inline-flex;
     align-items: center;
-    gap: 9px;
+    gap: 8px;
     cursor: pointer;
-    color: var(--text);
-    min-height: 24px;
+    white-space: nowrap;
   }
   .phasor-toggle input {
     appearance: none;
-    width: 30px;
-    height: 17px;
+    width: 28px;
+    height: 16px;
     margin: 0;
     border: 1px solid var(--muted);
     border-radius: 3px;
@@ -254,8 +255,8 @@ export const styles = css`
     position: absolute;
     top: 3px;
     left: 3px;
-    width: 9px;
-    height: 9px;
+    width: 8px;
+    height: 8px;
     border-radius: 1px;
     background: var(--muted);
   }
@@ -264,28 +265,22 @@ export const styles = css`
     background: var(--primary-soft);
   }
   .phasor-toggle input:checked::after {
-    transform: translateX(13px);
+    transform: translateX(12px);
     background: var(--primary);
   }
   .phase-readout {
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    font-size: 10px;
   }
   .scene-wrap {
     position: relative;
     flex: 1;
-    display: flex;
-    align-items: center;
-    min-height: 0;
-    overflow: hidden;
-    background: var(--surface);
+    min-height: 120px;
   }
   .scene {
+    display: block;
     width: 100%;
     height: 100%;
-    max-height: 100%;
-    min-height: 0;
-    display: block;
     user-select: none;
   }
   .mass {
@@ -294,6 +289,10 @@ export const styles = css`
   }
   .mass:active {
     cursor: grabbing;
+  }
+  .phase-handle {
+    cursor: crosshair;
+    touch-action: none;
   }
   .phasor-layer {
     opacity: 1;
@@ -307,114 +306,145 @@ export const styles = css`
     visibility: hidden;
     pointer-events: none;
   }
-  .phase-handle {
-    cursor: crosshair;
-    touch-action: none;
-  }
-  .scene-instruction {
-    position: absolute;
-    top: 14px;
-    left: 18px;
-    font-size: 10px;
-    color: var(--muted);
-    pointer-events: none;
-  }
+  .scene-instruction,
   .scene-scale {
     position: absolute;
-    bottom: 12px;
-    right: 17px;
-    font-size: 9px;
     color: var(--muted);
-    letter-spacing: 0.5px;
+    font-size: 10px;
     pointer-events: none;
   }
-  @media (prefers-reduced-motion: reduce) {
-    .phasor-layer {
-      transition: none;
-    }
+  .scene-instruction {
+    top: 14px;
+    left: 14px;
+  }
+  .scene-scale {
+    bottom: 10px;
+    right: 14px;
+    font-size: 9px;
   }
   .readouts {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     border-top: 1px solid var(--border);
+    flex-shrink: 0;
   }
   .readout {
-    padding: 10px 18px;
+    padding: 11px 14px;
     border-right: 1px solid var(--border);
   }
   .readout:last-child {
     border-right: 0;
   }
-  .readout .label {
-    font-size: 10px;
+  .label {
+    font-size: 11px;
     color: var(--muted);
-    margin-bottom: 7px;
+    margin-bottom: 6px;
   }
   .value {
-    font-family: var(--mono);
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 500;
   }
-  .unit {
-    font-size: 10px;
+  .force-readouts {
+    display: flex;
+    justify-content: space-evenly;
+    gap: 5px;
+    padding: 8px;
+    border-top: 1px solid var(--border);
     color: var(--muted);
-    margin-left: 4px;
+    font-size: 10px;
+    flex-shrink: 0;
   }
   .timeline {
-    padding: 12px 18px;
+    padding: 12px 14px;
     border-top: 1px solid var(--border);
     display: flex;
-    gap: 12px;
+    gap: 10px;
     align-items: center;
-    font-family: var(--mono);
-    font-size: 10px;
     color: var(--muted);
+    font: 10px var(--mono);
+    flex-shrink: 0;
+  }
+  .timeline input {
+    flex: 1;
+    min-width: 0;
   }
   .timeline span {
     white-space: nowrap;
   }
-  .timeline input {
-    min-width: 0;
-    flex: 1;
-  }
-  .timeline .time-label {
-    color: var(--text);
+  .time-label {
     border-left: 1px solid var(--border);
-    padding-left: 12px;
+    padding-left: 10px;
+    color: var(--text);
   }
-  .toggles {
+  .moments {
+    border-top: 1px solid var(--border);
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .section-title {
+    display: none;
+  }
+  .moment-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    grid-column: 1/-1;
+  }
+  .moment-buttons button {
+    padding: 5px 2px;
+    font-size: 11px;
+  }
+  .moment-hint {
+    font-size: 10px;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.6;
+  }
+  .moment-hint + .toggles {
+    grid-column: 2;
+  }
+  .moments > .toggles {
+    grid-column: 1/-1;
+    justify-content: flex-end;
+  }
+  .moments:has(.moment-hint) > .toggles {
+    grid-column: 2;
+  }
+  .toggles,
+  .toggle-group {
     display: flex;
-    gap: 13px;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
     font-size: 11px;
     color: var(--muted);
-    flex-wrap: wrap;
   }
   .toggles label {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
   }
   .toggles input {
-    accent-color: var(--primary);
     margin: 0;
-  }
-  .observation {
-    display: flex;
-    flex-direction: column;
+    accent-color: var(--primary);
   }
   .tabs {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    display: flex;
     border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
   }
   .tabs button {
+    flex: 1;
     border: 0;
-    border-radius: 0;
-    background: none;
-    padding: 16px 4px;
-    font-size: 12px;
-    color: var(--muted);
     border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 12px 3px;
+    color: var(--muted);
+    background: none;
+    font-size: 12px;
   }
   .tabs button.active {
     color: var(--primary);
@@ -422,344 +452,321 @@ export const styles = css`
     background: var(--primary-soft);
   }
   .plot {
-    min-height: 0;
-    overflow: auto;
-    scrollbar-gutter: stable;
-    padding: 15px 16px;
+    padding: 12px;
     flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .plot[hidden] {
+    display: none;
   }
   .plot-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
+    flex-shrink: 0;
     font-size: 10px;
     color: var(--muted);
-    margin-bottom: 10px;
-  }
-  .chart {
-    width: 100%;
-    height: auto;
-    display: block;
-    touch-action: none;
-    margin-top: 8px;
+    flex-wrap: wrap;
   }
   .plot-top .toggles {
-    margin: 0;
     font-size: 10px;
     gap: 6px;
-    flex-wrap: nowrap;
   }
   .plot-time {
     margin-left: auto;
     white-space: nowrap;
   }
-  .compare {
-    border-top: 1px solid var(--border);
-    margin-top: 14px;
-    padding-top: 11px;
-    font-size: 10px;
-    color: var(--muted);
-    line-height: 1.8;
-  }
-  .compare button {
-    padding: 3px 6px;
-    min-height: 24px;
-    font-size: 10px;
-    float: right;
-  }
-  .observation-note {
-    padding: 15px 16px;
-    border-top: 1px solid var(--border);
-    font-size: 12px;
-    color: var(--muted);
-    line-height: 1.9;
-    background: var(--bg);
-  }
-  .mini-stats {
+  .chart-stack {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
-    margin: 16px 0;
+    grid-auto-rows: minmax(0, 1fr);
+    flex: 1;
+    min-height: 70px;
   }
-  .mini-stat {
-    padding: 14px 12px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-  }
-  .mini-stat + .mini-stat {
-    border-left: 0;
-  }
-  .mini-stat small {
+  .chart {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
     display: block;
-    font-size: 10px;
-    color: var(--muted);
-    margin-bottom: 9px;
+    touch-action: none;
   }
-  .mini-stat strong {
-    font-family: var(--mono);
-    font-size: 16px;
-    font-weight: 500;
-  }
+  .mini-stats,
   .energy-values {
     display: grid;
-    gap: 14px;
-    margin: 18px 0;
-  }
-  .energy-values > div {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    flex-shrink: 0;
     font-size: 11px;
   }
-  .energy-values small {
-    font-size: 11px;
+  .mini-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     color: var(--muted);
   }
+  .mini-stats b {
+    display: block;
+    color: var(--text);
+    font-size: 14px;
+    margin-top: 6px;
+    font-weight: 500;
+  }
+  .energy-values small {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    margin-bottom: 5px;
+  }
   .energy-values strong {
-    font-family: var(--mono);
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 500;
   }
   .energy-bar {
-    display: flex;
-    height: 7px;
-    overflow: hidden;
+    height: 6px;
     background: var(--subtle);
     border-radius: 2px;
+    display: flex;
+    flex-shrink: 0;
+  }
+  .energy-bar div {
+    height: 100%;
   }
   .energy-caption {
     display: flex;
     justify-content: space-between;
-    margin-top: 8px;
-    font-size: 10px;
     color: var(--muted);
+    font-size: 10px;
+    flex-shrink: 0;
   }
-  .moments {
-    display: flex;
-    overflow-x: auto;
-    white-space: nowrap;
-    align-items: center;
-    gap: 8px;
+  .energy-tabs button {
+    flex: 1;
+    min-height: 30px;
+    padding: 3px;
+    font-size: 11px;
+  }
+  .observation-note {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.65;
+    margin: 0;
+    flex-shrink: 0;
+  }
+  .compare {
+    padding-top: 8px;
     border-top: 1px solid var(--border);
-    padding: 10px 14px;
+    font-size: 10px;
+    color: var(--muted);
     flex-shrink: 0;
   }
-  .moments .toggles {
-    margin-left: auto;
-    flex-wrap: nowrap;
-    font-size: 10px;
-  }
-  .moments .toggle-group {
-    display: flex;
-    gap: 8px;
-  }
-  .moment-buttons button {
-    font-size: 10px;
-    padding: 5px 7px;
+  .compare button {
+    padding: 4px 8px;
     min-height: 28px;
-  }
-  .moments > * {
-    flex-shrink: 0;
-  }
-  .section-title {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.7px;
-    color: var(--muted);
-    margin: 0;
-    white-space: nowrap;
-  }
-  .moment-buttons {
-    display: flex;
-    gap: 6px;
-    flex-shrink: 0;
-  }
-  .moment-hint {
-    flex-shrink: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--muted);
-    margin: 0;
-    line-height: 1.7;
-    white-space: nowrap;
-    font-size: 11px;
+    font-size: 10px;
   }
   .support {
-    margin-top: 0;
-    border-top: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  #support-content {
-    min-height: 0;
-    overflow: auto;
-    scrollbar-gutter: stable;
-    flex: 1;
-  }
-  .bench > .panel + .panel {
-    border-left: 0;
-  }
-  .tabs,
-  .support-tabs,
-  .panel-heading,
-  .scene-header,
-  .readouts,
-  .timeline,
-  .stage > .toggles,
-  .observation-note {
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
     flex-shrink: 0;
   }
   .support-tabs {
     display: flex;
-    gap: 6px;
-    padding: 10px 18px;
-    border-bottom: 1px solid var(--border);
+    padding: 8px 12px 0;
+    gap: 5px;
   }
   .support-tabs button {
-    background: transparent;
-    border-color: transparent;
+    font-size: 11px;
+    min-height: 30px;
+    padding: 4px 10px;
   }
-  .support-tabs button.selected {
-    background: var(--primary-soft);
-    color: var(--primary);
+  #support-content {
+    padding: 12px;
   }
   .theory {
-    padding: 14px 20px;
     display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-    gap: 12px 24px;
-    align-items: center;
-  }
-  .formula-main,
-  .formula-live {
-    min-width: 0;
+    gap: 6px;
   }
   .equation {
     display: flex;
-    align-items: center;
     flex-wrap: wrap;
-    gap: 12px 24px;
-    font-size: 17px;
-    line-height: 1.5;
+    gap: 5px 10px;
+    font-size: 13px;
+    align-items: center;
   }
-  .katex {
-    font-size: 1em;
+  .equation .katex {
+    font-size: 1.05em;
   }
   .conservation {
-    margin-top: 8px;
-    font-size: 13px;
+    font-size: 12px;
+    margin-top: 5px;
   }
   .explanation {
-    font-size: 11px;
-    line-height: 1.7;
     color: var(--muted);
-    margin: 8px 0 0;
+    font-size: 11px;
+    line-height: 1.65;
+    margin: 6px 0 0;
   }
   .formula-live {
-    border-left: 1px solid var(--border);
-    padding-left: 24px;
-  }
-  .formula-caption {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    color: var(--muted);
-    font-size: 10px;
-    margin-bottom: 10px;
-  }
-  .formula-values {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 10px 24px;
-  }
-  .formula-value {
-    display: flex;
-    align-items: baseline;
-    gap: 7px;
-    white-space: nowrap;
-  }
-  .formula-symbol {
-    font-size: 14px;
-  }
-  .formula-value strong {
-    font-family: var(--mono);
-    font-size: 15px;
-    font-weight: 500;
+    display: none;
   }
   .derivation {
-    grid-column: 1 / -1;
-    padding-top: 9px;
-    border-top: 1px solid var(--border);
-  }
-  .derivation summary {
-    color: var(--muted);
-    font-size: 11px;
-  }
-  .derivation-steps {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 18px;
-    padding: 12px 0 4px;
-    font-size: 15px;
-  }
-  .derivation-steps small {
-    display: block;
-    color: var(--muted);
+    width: fit-content;
     font-size: 10px;
-    margin-bottom: 8px;
+    padding: 0;
+    min-height: 22px;
+    color: var(--primary);
+    border: 0;
+    background: none;
+  }
+  .exploring .support {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .exploring #support-content {
+    min-height: 0;
+    overflow: auto;
   }
   .task-grid {
     display: grid;
-    grid-template-rows: auto auto auto auto;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    padding: 12px 20px;
-    gap: 10px 18px;
+    gap: 12px;
   }
   .task {
-    padding: 0 18px 0 0;
-    border-right: 1px solid var(--border);
-    display: grid;
-    grid-row: 1 / span 4;
-    grid-template-rows: subgrid;
-    gap: 10px;
-    align-content: start;
-  }
-  .task:last-child {
-    border-right: 0;
+    border: 1px solid var(--border);
+    padding: 12px;
+    border-radius: 3px;
   }
   .task-title {
+    margin: 0 0 7px;
     font-size: 13px;
-    font-weight: 500;
-    line-height: 1.2;
-    margin: 0;
+    font-weight: 550;
   }
-  .task-check,
-  .task.completed .task-title {
-    color: var(--green);
-  }
-  .task-description {
+  .task-description,
+  .explore-copy {
+    margin: 0 0 9px;
     font-size: 12px;
+    line-height: 1.8;
     color: var(--muted);
-    line-height: 1.7;
-    margin: 0;
   }
   .task-status {
-    color: var(--muted);
     font-size: 10px;
-    line-height: 1.6;
-    min-height: 1.6em;
+    color: var(--muted);
+    margin: 8px 0;
   }
   .task-actions {
     display: flex;
-    align-items: center;
     gap: 10px;
-    font-size: 10px;
-    color: var(--primary);
+    align-items: center;
+    font-size: 11px;
   }
-  .task-actions button {
-    justify-self: start;
+  .completed {
+    border-color: var(--green);
+  }
+  .active-task {
+    border-color: var(--primary);
+  }
+  .task-check {
+    color: var(--green);
+  }
+  .response-frequency {
+    display: grid;
+    gap: 8px;
+    font-size: 11px;
+  }
+  .response-frequency > span {
+    display: flex;
+    justify-content: space-between;
+  }
+  .response-values {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .response-values small {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .response-values strong {
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .response-peak,
+  .response-hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.6;
+  }
+  .help-dialog {
+    width: 720px;
+    max-width: calc(100vw - 80px);
+    max-height: calc(100dvh - 80px);
+    padding: 24px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: auto;
+  }
+  .help-dialog::backdrop {
+    background: #0008;
+  }
+  .dialog-heading h2 {
+    font-size: 17px;
+    margin: 0;
+  }
+  .help-dialog p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.9;
+  }
+  .derivation-steps {
+    display: grid;
+    gap: 20px;
+    margin-top: 24px;
+    font-size: 15px;
+  }
+  @media (max-height: 800px) {
+    .parameter {
+      margin-bottom: 13px;
+    }
+    .parameter-body {
+      padding-top: 12px;
+    }
+    .readout {
+      padding: 9px 12px;
+    }
+    .value {
+      font-size: 19px;
+    }
+    .plot {
+      gap: 7px;
+      padding: 10px;
+    }
+    .support-tabs {
+      padding-top: 6px;
+    }
+    #support-content {
+      padding: 10px 12px;
+    }
+    .explanation {
+      font-size: 10px;
+    }
+    .task {
+      padding: 10px;
+    }
+  }
+  @media (max-height: 719px) {
+    :host {
+      overflow: auto;
+    }
+    .lab-grid {
+      min-height: 550px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .phasor-layer {
+      transition: none;
+    }
   }
 `;

@@ -86,6 +86,7 @@ export function sample(p: Parameters, start: number, end: number, count = 241) {
   });
 }
 export function format(value: number, digits = 2) {
+  if (Math.abs(value) >= 1e4) return value.toExponential(Math.min(digits, 2));
   return (Math.abs(value) < Math.pow(10, -digits) / 2 ? 0 : value).toFixed(
     digits,
   );
