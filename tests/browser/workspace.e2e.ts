@@ -20,6 +20,20 @@ async function range(page: Page, name: string, value: string) {
     input.dispatchEvent(new Event("change", { bubbles: true }));
   }, value);
 }
+async function expectFirstSettingsSection(page: Page, label: string) {
+  const dialog = page.getByRole("dialog");
+  const heading = dialog.locator(".section-label").filter({ hasText: label });
+  await expect(heading).toBeVisible();
+  const headingBox = (await heading.boundingBox())!;
+  const bodyTop = await dialog
+    .locator(".body")
+    .evaluate(
+      (el) =>
+        el.getBoundingClientRect().top +
+        parseFloat(getComputedStyle(el).paddingTop),
+    );
+  expect(Math.abs(headingBox.y - bodyTop)).toBeLessThanOrEqual(1);
+}
 test("workspace search, navigation and locale persistence", async ({
   page,
 }) => {
@@ -58,6 +72,10 @@ test("theme transition, settings dialog and focus restoration", async ({
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByRole("dialog")).toContainText("PHY Lab v0.1.0");
   await expect(page.locator("phy-app footer")).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "实验设置", exact: true }),
+  ).toHaveCount(0);
+  await expectFirstSettingsSection(page, "外观");
   await page.getByLabel("减少界面动画").check();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -650,7 +668,9 @@ test.describe("experiment settings API", () => {
         .click();
     await openSettings();
     const region = page.getByRole("region", { name: "实验设置", exact: true });
-    await expect(region).toContainText("弹簧振子");
+    await expect(region.locator(".section-label")).toHaveText("实验设置");
+    await expect(region).not.toContainText("弹簧振子");
+    await expectFirstSettingsSection(page, "实验设置");
     await region.getByRole("checkbox", { name: "显示轨迹" }).check();
     await expect(
       page.getByRole("heading", { name: "Settings fixture" }),
@@ -669,12 +689,18 @@ test.describe("experiment settings API", () => {
         .getByRole("region", { name: "Experiment settings", exact: true })
         .getByRole("checkbox", { name: "Show trail" }),
     ).toBeChecked();
+    await expect(
+      page
+        .getByRole("region", { name: "Experiment settings", exact: true })
+        .locator(".section-label"),
+    ).toHaveText("Experiment settings");
     await page.evaluate(() =>
       (window as any).settingsFixture.context.settings.setControls(null),
     );
     await expect(
       page.getByRole("region", { name: "Experiment settings", exact: true }),
     ).toHaveCount(0);
+    await expectFirstSettingsSection(page, "Appearance");
     await page.evaluate(() => {
       const fixture = (window as any).settingsFixture;
       fixture.context.settings.setControls(fixture.panel);

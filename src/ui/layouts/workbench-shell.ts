@@ -50,7 +50,7 @@ const settingsStyles = css`
     text-transform: uppercase;
     margin: 28px 0 15px;
   }
-  .section-label:first-child {
+  .section-label.first-section {
     margin-top: 0;
   }
   .offline {
@@ -385,6 +385,9 @@ export class App extends LitElement {
     const s = settings.value,
       t = messages(s.locale);
     const id = this.route.match(/^#\/experiments\/([a-z][a-z0-9-]*)$/)?.[1];
+    const hasExperimentSettings = Boolean(
+      id && this.experimentSettings.hasChildNodes(),
+    );
     const root =
       this.settingsContent.shadowRoot ??
       this.settingsContent.attachShadow({ mode: "open" });
@@ -393,20 +396,23 @@ export class App extends LitElement {
           ${baseStyles.cssText}${buttonStyles.cssText}${settingsStyles.cssText}
         </style>
         ${
-          id && this.experimentSettings.hasChildNodes()
+          hasExperimentSettings
             ? html`<section
                 class="experiment-settings"
                 aria-label=${t.experimentSettings}
               >
-                <div class="section-label">
-                  ${t.experimentSettings} ·
-                  ${this.catalog?.experiments.find((entry) => entry.id === id)?.title[s.locale] ?? id}
+                <div class="section-label first-section">
+                  ${t.experimentSettings}
                 </div>
                 ${this.experimentSettings}
               </section>`
             : ""
         }
-        <div class="section-label">${t.appearance}</div>
+        <div
+          class=${hasExperimentSettings ? "section-label" : "section-label first-section"}
+        >
+          ${t.appearance}
+        </div>
         <div class="row">
           <span>${t.language}</span
           ><phy-select
