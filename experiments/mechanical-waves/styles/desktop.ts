@@ -223,7 +223,7 @@ export const styles = css`
     min-height: 0;
   }
   .exploring .observation-tabs {
-    flex: 0;
+    flex: 0 0 auto;
   }
   .support-tabs {
     --tab-font-size: 11px;

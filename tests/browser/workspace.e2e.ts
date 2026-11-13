@@ -699,3 +699,45 @@ test.describe("experiment settings API", () => {
     ).toHaveCount(0);
   });
 });
+
+test("observation tabs remain clickable while exploration is open", async ({
+  page,
+}) => {
+  for (const size of [
+    { width: 1280, height: 720 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(size);
+    for (const experiment of [
+      {
+        id: "spring-oscillator",
+        title: "弹簧振子",
+        exploration: "探索任务",
+        observation: "看能量",
+      },
+      {
+        id: "mechanical-waves",
+        title: "机械波实验台",
+        exploration: "探索",
+        observation: "空间剖面",
+      },
+    ]) {
+      await page.goto(`/#/experiments/${experiment.id}`);
+      await expect(
+        page.getByRole("heading", { name: experiment.title, exact: true }),
+      ).toBeVisible();
+      await page
+        .getByRole("tab", { name: experiment.exploration, exact: true })
+        .click();
+      const observation = page.getByRole("tab", {
+        name: experiment.observation,
+        exact: true,
+      });
+      await observation.click();
+      await expect(observation).toHaveAttribute("aria-selected", "true");
+      await expect(
+        page.getByRole("tab", { name: "公式", exact: true }),
+      ).toHaveAttribute("aria-selected", "true");
+    }
+  }
+});
