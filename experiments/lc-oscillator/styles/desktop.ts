@@ -230,6 +230,7 @@ export const styles = css`
     align-items: center;
     gap: 5px;
     font-size: 11px;
+    line-height: 16px;
   }
   .circuit-scene .axis-text {
     font-size: 14px;
@@ -258,6 +259,7 @@ export const styles = css`
   .readout label {
     display: block;
     font-size: 10px;
+    line-height: 14px;
     color: var(--muted);
     margin-bottom: 6px;
   }
@@ -284,6 +286,7 @@ export const styles = css`
     justify-content: space-between;
     gap: 8px;
     font: 10px var(--mono);
+    line-height: 14px;
   }
   .energy-values span {
     white-space: nowrap;
@@ -311,6 +314,7 @@ export const styles = css`
     align-items: center;
     gap: 12px;
     font: 10px var(--mono);
+    line-height: 14px;
     color: var(--muted);
   }
   .time-values output {

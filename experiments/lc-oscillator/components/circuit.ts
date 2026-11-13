@@ -83,13 +83,13 @@ export function circuit(
         ? svg`<g class="magnetic-field" data-direction=${iSign} fill="none" stroke="var(--green)" opacity=${0.2 + 0.65 * iStrength}>
       ${[52, 75, 94].map((r) => svg`<path d=${`M500 128C${500 - r} 128 ${500 - r} 298 500 298C${500 + r} 298 ${500 + r} 128 500 128`} stroke-width="1"/>`)}
       ${arrow(500, 214 + 22 * iSign * iStrength, 0, -44 * iSign * iStrength, "var(--green)", "lc-i-arrow")}
-      <text x="604" y="214" fill="var(--green)" stroke="none" font-size="13">B ∝ I</text>
+      <text x="615" y="250" text-anchor="middle" fill="var(--green)" stroke="none" font-size="13">B ∝ I</text>
     </g>`
         : ""
     }
     <path class="inductor" d=${coils} fill="none" stroke="url(#lc-coil)" stroke-width="4" stroke-linecap="round"/>
-    <text x="551" y="188" class="component-label">L</text>
-    <text x="551" y="209" class="axis-text">${format(p.inductance * 1e3, 0)} mH</text>
+    <text x="615" y="188" text-anchor="middle" class="component-label">L</text>
+    <text x="615" y="209" text-anchor="middle" class="axis-text">${format(p.inductance * 1e3, 0)} mH</text>
     ${
       closed && layers.current && iStrength > 1e-5
         ? svg`<g class="current-arrows" data-direction=${iSign}>
