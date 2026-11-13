@@ -196,3 +196,54 @@ test("LC energy ratios and shared-unit curves conserve energy while views preser
     ))
     expect(value).toBe(0);
 });
+test("LC spring analogy uses normalized charge and opposite current, including reversed polarity and zero energy", async ({
+  page,
+}) => {
+  await open(page);
+  const tab = page.getByRole("tab", { name: "看振荡", exact: true });
+  await tab.focus();
+  await page.keyboard.press("End");
+  await expect(
+    page.getByRole("tab", { name: "类比弹簧", exact: true }),
+  ).toBeFocused();
+  await page.getByRole("button", { name: /磁场能最大/ }).click();
+  await expect(page.locator(".spring-velocity")).toHaveAttribute(
+    "data-direction",
+    "-1",
+  );
+  await expect(
+    page.locator('.chart-point[data-metric="velocity"]'),
+  ).toHaveAttribute("data-value", "-1");
+  expect(
+    Number(await page.locator(".spring-analogy").getAttribute("data-position")),
+  ).toBeCloseTo(0, 12);
+  const time = (await saved(page)).time;
+  await page.getByRole("tab", { name: "类比弹簧", exact: true }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(tab).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  expect((await saved(page)).time).toBe(time);
+  await range(page, "初始电压 U₀", -6);
+  await expect(page.locator(".spring-analogy")).toHaveAttribute(
+    "data-position",
+    "-1",
+  );
+  await page.getByRole("button", { name: /磁场能最大/ }).click();
+  await expect(page.locator(".spring-velocity")).toHaveAttribute(
+    "data-direction",
+    "1",
+  );
+  await expect(
+    page.locator('.chart-point[data-metric="velocity"]'),
+  ).toHaveAttribute("data-value", "1");
+  await range(page, "初始电压 U₀", 0);
+  await expect(page.locator(".normalization-empty")).toContainText(
+    "归一化峰值不存在",
+  );
+  await expect(page.locator(".spring-analogy, .lc-chart")).toHaveCount(0);
+  await page.reload();
+  await expect(
+    page.getByRole("tab", { name: "类比弹簧", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator(".katex-error")).toHaveCount(0);
+});

@@ -22,8 +22,13 @@ import { styles } from "./styles/desktop";
 import { math, mathStyles } from "./components/math";
 import { circuit } from "./components/circuit";
 import { chart } from "./components/chart";
+import { spring } from "./components/spring";
 
-const observations: Snapshot["observation"][] = ["oscillation", "energy"];
+const observations: Snapshot["observation"][] = [
+  "oscillation",
+  "energy",
+  "analogy",
+];
 
 export class LCExperiment extends LitElement {
   static properties = {
@@ -266,6 +271,31 @@ export class LCExperiment extends LitElement {
   }
   private plots() {
     const t = texts(this.locale);
+    if (this.data.observation === "analogy") {
+      if (derived(this.p).energy === 0)
+        return html`<div class="normalization-empty">
+          ${t.noNormalization}
+        </div>`;
+      return html`<div class="chart-legend">
+          <span class="charge">━ q/Qₘ ↔ x/A</span
+          ><span class="current">┄ −I/Iₘ ↔ v/vₘ</span>
+        </div>
+        <div class="chart-stack analogy-stack">
+          ${spring(this.p, this.state, t)}
+          ${chart(
+            this.p,
+            this.data.time,
+            [
+              { metric: "position", color: "var(--blue)" },
+              { metric: "velocity", color: "var(--green)", dash: "6 4" },
+            ],
+            t.chartNormalized,
+            t.chartTime,
+            this.plotHeight,
+            this.seek,
+          )}
+        </div>`;
+    }
     if (this.data.observation === "energy")
       return html` <div class="chart-legend">
           <span class="charge">━ ${t.electricShort}</span
@@ -294,6 +324,17 @@ export class LCExperiment extends LitElement {
   }
   private formulas() {
     const t = texts(this.locale);
+    if (this.data.observation === "analogy")
+      return html` <div class="equation">
+          ${math(String.raw`q\leftrightarrow x,\quad -I\leftrightarrow v`)}
+        </div>
+        <div class="equation">
+          ${math(String.raw`L\leftrightarrow m,\quad C^{-1}\leftrightarrow k`)}
+        </div>
+        <div class="equation">
+          ${math(String.raw`\frac{1}{\sqrt{LC}}\leftrightarrow\sqrt{\frac{k}{m}}`)}
+        </div>
+        <p>${t.analogyHint}</p>`;
     return this.data.observation === "energy"
       ? html` <div class="equation">
             ${math(String.raw`E_C=\frac{q^2}{2C},\quad E_L=\frac{LI^2}{2}`)}
@@ -399,6 +440,7 @@ export class LCExperiment extends LitElement {
           <p>${t.helpClock}</p>
           <p>${t.helpReset}</p>
           <p>${t.helpFields}</p>
+          <p>${t.helpAnalogy}</p>
           <p>${t.controlsHint}</p>
           <footer>
             <phy-button
@@ -535,7 +577,9 @@ export class LCExperiment extends LitElement {
             <p class="observation-summary">${this.hint()}</p>
             ${this.plots()}
             <div class="formula-content">${this.formulas()}</div>
-            <div class="observation-footer">${t.fieldHint}</div>
+            <div class="observation-footer">
+              ${this.data.observation === "analogy" ? t.normalized : t.fieldHint}
+            </div>
           </div>
         </section>
       </div>

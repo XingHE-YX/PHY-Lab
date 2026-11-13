@@ -378,6 +378,23 @@ export const styles = css`
   .chart-stack.single {
     grid-template-rows: minmax(0, 1fr);
   }
+  .chart-stack.analogy-stack {
+    grid-template-rows: 112px minmax(0, 1fr);
+  }
+  .spring-analogy {
+    width: 100%;
+    height: 112px;
+    align-self: center;
+  }
+  .normalization-empty {
+    flex: 1;
+    display: grid;
+    place-items: center;
+    padding: 32px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
   .observation-summary {
     padding: 12px 13px 0;
     min-height: 58px;
