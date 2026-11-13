@@ -26,6 +26,7 @@ export function circuit(
   p: LCParameters,
   s: LCState,
   closed: boolean,
+  playing: boolean,
   layers: { fields: boolean; current: boolean },
   t: LCTexts,
   connect: () => void,
@@ -139,12 +140,6 @@ export function circuit(
       <rect x="24" y="38" width="652" height="334" rx="6" fill="none" stroke="var(--border)" stroke-width="1" opacity="0.8"/>
     </g>
 
-    <g class="scene-status">
-      <circle cx="33" cy="21" r="6" fill=${closed ? "var(--green)" : "var(--blue)"} opacity="0.16"/>
-      <circle cx="33" cy="21" r="3" fill=${closed ? "var(--green)" : "var(--blue)"}/>
-      <text x="45" y="25" class="scene-caption">LC / ${closed ? "OSCILLATION" : "INITIAL STATE"}</text>
-    </g>
-
     ${
       closed && iStrength > 1e-5
         ? svg`<path d=${wirePath} fill="none" stroke="var(--green)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round" opacity=${0.06 + 0.16 * iStrength}/>`
@@ -152,15 +147,15 @@ export function circuit(
     }
     <path class="wire" d=${wirePath} fill="none" stroke="var(--muted)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
 
-    <g class="circuit-switch" role="button" tabindex="0" aria-label=${closed ? t.charge : t.close} @click=${connect} @keydown=${(
+    <g class="circuit-switch" role="button" tabindex="0" aria-label=${!closed ? t.close : playing ? t.pause : t.play} aria-pressed=${playing} @click=${connect} @keydown=${(
       e: KeyboardEvent,
     ) => {
       if (["Enter", " "].includes(e.key)) {
         e.preventDefault();
-        connect();
+        if (!e.repeat) connect();
       }
     }}>
-      <rect class="switch-hitbox" x="284" y="42" width="116" height="68" rx="6" fill="transparent"/>
+      <rect class="switch-hitbox" x="284" y="42" width="116" height="68" rx="6" fill="none"/>
       ${
         !closed
           ? svg`<path d="M366 52A68 68 0 0 1 378 80" fill="none" stroke="var(--border)" stroke-width="1.3" stroke-dasharray="3 3"/>`

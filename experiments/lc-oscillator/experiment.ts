@@ -145,12 +145,7 @@ export class LCExperiment extends LitElement {
         this.toolbar.style.cssText = "display:flex;align-items:center;gap:8px";
         this.context.toolbar.setControls(this.toolbar);
       }
-      const key = JSON.stringify([
-        this.playing,
-        this.data.closed,
-        this.data.rate,
-        this.locale,
-      ]);
+      const key = JSON.stringify([this.data.rate, this.locale]);
       if (key !== this.toolbarKey) {
         this.toolbarKey = key;
         render(this.playback(), this.toolbar);
@@ -196,8 +191,8 @@ export class LCExperiment extends LitElement {
     this.set({ closed: false, time: 0 });
   };
   private connect = () => {
-    if (this.data.closed) this.prepare();
-    else this.set({ closed: true, time: 0 });
+    if (this.playing) this.pause();
+    else this.play();
   };
   private restart = () => {
     this.pause();
@@ -421,13 +416,7 @@ export class LCExperiment extends LitElement {
   }
   private playback() {
     const t = texts(this.locale);
-    return html`<phy-button
-        variant="primary"
-        @click=${() => (this.playing ? this.pause() : this.play())}
-        >${this.playing ? "Ⅱ" : "▷"}
-        ${this.playing ? t.pause : this.data.closed ? t.play : t.start}</phy-button
-      >
-      <phy-button @click=${this.restart}>↺ ${t.restart}</phy-button>
+    return html`<phy-button @click=${this.restart}>↺ ${t.restart}</phy-button>
       <phy-select
         label=${t.rate}
         .value=${String(this.data.rate)}
@@ -611,7 +600,7 @@ export class LCExperiment extends LitElement {
             >
           </div>
           <div class="scene-wrap">
-            ${circuit(this.p, s, this.data.closed, this.data.layers, t, this.connect)}
+            ${circuit(this.p, s, this.data.closed, this.playing, this.data.layers, t, this.connect)}
           </div>
           <div class="layer-controls">
             <div>

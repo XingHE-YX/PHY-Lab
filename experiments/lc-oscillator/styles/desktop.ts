@@ -202,12 +202,6 @@ export const styles = css`
     font: 10px var(--mono);
     fill: var(--muted);
   }
-  .scene-caption {
-    fill: var(--muted);
-    font: 10px var(--mono);
-    font-weight: 500;
-    letter-spacing: 1.5px;
-  }
   .component-label {
     font:
       600 20px Georgia,
@@ -228,22 +222,21 @@ export const styles = css`
     cursor: pointer;
   }
   .circuit-switch .switch-hitbox {
-    transition:
-      fill 0.15s,
-      stroke 0.15s;
+    stroke: var(--border);
+    stroke-width: 1.1;
+    stroke-dasharray: 4 3;
+    pointer-events: all;
+    transition: stroke 0.15s;
   }
   .circuit-switch:hover .switch-hitbox {
-    fill: var(--subtle);
-    stroke: var(--border);
+    stroke: var(--muted);
   }
   .circuit-switch:focus-visible {
     outline: none;
   }
   .circuit-switch:focus-visible .switch-hitbox {
-    fill: var(--primary-soft);
     stroke: var(--primary);
     stroke-width: 1.6;
-    stroke-dasharray: 4 3;
   }
   .layer-controls {
     display: flex;
@@ -253,6 +246,8 @@ export const styles = css`
     padding: 8px 12px;
     border-top: 1px solid var(--border);
     background: var(--surface);
+    font-size: 11px;
+    color: var(--muted);
     flex-shrink: 0;
   }
   .circuit-scene .axis-text {
