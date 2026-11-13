@@ -206,3 +206,45 @@ test("progress remains determinate and math keeps accessible output", async ({
   );
   await expect(page.locator("phy-math .math-error")).toHaveCount(0);
 });
+
+test("select faces align with adjacent action buttons in both themes", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    const row = document.createElement("div");
+    row.id = "select-geometry";
+    row.style.cssText = "display:flex;align-items:center;gap:8px";
+    row.innerHTML =
+      '<phy-button>Fixture restart</phy-button><phy-select label="Fixture rate"></phy-select>';
+    const select = row.querySelector("phy-select") as HTMLElement & {
+      options: unknown[];
+      value: string;
+    };
+    select.options = [
+      { value: "1", label: "1×" },
+      { value: "0.5", label: "0.5×" },
+    ];
+    select.value = "1";
+    document.body.append(row);
+  });
+  const row = page.locator("#select-geometry");
+  for (const theme of ["light", "dark"]) {
+    if ((await page.locator("html").getAttribute("data-theme")) !== theme) {
+      await page.getByRole("button", { name: "切换明暗", exact: true }).click();
+    }
+    const button = row.getByRole("button", { name: "Fixture restart" });
+    const select = row.getByRole("combobox", { name: "Fixture rate" });
+    await expect(select).toBeVisible();
+    const buttonBox = (await button.boundingBox())!;
+    const selectBox = (await select.boundingBox())!;
+    expect(selectBox.height).toBeGreaterThanOrEqual(36);
+    expect(selectBox.height).toBe(buttonBox.height);
+    expect(selectBox.y).toBe(buttonBox.y);
+    expect(
+      await select.evaluate((el) => getComputedStyle(el).borderRadius),
+    ).toBe(await button.evaluate((el) => getComputedStyle(el).borderRadius));
+    await select.selectOption("0.5");
+    await expect(select).toHaveValue("0.5");
+  }
+});
