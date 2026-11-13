@@ -457,8 +457,8 @@ export const styles = css`
     font-size: 11px;
     color: var(--muted);
   }
-  .formula-content .katex {
-    font-size: 1em;
+  .formula-content phy-math {
+    font-size: 0.83em;
   }
   .support-area {
     border-top: 1px solid var(--border);
@@ -500,37 +500,6 @@ export const styles = css`
   }
   .task-comparison {
     font-family: var(--mono);
-  }
-  dialog {
-    background: var(--surface);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    width: 650px;
-    max-height: 80dvh;
-    padding: 24px;
-    line-height: 1.8;
-  }
-  dialog::backdrop {
-    background: #0008;
-  }
-  dialog h2 {
-    font-size: 18px;
-    margin-bottom: 18px;
-  }
-  dialog p {
-    font-size: 13px;
-    margin: 12px 0;
-  }
-  dialog .equation {
-    text-align: center;
-    margin: 18px 0;
-    font-size: 14px;
-  }
-  dialog footer {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 20px;
   }
   @media (max-width: 1350px) {
     .lab {

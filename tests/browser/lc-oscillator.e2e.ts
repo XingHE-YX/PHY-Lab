@@ -163,7 +163,7 @@ test("LC parameter changes recharge, reverse polarity and preserve finite zero-e
   expect(derived((await saved(page)).params).period).toBeGreaterThan(0);
   await page.getByRole("button", { name: "模型说明", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.locator(".katex-error")).toHaveCount(0);
+  await expect(page.locator(".katex-error, .math-error")).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(
     page.getByRole("button", { name: "模型说明", exact: true }),
@@ -324,7 +324,9 @@ test("LC main controls, all observations and tasks fit both desktop sizes in bot
             const chart = page.locator(".lc-chart").first();
             const box = await chart.boundingBox();
             expect(box!.height).toBeGreaterThan(95);
-            await expect(page.locator(".katex-error")).toHaveCount(0);
+            await expect(page.locator(".katex-error, .math-error")).toHaveCount(
+              0,
+            );
           }
         }
         await page.screenshot({
@@ -604,5 +606,58 @@ test("LC spring analogy uses normalized charge and opposite current, including r
   await expect(
     page.getByRole("tab", { name: "类比弹簧", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator(".katex-error")).toHaveCount(0);
+  await expect(page.locator(".katex-error, .math-error")).toHaveCount(0);
+});
+test("LC platform formulas and help follow locale changes and experiment cleanup", async ({
+  page,
+  context,
+}, info) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await open(page);
+  await page.getByRole("button", { name: /能量相等/ }).click();
+  const snapshot = await saved(page);
+  await expect(page.locator(".formula-content phy-math .katex")).toHaveCount(3);
+  const help = page.getByRole("button", { name: "模型说明", exact: true });
+  await help.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toHaveAccessibleName("理想 LC 回路");
+  await expect(dialog).toHaveCSS("width", "720px");
+  await expect(dialog.locator("phy-math .katex")).toHaveCount(1);
+  await page.mouse.click(1, 1);
+  await expect(dialog).toHaveCount(0);
+  await expect(help).toBeFocused();
+  await help.click();
+  const other = await context.newPage();
+  await other.goto("/");
+  await other.getByRole("button", { name: "切换语言", exact: true }).click();
+  await other.close();
+  await expect(dialog).toHaveAccessibleName("The ideal LC circuit");
+  await expect(dialog).toContainText("An ideal linear capacitor and inductor");
+  await expect(dialog.locator("phy-math .katex")).toHaveCount(1);
+  await expect(page.locator(".math-error")).toHaveCount(0);
+  expect(await saved(page)).toEqual(snapshot);
+  await page.screenshot({ path: info.outputPath("lc-help-1280-en.png") });
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  const englishHelp = page.getByRole("button", {
+    name: "Model notes",
+    exact: true,
+  });
+  await expect(englishHelp).toBeFocused();
+  await englishHelp.click();
+  await expect(dialog).toBeVisible();
+  await page.evaluate(() => {
+    location.hash = "#/";
+  });
+  await expect(dialog).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "All experiments", exact: true }),
+  ).toBeVisible();
+  await open(page);
+  await englishHelp.click();
+  await expect(dialog).toHaveAccessibleName("The ideal LC circuit");
+  await page.keyboard.press("Escape");
+  await expect(englishHelp).toBeFocused();
+  expect(errors).toEqual([]);
 });

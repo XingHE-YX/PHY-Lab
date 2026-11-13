@@ -71,7 +71,6 @@ const zh = {
   taskCompare: "当前值与基准的比值",
   help: "模型说明",
   helpTitle: "理想 LC 回路",
-  dismiss: "关闭",
   formulaHint: "q 为上极板电荷；正电流使 q 减少，因此 I = −dq/dt。",
   energyHint: "电容储存电场能，电感储存磁场能。能量曲线每 T/2 重复一次。",
   analogyHint: "电荷对应位移；按本图电流约定，−I 对应速度。",
@@ -185,7 +184,6 @@ const en: Texts = {
   taskCompare: "Current values relative to the reference",
   help: "Model notes",
   helpTitle: "The ideal LC circuit",
-  dismiss: "Close",
   formulaHint:
     "q is upper plate charge. Positive current reduces q, so I = −dq/dt.",
   energyHint:

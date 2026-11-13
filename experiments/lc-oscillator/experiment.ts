@@ -6,6 +6,7 @@ import type {
   SelectElement,
   SliderElement,
   TabsElement,
+  DialogHandle,
 } from "../../src/infra/platform/protocols/v2";
 import {
   parameters,
@@ -22,7 +23,6 @@ import {
 import { normalizeSnapshot, type Snapshot } from "./model/snapshot";
 import { texts } from "./locales/messages";
 import { styles } from "./styles/desktop";
-import { math, mathStyles } from "./components/math";
 import { circuit } from "./components/circuit";
 import { chart } from "./components/chart";
 import { spring } from "./components/spring";
@@ -40,7 +40,7 @@ export class LCExperiment extends LitElement {
     playing: { state: true },
     helpOpen: { state: true },
   };
-  static styles = [mathStyles, styles];
+  static styles = styles;
   declare data: Snapshot;
   declare locale: Locale;
   declare playing: boolean;
@@ -54,6 +54,9 @@ export class LCExperiment extends LitElement {
   private chartNode?: Element;
   private plotHeight = 160;
   private returnFocus?: HTMLElement;
+  private helpHandle?: DialogHandle;
+  private helpLocale = "";
+  private readonly helpContent = document.createElement("div");
   constructor() {
     super();
     this.data = normalizeSnapshot(null);
@@ -90,6 +93,8 @@ export class LCExperiment extends LitElement {
   }
   disconnectedCallback() {
     this.pause();
+    this.closeHelp();
+    if (this.helpContent.shadowRoot) render(null, this.helpContent.shadowRoot);
     this.observer?.disconnect();
     this.observer = undefined;
     this.chartNode = undefined;
@@ -105,6 +110,7 @@ export class LCExperiment extends LitElement {
   };
   private hide = () => this.pause();
   protected updated() {
+    if (!this.isConnected || this.context?.signal.aborted) return;
     if (!this.observer)
       this.observer = new ResizeObserver((entries) => {
         for (const entry of entries) {
@@ -128,10 +134,7 @@ export class LCExperiment extends LitElement {
       if (next) this.observer.observe(next);
       this.chartNode = next ?? undefined;
     }
-    if (this.helpOpen) {
-      const dialog = this.renderRoot.querySelector<HTMLDialogElement>("dialog");
-      if (dialog && !dialog.open) dialog.showModal();
-    }
+    if (this.helpOpen) this.syncHelp();
     if (
       this.context?.toolbar &&
       this.isConnected &&
@@ -344,30 +347,42 @@ export class LCExperiment extends LitElement {
     const t = texts(this.locale);
     if (this.data.observation === "analogy")
       return html` <div class="equation">
-          ${math(String.raw`q\leftrightarrow x,\quad -I\leftrightarrow v`)}
+          <phy-math
+            .source=${String.raw`q\leftrightarrow x,\quad -I\leftrightarrow v`}
+          ></phy-math>
         </div>
         <div class="equation">
-          ${math(String.raw`L\leftrightarrow m,\quad C^{-1}\leftrightarrow k`)}
+          <phy-math
+            .source=${String.raw`L\leftrightarrow m,\quad C^{-1}\leftrightarrow k`}
+          ></phy-math>
         </div>
         <div class="equation">
-          ${math(String.raw`\frac{1}{\sqrt{LC}}\leftrightarrow\sqrt{\frac{k}{m}}`)}
+          <phy-math
+            .source=${String.raw`\frac{1}{\sqrt{LC}}\leftrightarrow\sqrt{\frac{k}{m}}`}
+          ></phy-math>
         </div>
         <p>${t.analogyHint}</p>`;
     return this.data.observation === "energy"
       ? html` <div class="equation">
-            ${math(String.raw`E_C=\frac{q^2}{2C},\quad E_L=\frac{LI^2}{2}`)}
+            <phy-math
+              .source=${String.raw`E_C=\frac{q^2}{2C},\quad E_L=\frac{LI^2}{2}`}
+            ></phy-math>
           </div>
           <div class="equation">
-            ${math(String.raw`E_C+E_L=\frac12 CU_0^2`)}
+            <phy-math .source=${String.raw`E_C+E_L=\frac12 CU_0^2`}></phy-math>
           </div>
           <p>${t.energyHint}</p>`
       : html` <div class="equation">
-            ${math(String.raw`q=CU_0\cos(\omega t)`)}
+            <phy-math .source=${String.raw`q=CU_0\cos(\omega t)`}></phy-math>
           </div>
           <div class="equation">
-            ${math(String.raw`I=CU_0\omega\sin(\omega t)`)}
+            <phy-math
+              .source=${String.raw`I=CU_0\omega\sin(\omega t)`}
+            ></phy-math>
           </div>
-          <div class="equation">${math(String.raw`T=2\pi\sqrt{LC}`)}</div>
+          <div class="equation">
+            <phy-math .source=${String.raw`T=2\pi\sqrt{LC}`}></phy-math>
+          </div>
           <p>${t.formulaHint}</p>`;
   }
   private playback() {
@@ -439,31 +454,66 @@ export class LCExperiment extends LitElement {
   };
   private closeHelp = () => {
     this.helpOpen = false;
-    this.returnFocus?.focus();
+    this.helpHandle?.close();
   };
-  private help() {
+  private syncHelp() {
+    if (
+      !this.context ||
+      this.context.signal.aborted ||
+      !this.isConnected ||
+      (this.helpHandle && this.helpLocale === this.locale)
+    )
+      return;
     const t = texts(this.locale);
-    return this.helpOpen
-      ? html`<dialog aria-label=${t.helpTitle} @close=${this.closeHelp}>
-          <h2>${t.helpTitle}</h2>
-          <p>${t.helpAssumptions}</p>
-          <p>${t.helpSigns}</p>
-          <div class="equation">
-            ${math(String.raw`L\ddot q+\frac{q}{C}=0,\qquad \omega=\frac{1}{\sqrt{LC}}`)}
-          </div>
-          <p>${t.helpClock}</p>
-          <p>${t.helpReset}</p>
-          <p>${t.helpFields}</p>
-          <p>${t.helpAnalogy}</p>
-          <p>${t.controlsHint}</p>
-          <footer>
-            <phy-button
-              @click=${() => this.renderRoot.querySelector<HTMLDialogElement>("dialog")?.close()}
-              >${t.dismiss}</phy-button
-            >
-          </footer>
-        </dialog>`
-      : "";
+    const root =
+      this.helpContent.shadowRoot ??
+      this.helpContent.attachShadow({ mode: "open" });
+    render(
+      html`<style>
+          :host {
+            color: var(--text);
+            font: 13px/1.8 var(--font);
+          }
+          p {
+            margin: 12px 0;
+          }
+          .equation {
+            text-align: center;
+            margin: 18px 0;
+            font-size: 14px;
+          }
+        </style>
+        <p>${t.helpAssumptions}</p>
+        <p>${t.helpSigns}</p>
+        <div class="equation">
+          <phy-math
+            .source=${String.raw`L\ddot q+\frac{q}{C}=0,\qquad \omega=\frac{1}{\sqrt{LC}}`}
+          ></phy-math>
+        </div>
+        <p>${t.helpClock}</p>
+        <p>${t.helpReset}</p>
+        <p>${t.helpFields}</p>
+        <p>${t.helpAnalogy}</p>
+        <p>${t.controlsHint}</p>`,
+      root,
+    );
+    this.helpLocale = this.locale;
+    if (this.helpHandle) this.helpHandle.update({ title: t.helpTitle });
+    else {
+      const handle = this.context.dialog.open({
+        title: t.helpTitle,
+        content: this.helpContent,
+        width: "md",
+        returnFocus: this.returnFocus,
+      });
+      this.helpHandle = handle;
+      void handle.closed.then(() => {
+        if (this.helpHandle === handle) {
+          this.helpHandle = undefined;
+          this.helpOpen = false;
+        }
+      });
+    }
   }
   protected render() {
     const t = texts(this.locale),
@@ -618,7 +668,6 @@ export class LCExperiment extends LitElement {
             </div>
           </phy-tabs>
         </section>
-      </div>
-      ${this.help()}`;
+      </div>`;
   }
 }
