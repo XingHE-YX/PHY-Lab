@@ -19,3 +19,4 @@ export const protocol = {
   parseManifest,
   mount,
 } as const satisfies ProtocolDefinition;
+export type * from "./components";
