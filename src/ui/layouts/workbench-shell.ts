@@ -383,7 +383,6 @@ export class App extends LitElement {
                             aria-label=${t.clear}
                             @click=${() => {
                               this.query = "";
-                              this.category = "all";
                               this.renderRoot
                                 .querySelector<InputElement>(".search")
                                 ?.focus();
