@@ -25,7 +25,7 @@ test("workspace search, navigation and locale persistence", async ({
 }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "全部实验" })).toBeVisible();
-  const search = page.getByRole("textbox");
+  const search = page.getByRole("searchbox");
   await search.fill("不存在");
   await expect(
     page.getByRole("heading", { name: "没有找到匹配的实验" }),
@@ -231,12 +231,12 @@ test("console content aligns with toolbar and experiment navigation is minimal",
     expect(grid!.x).toBe(toolbar!.x + 30);
     expect(grid!.width).toBe(toolbar!.width - 60 - 4);
   }
-  await page.getByRole("textbox").fill("energy");
+  await page.getByRole("searchbox").fill("energy");
   await page.getByRole("link", { name: /弹簧振子/ }).click();
   await expect(
     page.getByRole("heading", { name: "弹簧振子", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("textbox")).toHaveCount(0);
+  await expect(page.getByRole("searchbox")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "打开导航" })).toHaveCount(0);
   await expect(page.locator(".toolbar .brand")).toHaveCount(0);
   await expect(page.locator("phy-experiment-page .top")).toHaveCount(0);
@@ -246,7 +246,7 @@ test("console content aligns with toolbar and experiment navigation is minimal",
       .getByRole("button", { name: "▷ 播放", exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "返回控制台" }).click();
-  await expect(page.getByRole("textbox")).toHaveValue("energy");
+  await expect(page.getByRole("searchbox")).toHaveValue("energy");
 });
 
 test.describe("toolbar API", () => {
@@ -284,7 +284,7 @@ test.describe("toolbar API", () => {
       page.getByRole("heading", { name: "Control clicked" }),
     ).toBeVisible();
     await page.getByRole("link", { name: "返回控制台" }).click();
-    await expect(page.getByRole("textbox")).toBeVisible();
+    await expect(page.getByRole("searchbox")).toBeVisible();
     await page.evaluate(() => {
       const context = (
         window as unknown as {
@@ -602,7 +602,14 @@ test.describe("experiment settings API", () => {
     await page.route("**/manifest.json", async (route) => {
       const response = await route.fetch();
       const manifest = await response.json();
+      const oldEntry = manifest.entry;
       manifest.entry = "/settings-fixture.js";
+      manifest.resources = manifest.resources.map(
+        (resource: { url: string }) =>
+          resource.url === oldEntry
+            ? { ...resource, url: manifest.entry }
+            : resource,
+      );
       await route.fulfill({ response, json: manifest });
     });
     await page.route("**/settings-fixture.js", (route) =>
@@ -672,7 +679,7 @@ test.describe("experiment settings API", () => {
     await page
       .getByRole("link", { name: "Back to console", exact: true })
       .click();
-    await expect(page.getByRole("textbox")).toBeVisible();
+    await expect(page.getByRole("searchbox")).toBeVisible();
     await page.evaluate(() => {
       const fixture = (window as any).settingsFixture;
       fixture.context.settings.setControls(fixture.panel);

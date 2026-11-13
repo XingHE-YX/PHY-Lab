@@ -1,4 +1,11 @@
-import { LitElement, html, css } from "lit";
+import { dialogs } from "../../services/dialog";
+import type { DialogHandle } from "../../infra/platform/protocols/v2/api/dialog";
+import type {
+  InputElement,
+  SelectElement,
+  SwitchElement,
+} from "../../infra/platform/protocols/v2/components";
+import { LitElement, html, css, render } from "lit";
 import type {
   Catalog,
   ExperimentControls,
@@ -12,6 +19,50 @@ import { icon } from "../components/icons";
 import type { ExperimentPage } from "../../pages/experiment-page";
 import { offline } from "../../services/offline";
 import { updates } from "../../services/updates";
+const settingsStyles = css`
+  .experiment-settings {
+    margin-bottom: 24px;
+  }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    margin: 0 0 22px;
+    font-size: 13px;
+  }
+  phy-select {
+    max-width: 180px;
+  }
+  phy-switch.row {
+    width: 100%;
+  }
+  phy-switch.row::part(base) {
+    width: 100%;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    gap: 14px;
+  }
+  .section-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 28px 0 15px;
+  }
+  .section-label:first-child {
+    margin-top: 0;
+  }
+  .offline {
+    padding: 14px;
+    background: var(--subtle);
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  phy-progress {
+    margin-top: 10px;
+  }
+`;
 export class App extends LitElement {
   static properties = {
     catalog: { state: true },
@@ -29,6 +80,10 @@ export class App extends LitElement {
   declare modal: boolean;
   declare revision: number;
   declare catalogError: string;
+  private settingsDialog?: DialogHandle;
+  private settingsController = new AbortController();
+  private readonly settingsContent = document.createElement("div");
+  private readonly settingsFooter = document.createElement("div");
   private readonly experimentControls = document.createElement("div");
   private readonly experimentSettings = document.createElement("div");
   private readonly experimentSettingsApi: ExperimentControls = {
@@ -139,27 +194,8 @@ export class App extends LitElement {
         font-size: 12px;
       }
       .search {
-        height: 36px;
-        border: 1px solid var(--border);
-        border-radius: 3px;
-        background: var(--bg);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 0 11px;
-        color: var(--muted);
-      }
-      .search input {
         width: 100%;
-        border: 0;
-        outline: none;
-        background: transparent;
-        color: var(--text);
-        font-size: 12px;
-        min-width: 0;
-      }
-      .search:focus-within {
-        border-color: var(--primary);
+        --input-background: var(--bg);
       }
       .search .clear {
         border: 0;
@@ -207,94 +243,18 @@ export class App extends LitElement {
         overflow: auto;
         scrollbar-gutter: stable;
       }
-      main::-webkit-scrollbar,
-      dialog::-webkit-scrollbar {
+      main::-webkit-scrollbar {
         width: 4px;
         height: 4px;
       }
-      main::-webkit-scrollbar-thumb,
-      dialog::-webkit-scrollbar-thumb {
+      main::-webkit-scrollbar-thumb {
         background: var(--border);
         border-radius: 2px;
       }
       @supports not selector(::-webkit-scrollbar) {
-        main,
-        dialog {
+        main {
           scrollbar-width: thin;
         }
-      }
-      .experiment-settings {
-        margin-bottom: 24px;
-      }
-      dialog {
-        max-height: calc(100dvh - 32px);
-        overflow: auto;
-        width: 440px;
-        max-width: calc(100vw - 32px);
-        padding: 0;
-        border: 1px solid var(--border);
-        border-radius: 4px;
-        background: var(--surface);
-        color: var(--text);
-      }
-      dialog::backdrop {
-        background: #0006;
-      }
-      .dialog-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 19px 24px;
-        border-bottom: 1px solid var(--border);
-      }
-      .dialog-top h2 {
-        font-size: 17px;
-        font-weight: 550;
-        margin: 0;
-      }
-      .dialog-body {
-        padding: 24px;
-      }
-      .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 14px;
-        margin: 0 0 22px;
-        font-size: 13px;
-      }
-      select {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 3px;
-        color: var(--text);
-        padding: 7px 8px;
-        max-width: 180px;
-      }
-      .section-label {
-        font-size: 10px;
-        color: var(--muted);
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        margin: 28px 0 15px;
-      }
-      .section-label:first-child {
-        margin-top: 0;
-      }
-      .offline {
-        padding: 14px;
-        background: var(--subtle);
-        border: 1px solid var(--border);
-        font-size: 12px;
-        line-height: 1.8;
-      }
-      .dialog-footer {
-        font-size: 11px;
-        color: var(--muted);
-        padding: 16px 24px;
-        border-top: 1px solid var(--border);
-        display: flex;
-        justify-content: space-between;
       }
       .catalog-error {
         padding: 24px;
@@ -352,6 +312,8 @@ export class App extends LitElement {
   }
   connectedCallback() {
     super.connectedCallback();
+    if (this.settingsController.signal.aborted)
+      this.settingsController = new AbortController();
     window.addEventListener("hashchange", this.onRoute);
     settings.addEventListener("change", this.onSettings);
     settings.addEventListener("theme-change", this.onSettings);
@@ -365,6 +327,7 @@ export class App extends LitElement {
   }
   disconnectedCallback() {
     super.disconnectedCallback();
+    this.settingsController.abort();
     window.removeEventListener("hashchange", this.onRoute);
     settings.removeEventListener("change", this.onSettings);
     settings.removeEventListener("theme-change", this.onSettings);
@@ -379,10 +342,11 @@ export class App extends LitElement {
     if (
       (event.metaKey || event.ctrlKey) &&
       event.key === "k" &&
-      !this.route.startsWith("#/experiments/")
+      !this.route.startsWith("#/experiments/") &&
+      !this.modal
     ) {
       event.preventDefault();
-      this.renderRoot.querySelector<HTMLInputElement>(".search input")?.focus();
+      this.renderRoot.querySelector<InputElement>(".search")?.focus();
     }
     if (event.key === "Escape") this.menu = false;
   };
@@ -394,15 +358,108 @@ export class App extends LitElement {
       this.catalogError = String(error);
     }
   }
-  async openSettings() {
-    this.modal = true;
-    await this.updateComplete;
-    this.renderRoot.querySelector<HTMLDialogElement>("dialog")?.showModal();
+  updated() {
+    if (this.modal) this.renderSettings();
   }
-  closeSettings() {
-    this.renderRoot.querySelector<HTMLDialogElement>("dialog")?.close();
-    this.modal = false;
-    this.renderRoot.querySelector<HTMLButtonElement>("#settings")?.focus();
+  openSettings() {
+    if (this.settingsDialog) return;
+    this.modal = true;
+    this.renderSettings();
+    const handle = dialogs.scope(this.settingsController.signal).open({
+      title: messages(settings.value.locale).settings,
+      content: this.settingsContent,
+      footer: this.settingsFooter,
+      width: "sm",
+      returnFocus:
+        this.renderRoot.querySelector<HTMLElement>("#settings") ?? undefined,
+    });
+    this.settingsDialog = handle;
+    void handle.closed.then(() => {
+      if (this.settingsDialog === handle) {
+        this.settingsDialog = undefined;
+        this.modal = false;
+      }
+    });
+  }
+  private renderSettings() {
+    const s = settings.value,
+      t = messages(s.locale);
+    const id = this.route.match(/^#\/experiments\/([a-z][a-z0-9-]*)$/)?.[1];
+    const root =
+      this.settingsContent.shadowRoot ??
+      this.settingsContent.attachShadow({ mode: "open" });
+    render(
+      html`<style>
+          ${baseStyles.cssText}${buttonStyles.cssText}${settingsStyles.cssText}
+        </style>
+        ${
+          id && this.experimentSettings.hasChildNodes()
+            ? html`<section
+                class="experiment-settings"
+                aria-label=${t.experimentSettings}
+              >
+                <div class="section-label">
+                  ${t.experimentSettings} ·
+                  ${this.catalog?.experiments.find((entry) => entry.id === id)?.title[s.locale] ?? id}
+                </div>
+                ${this.experimentSettings}
+              </section>`
+            : ""
+        }
+        <div class="section-label">${t.appearance}</div>
+        <div class="row">
+          <span>${t.language}</span
+          ><phy-select
+            label=${t.language}
+            .value=${s.locale}
+            .options=${[
+              { value: "zh-CN", label: "简体中文" },
+              { value: "en", label: "English" },
+            ]}
+            @change=${(e: Event) => settings.set({ locale: (e.currentTarget as SelectElement).value as typeof s.locale })}
+          ></phy-select>
+        </div>
+        <div class="row">
+          <span>${t.appearance}</span
+          ><phy-select
+            label=${t.appearance}
+            .value=${s.theme}
+            .options=${[
+              { value: "light", label: t.light },
+              { value: "dark", label: t.dark },
+              { value: "system", label: t.system },
+            ]}
+            @change=${(e: Event) => settings.set({ theme: (e.currentTarget as SelectElement).value as typeof s.theme })}
+          ></phy-select>
+        </div>
+        <phy-switch
+          class="row"
+          label=${t.motion}
+          .checked=${s.reduceMotion}
+          @change=${(e: Event) => settings.set({ reduceMotion: (e.currentTarget as SwitchElement).checked })}
+        ></phy-switch>
+        <div class="section-label">${t.offline}</div>
+        <phy-box class="offline" id="offline-panel"
+          >${this.offlinePanel()}</phy-box
+        > `,
+      root,
+    );
+    const footer =
+      this.settingsFooter.shadowRoot ??
+      this.settingsFooter.attachShadow({ mode: "open" });
+    render(
+      html`<style>
+          :host {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 11px;
+            color: var(--muted);
+          }</style
+        ><span>${t.local}</span><span>PHY Lab v${__APP_VERSION__}</span>`,
+      footer,
+    );
+    this.settingsDialog?.update({ title: t.settings });
   }
   offlinePanel() {
     const zh = settings.value.locale === "zh-CN",
@@ -415,6 +472,7 @@ export class App extends LitElement {
       <div class="mono muted">
         ${s.complete} / ${s.total} ${zh ? "个实验已缓存" : "experiments cached"}
       </div>
+      ${s.total > 0 ? html`<phy-progress label=${zh ? "离线缓存进度" : "Offline caching progress"} .value=${s.complete} .max=${s.total}></phy-progress>` : ""}
       ${s.error ? html`<p>${s.error}</p>` : ""}
       <div style="margin-top:12px">
         <phy-button
@@ -483,16 +541,39 @@ export class App extends LitElement {
           id
             ? this.experimentControls
             : html`
-                <label class="search"
-                  >${icon("search")}<input
-                    aria-label=${t.search}
-                    placeholder=${t.search}
-                    .value=${this.query}
-                    @input=${(event: Event) => {
-                      this.query = (event.target as HTMLInputElement).value;
-                    }}
-                  />${this.query ? html`<button class="clear" aria-label=${t.clear} @click=${() => (this.query = "")}>${icon("close")}</button>` : html`<span class="key">⌘ K</span>`}</label
+                <phy-input
+                  class="search"
+                  type="search"
+                  label=${t.search}
+                  placeholder=${t.search}
+                  .value=${this.query}
+                  @input=${(event: Event) => {
+                    this.query = (event.currentTarget as InputElement).value;
+                  }}
                 >
+                  <span slot="start">${icon("search")}</span>
+                  <span slot="end"
+                    >${
+                      this.query
+                        ? html`<button
+                            class="clear"
+                            type="button"
+                            aria-label=${t.clear}
+                            @click=${() => {
+                              this.query = "";
+                              this.renderRoot
+                                .querySelector<InputElement>(".search")
+                                ?.focus();
+                            }}
+                          >
+                            ${icon("close")}
+                          </button>`
+                        : html`<kbd class="key"
+                            >${/Mac/.test(navigator.platform) ? "⌘ K" : "Ctrl K"}</kbd
+                          >`
+                    }</span
+                  >
+                </phy-input>
               `
         }
         <div class="right">
@@ -523,86 +604,7 @@ export class App extends LitElement {
       </header>
       <main>
         ${this.catalogError ? html`<div class="catalog-error">${t.error} · <phy-button @click=${() => this.refreshCatalog()}>${t.retry}</phy-button></div>` : ""}${id && this.catalog ? html`<phy-experiment-page .catalog=${this.catalog} .experimentId=${id} .locale=${s.locale} .theme=${currentTheme()} .toolbar=${this.experimentControls} .settingsApi=${this.experimentSettingsApi}></phy-experiment-page>` : html`<phy-workbench .catalog=${this.catalog} .locale=${s.locale} .query=${this.query}></phy-workbench>`}
-      </main>
-      ${
-        this.modal
-          ? html`<dialog
-              @cancel=${() => this.closeSettings()}
-              @click=${(event: MouseEvent) => {
-                if (event.target === event.currentTarget) {
-                  const r = (
-                    event.currentTarget as HTMLElement
-                  ).getBoundingClientRect();
-                  if (
-                    event.clientX < r.left ||
-                    event.clientX > r.right ||
-                    event.clientY < r.top ||
-                    event.clientY > r.bottom
-                  )
-                    this.closeSettings();
-                }
-              }}
-            >
-              <div class="dialog-top">
-                <h2>${t.settings}</h2>
-                <button
-                  class="icon"
-                  aria-label=${t.close}
-                  @click=${() => this.closeSettings()}
-                >
-                  ${icon("close")}
-                </button>
-              </div>
-              <div class="dialog-body">
-                ${
-                  id && this.experimentSettings.hasChildNodes()
-                    ? html` <section
-                        class="experiment-settings"
-                        aria-label=${t.experimentSettings}
-                      >
-                        <div class="section-label">
-                          ${t.experimentSettings} ·
-                          ${this.catalog?.experiments.find((entry) => entry.id === id)?.title[s.locale] ?? id}
-                        </div>
-                        ${this.experimentSettings}
-                      </section>`
-                    : ""
-                }
-                <div class="section-label">${t.appearance}</div>
-                <label class="row"
-                  >${t.language}<select
-                    .value=${s.locale}
-                    @change=${(e: Event) => settings.set({ locale: (e.target as HTMLSelectElement).value as typeof s.locale })}
-                  >
-                    <option value="zh-CN">简体中文</option>
-                    <option value="en">English</option>
-                  </select></label
-                ><label class="row"
-                  >${t.appearance}<select
-                    .value=${s.theme}
-                    @change=${(e: Event) => settings.set({ theme: (e.target as HTMLSelectElement).value as typeof s.theme })}
-                  >
-                    <option value="light">${t.light}</option>
-                    <option value="dark">${t.dark}</option>
-                    <option value="system">${t.system}</option>
-                  </select></label
-                ><label class="row"
-                  >${t.motion}<input
-                    type="checkbox"
-                    .checked=${s.reduceMotion}
-                    @change=${(e: Event) => settings.set({ reduceMotion: (e.target as HTMLInputElement).checked })}
-                /></label>
-                <div class="section-label">${t.offline}</div>
-                <div class="offline" id="offline-panel">
-                  ${this.offlinePanel()}
-                </div>
-              </div>
-              <div class="dialog-footer">
-                <span>${t.local}</span><span>PHY Lab v${__APP_VERSION__}</span>
-              </div>
-            </dialog>`
-          : ""
-      }`;
+      </main> `;
   }
 }
 customElements.define("phy-app", App);

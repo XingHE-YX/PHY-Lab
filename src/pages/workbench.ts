@@ -50,13 +50,18 @@ export class Workbench extends LitElement {
       }
       .card {
         display: block;
-        border: 1px solid var(--border);
-        border-radius: 4px;
-        background: var(--surface);
-        overflow: hidden;
         transition:
           border-color 0.15s,
           transform 0.15s;
+      }
+      .card-box {
+        height: 100%;
+        border-radius: 4px;
+        overflow: hidden;
+        transition: border-color 0.15s;
+      }
+      .card:hover .card-box {
+        border-color: var(--muted);
       }
       .card:hover {
         border-color: var(--muted);
@@ -144,15 +149,17 @@ export class Workbench extends LitElement {
         ${entries.map(
           (e) =>
             html`<a class="card" href=${"#/experiments/" + e.id}
-              ><img class="thumb" src=${e.thumbnail} alt="" />
-              <div class="body">
-                <h3>${e.title[this.locale]}</h3>
-                <p class="description">${e.description[this.locale]}</p>
-                <div class="tags">
-                  ${e.tags[this.locale].map((tag) => html`<span class="tag">${tag}</span>`)}
-                </div>
-                <div class="open">${t.start}${icon("arrow")}</div>
-              </div></a
+              ><phy-box class="card-box"
+                ><img class="thumb" src=${e.thumbnail} alt="" />
+                <div class="body">
+                  <h3>${e.title[this.locale]}</h3>
+                  <p class="description">${e.description[this.locale]}</p>
+                  <div class="tags">
+                    ${e.tags[this.locale].map((tag) => html`<span class="tag">${tag}</span>`)}
+                  </div>
+                  <div class="open">${t.start}${icon("arrow")}</div>
+                </div></phy-box
+              ></a
             >`,
         )}${
           !entries.length
