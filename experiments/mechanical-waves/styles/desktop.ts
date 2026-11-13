@@ -1,10 +1,5 @@
 import { css } from "lit";
 export const styles = css`
-  .support-tabs {
-    display: flex;
-    gap: 5px;
-    padding: 8px 12px 0;
-  }
   .support-body {
     padding: 10px 12px;
   }
@@ -219,6 +214,7 @@ export const styles = css`
     height: 100%;
   }
   .observation-tabs {
+    --tab-height: 42px;
     flex: 1;
     min-height: 0;
   }
@@ -226,10 +222,14 @@ export const styles = css`
     flex: 0 0 auto;
   }
   .support-tabs {
+    --tab-height: 30px;
     --tab-font-size: 11px;
+    --tab-flex: 0 0 auto;
+    --tab-gap: 5px;
+    --tab-padding: 4px 10px;
   }
   .support-tabs::part(tabs) {
-    padding: 6px 12px 0;
+    padding: 8px 12px 0;
   }
   .support.exploring .support-body {
     height: 100%;
@@ -498,6 +498,9 @@ export const styles = css`
     color: var(--muted);
   }
   @media (max-height: 800px) {
+    .support-tabs::part(tabs) {
+      padding-top: 6px;
+    }
     .parameter {
       margin-bottom: 13px;
     }

@@ -137,8 +137,29 @@ html`<phy-math .source=${String.raw`T=2\pi\sqrt{m/k}`} display></phy-math>`;
 - 下拉：`select`，`--select-font-size`。
 - 开关 / 多选：`base`、`input`、`label`。
 - 滑块：`input`；进度：`progress`。
-- Tabs：`tabs`、`panel`，`--tab-font-size`。
+- Tabs：`tabs`、`panel`，`--tab-font-size`、`--tab-height`、`--tab-padding`、`--tab-flex`、`--tab-gap`。
 - 单选组：`group`，`--radio-font-size`、`--radio-gap`。
 - 公式：`formula`；Box：`--box-padding`。
 
 dialog 通过系统 API 使用，见 [v2 参考](protocols/v2.md#dialog)。
+
+### 标签栏尺寸与布局
+
+默认标签项高 36px、等宽排列。通过 CSS 变量定制外观时，切换、键盘、ARIA 关联以及 change / activate 事件保持一致。
+
+公式 / 探索使用 `variant="segmented"`，恢复紧凑按钮式外观；观察栏保留默认下划线外观。
+
+```css
+.support-tabs {
+  --tab-height: 30px;
+  --tab-font-size: 11px;
+  --tab-flex: 0 0 auto;
+  --tab-padding: 4px 10px;
+  --tab-gap: 5px;
+}
+.observation-tabs {
+  --tab-height: 42px;
+}
+```
+
+`--tab-height` 控制标签项最小高度，默认 `36px`；`--tab-padding` 默认 `6px 8px`；`--tab-flex` 默认 `1`，设为 `0 0 auto` 后按内容宽度排列。`--tab-gap` 默认在下划线外观为 0、分段外观为 4px。42px 观察标签加上 1px 底部分隔线后，整栏为 43px。

@@ -544,6 +544,7 @@ export class WaveExperiment extends LitElement {
     const t = texts(this.locale);
     return html`<phy-tabs
       class=${"support support-tabs" + (this.data.support === "tasks" ? " exploring" : "")}
+      variant="segmented"
       label=${t.support}
       .value=${this.data.support}
       .items=${[

@@ -34,12 +34,13 @@ export class PhyTabs extends LitElement {
         display: flex;
         flex-shrink: 0;
         border-bottom: 1px solid var(--border);
+        gap: var(--tab-gap, 0);
       }
       button {
-        flex: 1;
+        flex: var(--tab-flex, 1);
         min-width: 0;
-        min-height: 36px;
-        padding: 6px 8px;
+        min-height: var(--tab-height, 36px);
+        padding: var(--tab-padding, 6px 8px);
         border: 0;
         border-bottom: 2px solid transparent;
         border-radius: 0;
@@ -65,7 +66,7 @@ export class PhyTabs extends LitElement {
       }
       :host([variant="segmented"]) .tabs {
         border: 0;
-        gap: 4px;
+        gap: var(--tab-gap, 4px);
       }
       :host([variant="segmented"]) button {
         border: 1px solid var(--border);

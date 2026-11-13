@@ -124,6 +124,7 @@ export const styles = css`
     padding: 4px 6px;
   }
   .observation-tabs {
+    --tab-height: 42px;
     flex: 1;
     min-height: 0;
   }

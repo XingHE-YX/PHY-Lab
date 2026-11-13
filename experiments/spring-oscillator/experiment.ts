@@ -1144,6 +1144,7 @@ export class SpringExperiment extends LitElement {
     const zh = this.locale === "zh-CN";
     return html`<phy-tabs
       class="panel support support-tabs"
+      variant="segmented"
       label=${zh ? "公式与探索" : "Equations and exploration"}
       .value=${this.supportTab}
       .items=${[

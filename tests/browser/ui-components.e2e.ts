@@ -248,3 +248,68 @@ test("select faces align with adjacent action buttons in both themes", async ({
     await expect(select).toHaveValue("0.5");
   }
 });
+
+test("tab styles support compact content buttons and taller observation rows", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    const create = (id: string, variant: string) => {
+      const tabs = document.createElement("phy-tabs") as HTMLElement & {
+        items: unknown[];
+        value: string;
+      };
+      tabs.id = id;
+      tabs.setAttribute("variant", variant);
+      tabs.items = [
+        { value: "formula", label: "Formula" },
+        { value: "tasks", label: "Exploration tasks" },
+      ];
+      tabs.value = "formula";
+      document.body.append(tabs);
+      return tabs;
+    };
+    const compact = create("compact-tabs", "segmented");
+    for (const [name, value] of Object.entries({
+      "--tab-height": "30px",
+      "--tab-font-size": "11px",
+      "--tab-flex": "0 0 auto",
+      "--tab-gap": "5px",
+      "--tab-padding": "4px 10px",
+    }))
+      compact.style.setProperty(name, value);
+    create("observation-tabs-fixture", "line").style.setProperty(
+      "--tab-height",
+      "42px",
+    );
+    create("parameter-tabs-fixture", "segmented");
+  });
+  const compact = page.locator("#compact-tabs");
+  const first = compact.getByRole("tab", { name: "Formula", exact: true });
+  const second = compact.getByRole("tab", {
+    name: "Exploration tasks",
+    exact: true,
+  });
+  await expect(first).toBeVisible();
+  expect((await first.boundingBox())!.height).toBe(30);
+  expect((await first.boundingBox())!.width).toBeLessThan(
+    (await second.boundingBox())!.width,
+  );
+  await second.click();
+  await expect(second).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Home");
+  await expect(first).toBeFocused();
+  expect(
+    (await page
+      .locator("#observation-tabs-fixture")
+      .getByRole("tablist")
+      .boundingBox())!.height,
+  ).toBe(43);
+  expect(
+    (await page
+      .locator("#parameter-tabs-fixture")
+      .getByRole("tab")
+      .first()
+      .boundingBox())!.height,
+  ).toBe(36);
+});

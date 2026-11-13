@@ -493,6 +493,7 @@ export const styles = css`
     height: 100%;
   }
   .observation-tabs {
+    --tab-height: 42px;
     flex: 1;
     min-height: 0;
   }
@@ -500,10 +501,14 @@ export const styles = css`
     flex: 0 0 auto;
   }
   .support-tabs {
+    --tab-height: 30px;
     --tab-font-size: 11px;
+    --tab-flex: 0 0 auto;
+    --tab-gap: 5px;
+    --tab-padding: 4px 10px;
   }
   .support-tabs::part(tabs) {
-    padding: 6px 12px 0;
+    padding: 8px 12px 0;
   }
   .equation phy-math {
     font-size: 0.87em;
@@ -634,6 +639,9 @@ export const styles = css`
     line-height: 1.6;
   }
   @media (max-height: 800px) {
+    .support-tabs::part(tabs) {
+      padding-top: 6px;
+    }
     .parameter {
       margin-bottom: 13px;
     }
