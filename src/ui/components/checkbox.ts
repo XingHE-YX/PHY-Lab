@@ -37,6 +37,11 @@ export class PhyCheckbox extends FormControl {
         font-size: inherit;
         cursor: pointer;
       }
+      span[part="label"] {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
       input {
         appearance: none;
         position: relative;

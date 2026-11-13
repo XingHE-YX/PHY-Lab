@@ -110,9 +110,11 @@ export class PhyTabs extends LitElement {
     );
   }
   focus(options?: FocusOptions) {
-    this.renderRoot
-      .querySelector<HTMLButtonElement>('[aria-selected="true"]')
-      ?.focus(options);
+    void this.updateComplete.then(() =>
+      this.renderRoot
+        .querySelector<HTMLButtonElement>('[aria-selected="true"]')
+        ?.focus(options),
+    );
   }
   render() {
     return html`<div
