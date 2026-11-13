@@ -23,6 +23,8 @@ import { math, mathStyles } from "./components/math";
 import { circuit } from "./components/circuit";
 import { chart } from "./components/chart";
 
+const observations: Snapshot["observation"][] = ["oscillation", "energy"];
+
 export class LCExperiment extends LitElement {
   static properties = {
     data: { state: true },
@@ -202,6 +204,113 @@ export class LCExperiment extends LitElement {
       time: 0,
     });
   }
+  private observationKey(e: KeyboardEvent) {
+    const index = observations.indexOf(this.data.observation);
+    const next =
+      e.key === "Home"
+        ? 0
+        : e.key === "End"
+          ? observations.length - 1
+          : e.key === "ArrowRight"
+            ? (index + 1) % observations.length
+            : e.key === "ArrowLeft"
+              ? (index + observations.length - 1) % observations.length
+              : -1;
+    if (next < 0) return;
+    e.preventDefault();
+    const observation = observations[next]!;
+    this.set({ observation });
+    this.renderRoot
+      .querySelector<HTMLElement>(`#observe-${observation}`)
+      ?.focus();
+  }
+  private energyBar() {
+    const t = texts(this.locale),
+      s = this.state,
+      total = derived(this.p).energy;
+    const electric = total === 0 ? 0 : clamp(s.electric / total, 0, 1),
+      magnetic = total === 0 ? 0 : clamp(s.magnetic / total, 0, 1);
+    return html`<div class="energy-strip">
+      <div class="energy-values">
+        <span class="charge"
+          >${t.electricShort}
+          <output data-readout="electric"
+            >${format(s.electric * 1e3, 3)}</output
+          ></span
+        >
+        <span class="current"
+          >${t.magneticShort}
+          <output data-readout="magnetic"
+            >${format(s.magnetic * 1e3, 3)}</output
+          ></span
+        >
+        <span
+          >Σ
+          <output data-readout="total">${format(s.total * 1e3, 3)}</output>
+          mJ</span
+        >
+      </div>
+      <div
+        class="energy-bar"
+        data-electric=${electric}
+        data-magnetic=${magnetic}
+        role="img"
+        aria-label=${total === 0 ? t.empty : `${t.electricShort} ${format(electric * 100, 0)}%, ${t.magneticShort} ${format(magnetic * 100, 0)}%`}
+      >
+        <span style=${`width:${electric * 100}%;background:var(--blue)`}></span
+        ><span
+          style=${`width:${magnetic * 100}%;background:var(--green)`}
+        ></span>
+      </div>
+    </div>`;
+  }
+  private plots() {
+    const t = texts(this.locale);
+    if (this.data.observation === "energy")
+      return html` <div class="chart-legend">
+          <span class="charge">━ ${t.electricShort}</span
+          ><span class="current">┄ ${t.magneticShort}</span
+          ><span>┈ ${t.totalEnergy}</span>
+        </div>
+        <div class="chart-stack single">
+          ${chart(
+            this.p,
+            this.data.time,
+            [
+              { metric: "electric", color: "var(--blue)" },
+              { metric: "magnetic", color: "var(--green)", dash: "6 4" },
+              { metric: "total", color: "var(--text)", dash: "2 4" },
+            ],
+            t.chartEnergy,
+            t.chartTime,
+            this.plotHeight * 2,
+            this.seek,
+          )}
+        </div>`;
+    return html`<div class="chart-stack">
+      ${chart(this.p, this.data.time, [{ metric: "q", color: "var(--blue)" }], t.chartCharge, t.chartTime, this.plotHeight, this.seek)}
+      ${chart(this.p, this.data.time, [{ metric: "current", color: "var(--green)" }], t.chartCurrent, t.chartTime, this.plotHeight, this.seek)}
+    </div>`;
+  }
+  private formulas() {
+    const t = texts(this.locale);
+    return this.data.observation === "energy"
+      ? html` <div class="equation">
+            ${math(String.raw`E_C=\frac{q^2}{2C},\quad E_L=\frac{LI^2}{2}`)}
+          </div>
+          <div class="equation">
+            ${math(String.raw`E_C+E_L=\frac12 CU_0^2`)}
+          </div>
+          <p>${t.energyHint}</p>`
+      : html` <div class="equation">
+            ${math(String.raw`q=CU_0\cos(\omega t)`)}
+          </div>
+          <div class="equation">
+            ${math(String.raw`I=CU_0\omega\sin(\omega t)`)}
+          </div>
+          <div class="equation">${math(String.raw`T=2\pi\sqrt{LC}`)}</div>
+          <p>${t.formulaHint}</p>`;
+  }
   private playback() {
     const t = texts(this.locale);
     return html`<phy-button
@@ -351,7 +460,10 @@ export class LCExperiment extends LitElement {
         <section class="panel main-panel" aria-label=${t.circuit}>
           <div class="panel-heading">
             <h2>${t.circuit}</h2>
-            <small>${this.data.closed ? t.closed : t.open}</small>
+            <small
+              >${this.data.closed ? t.closed : t.open} ·
+              ${format((s.phase * 180) / Math.PI, 1)}°</small
+            >
           </div>
           <div class="scene-wrap">
             ${circuit(this.p, s, this.data.closed, this.data.layers, t, this.connect)}
@@ -381,6 +493,7 @@ export class LCExperiment extends LitElement {
               ><small>V</small>
             </div>
           </div>
+          ${this.energyBar()}
           <div class="timeline">
             <div class="time-values">
               <output>${t.time} t = ${format(this.data.time * 1e3)} ms</output
@@ -402,29 +515,28 @@ export class LCExperiment extends LitElement {
             />
           </div>
           <div class="moments" role="group" aria-label=${t.moment}>
-            ${[t.electricMaximum, t.magneticMaximum, t.reverseCharge, t.reverseCurrent].map((label, i) => html`<button @click=${() => this.seek(momentTime(this.p, i))}>${label}<small>${["0", "T/4", "T/2", "3T/4"][i]}</small></button>`)}
+            ${[t.electricMaximum, t.magneticMaximum, t.reverseCharge, t.reverseCurrent, t.equalEnergy].map((label, i) => html`<button ?disabled=${d.energy === 0} @click=${() => this.seek(momentTime(this.p, i))}>${label}<small>${["0", "T/4", "T/2", "3T/4", "T/8"][i]}</small></button>`)}
           </div>
         </section>
         <section class="panel observation-panel" aria-label=${t.observe}>
-          <div class="panel-heading">
-            <h2>${t.oscillation}</h2>
-            <small>${t.phase} ${format((s.phase * 180) / Math.PI, 1)}°</small>
+          <div
+            class="tabs observation-tabs"
+            role="tablist"
+            aria-label=${t.observe}
+          >
+            ${observations.map((view) => html`<button id=${`observe-${view}`} role="tab" aria-selected=${view === this.data.observation} aria-controls="observation-content" tabindex=${view === this.data.observation ? 0 : -1} @click=${() => this.set({ observation: view })} @keydown=${this.observationKey}>${t[view]}</button>`)}
           </div>
-          <p class="observation-summary">${this.hint()}</p>
-          <div class="chart-stack">
-            ${chart(this.p, this.data.time, [{ metric: "q", color: "var(--blue)" }], t.chartCharge, t.chartTime, this.plotHeight, this.seek)}${chart(this.p, this.data.time, [{ metric: "current", color: "var(--green)" }], t.chartCurrent, t.chartTime, this.plotHeight, this.seek)}
+          <div
+            class="observation-content"
+            id="observation-content"
+            role="tabpanel"
+            aria-labelledby=${`observe-${this.data.observation}`}
+          >
+            <p class="observation-summary">${this.hint()}</p>
+            ${this.plots()}
+            <div class="formula-content">${this.formulas()}</div>
+            <div class="observation-footer">${t.fieldHint}</div>
           </div>
-          <div class="formula-content">
-            <div class="equation">
-              ${math(String.raw`q=CU_0\cos(\omega t)`)}
-            </div>
-            <div class="equation">
-              ${math(String.raw`I=CU_0\omega\sin(\omega t)`)}
-            </div>
-            <div class="equation">${math(String.raw`T=2\pi\sqrt{LC}`)}</div>
-            <p>${t.formulaHint}</p>
-          </div>
-          <div class="observation-footer">${t.fieldHint}</div>
         </section>
       </div>
       ${this.help()}`;

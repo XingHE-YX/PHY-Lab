@@ -198,7 +198,7 @@ export const styles = css`
     letter-spacing: 1.6px;
   }
   .component-label {
-    font: 18px var(--mono);
+    font: 22px var(--mono);
     fill: var(--text);
   }
   .voltage-label {
@@ -230,6 +230,13 @@ export const styles = css`
     align-items: center;
     gap: 5px;
     font-size: 11px;
+  }
+  .circuit-scene .axis-text {
+    font-size: 14px;
+  }
+  .layer-controls > div {
+    display: flex;
+    gap: 12px;
   }
   .layer-controls .direction {
     font-size: 10px;
@@ -267,6 +274,32 @@ export const styles = css`
     margin-left: 3px;
     font: 10px var(--mono);
   }
+  .energy-strip {
+    padding: 9px 12px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .energy-values {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font: 10px var(--mono);
+  }
+  .energy-values span {
+    white-space: nowrap;
+  }
+  .charge {
+    color: var(--blue);
+  }
+  .current {
+    color: var(--green);
+  }
+  .energy-bar {
+    display: flex;
+    height: 5px;
+    background: var(--subtle);
+    margin-top: 8px;
+  }
   .timeline {
     border-top: 1px solid var(--border);
     padding: 8px 12px;
@@ -288,7 +321,7 @@ export const styles = css`
   }
   .moments {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 6px;
     padding: 8px 10px;
     border-top: 1px solid var(--border);
@@ -324,6 +357,26 @@ export const styles = css`
     background: var(--primary-soft);
     color: var(--primary);
     border-bottom-color: var(--primary);
+  }
+  .observation-tabs button {
+    min-height: 40px;
+  }
+  .observation-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  .chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    font-size: 10px;
+    padding: 8px 13px 0;
+    flex-shrink: 0;
+  }
+  .chart-stack.single {
+    grid-template-rows: minmax(0, 1fr);
   }
   .observation-summary {
     padding: 12px 13px 0;

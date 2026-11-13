@@ -122,7 +122,7 @@ test("LC parameter changes recharge, reverse polarity and preserve finite zero-e
     "-1",
   );
   await range(page, "初始电压 U₀", 0);
-  await page.getByRole("button", { name: /磁场能最大/ }).click();
+  await expect(page.getByRole("button", { name: /磁场能最大/ })).toBeDisabled();
   await expect(page.locator(".observation-summary")).toContainText("未储能");
   expect(at((await saved(page)).params, (await saved(page)).time).total).toBe(
     0,
@@ -146,4 +146,53 @@ test("LC parameter changes recharge, reverse polarity and preserve finite zero-e
       key,
     ),
   ).toBe(1);
+});
+test("LC energy ratios and shared-unit curves conserve energy while views preserve state", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: /能量相等/ }).click();
+  const before = await saved(page),
+    energy = derived(before.params).energy;
+  await page.getByRole("tab", { name: "看能量", exact: true }).click();
+  expect((await saved(page)).time).toBe(before.time);
+  const bar = page.locator(".energy-bar");
+  expect(Number(await bar.getAttribute("data-electric"))).toBeCloseTo(0.5, 12);
+  expect(Number(await bar.getAttribute("data-magnetic"))).toBeCloseTo(0.5, 12);
+  for (const metric of ["electric", "magnetic", "total"]) {
+    const point = page.locator(`.chart-point[data-metric="${metric}"]`);
+    expect(Number(await point.getAttribute("data-value"))).toBeCloseTo(
+      energy * 1e3 * (metric === "total" ? 1 : 0.5),
+      12,
+    );
+  }
+  await page.getByRole("button", { name: /磁场能最大/ }).click();
+  expect(Number(await bar.getAttribute("data-magnetic"))).toBeCloseTo(1, 12);
+  await expect(page.locator('[data-readout="electric"]')).toHaveText("0.000");
+  await page.getByRole("tab", { name: "看能量", exact: true }).focus();
+  await page.keyboard.press("Home");
+  await expect(
+    page.getByRole("tab", { name: "看振荡", exact: true }),
+  ).toBeFocused();
+  expect((await saved(page)).time).toBe(momentTime(before.params, 1));
+  await page.getByRole("button", { name: /▷ 继续/ }).click();
+  await page.getByRole("tab", { name: "看能量", exact: true }).click();
+  await expect(page.getByRole("button", { name: /Ⅱ 暂停/ })).toBeVisible();
+  await page.getByRole("button", { name: /Ⅱ 暂停/ }).click();
+  await page.reload();
+  await expect(
+    page.getByRole("tab", { name: "看能量", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await range(page, "初始电压 U₀", -6);
+  await page.getByRole("button", { name: /能量相等/ }).click();
+  expect(Number(await bar.getAttribute("data-magnetic"))).toBeCloseTo(0.5, 12);
+  await range(page, "初始电压 U₀", 0);
+  await expect(bar).toHaveAttribute("data-electric", "0");
+  await expect(bar).toHaveAttribute("data-magnetic", "0");
+  for (const value of await page
+    .locator(".chart-point")
+    .evaluateAll((nodes) =>
+      nodes.map((n) => Number(n.getAttribute("data-value"))),
+    ))
+    expect(value).toBe(0);
 });
