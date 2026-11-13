@@ -2,6 +2,10 @@ import { LitElement, type PropertyDeclarations } from "lit";
 /** Native controls keep keyboard semantics; ElementInternals connects their host to forms. */
 export abstract class FormControl extends LitElement {
   static formAssociated = true;
+  static shadowRootOptions = {
+    ...LitElement.shadowRootOptions,
+    delegatesFocus: true,
+  };
   static properties: PropertyDeclarations = {
     name: { type: String, reflect: true },
     disabled: { type: Boolean, reflect: true },
