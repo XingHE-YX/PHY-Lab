@@ -158,7 +158,10 @@ test("dragging, chart selection and keyboard views keep a consistent paused stat
     ),
   );
   await range(page, "拖动时间游标", duration(scrubbed.params));
-  await page.getByRole("button", { name: "前进一步", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: /^(前进一步|Step forward)$/ }),
+  ).toHaveCount(0);
+  await range(page, "拖动时间游标", duration(scrubbed.params) + 1);
   expect((await snapshot(page)).time).toBe(duration(scrubbed.params));
 });
 

@@ -262,11 +262,6 @@ export class WaveExperiment extends LitElement {
         ${this.playing ? t.pause : t.play}</phy-button
       >
       <phy-button @click=${() => this.restart()}>↺ ${t.restart}</phy-button>
-      <phy-button
-        label=${t.step}
-        @click=${() => this.seek(this.data.time + (harmonic(this.p) ? 1 / this.p.frequency : this.p.duration) / 40)}
-        >▹</phy-button
-      >
       <phy-select
         label=${t.rate}
         .value=${String(this.data.rate)}
