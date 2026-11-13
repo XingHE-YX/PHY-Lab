@@ -1,9 +1,12 @@
 {
   "id": "chladni-plate",
   "version": "0.1.0",
-  "apiVersion": 1,
+  "apiVersion": 2,
   "stateVersion": 1,
-  "title": { "zh-CN": "克拉尼图形", "en": "Chladni figures" },
+  "title": {
+    "zh-CN": "克拉尼图形",
+    "en": "Chladni figures"
+  },
   "description": {
     "zh-CN": "让砂粒描绘二维驻波，探索薄板振型、激励位置与共振。",
     "en": "Reveal two-dimensional standing waves in sand. Explore plate modes, excitation and resonance."
@@ -11,5 +14,6 @@
   "tags": {
     "zh-CN": ["驻波", "薄板", "共振", "克拉尼图形"],
     "en": ["Standing waves", "Plates", "Resonance", "Chladni"]
-  }
+  },
+  "apiRevision": 0
 }

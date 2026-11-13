@@ -1,9 +1,18 @@
+import type { DialogHandle } from "../../src/infra/platform/protocols/v2/api/dialog";
+import type {
+  TabsElement,
+  RadioGroupElement,
+  SliderElement,
+  SelectElement,
+  CheckboxElement,
+  InputElement,
+} from "../../src/infra/platform/protocols/v2/components";
 import { LitElement, html, render } from "lit";
 import { live } from "lit/directives/live.js";
 import type {
   ExperimentContext,
   Locale,
-} from "../../src/infra/platform/contract";
+} from "../../src/infra/platform/protocols/v2";
 import { plate, PRESETS } from "./model/catalog";
 import { frequency, clamp, type Parameters } from "./model/plate";
 import {
@@ -28,7 +37,6 @@ import {
   resonanceChart,
   frequencyFromPointer,
 } from "./components/chart";
-import { math, mathStyles } from "./components/math";
 import { texts } from "./locales/messages";
 import { styles } from "./styles/desktop";
 const f = (value: number, digits = 2) =>
@@ -46,7 +54,7 @@ export class ChladniExperiment extends LitElement {
     chartHeight: { state: true },
     audioUnavailable: { state: true },
   };
-  static styles = [mathStyles, styles];
+  static styles = styles;
   declare data: Snapshot;
   declare locale: Locale;
   declare theme: "light" | "dark";
@@ -56,6 +64,9 @@ export class ChladniExperiment extends LitElement {
   declare chartHeight: number;
   declare audioUnavailable: boolean;
   private context?: ExperimentContext;
+  private helpHandle?: DialogHandle;
+  private helpLocale = "";
+  private readonly helpContent = document.createElement("div");
   private frame = 0;
   private last = 0;
   private toolbar?: HTMLDivElement;
@@ -150,7 +161,7 @@ export class ChladniExperiment extends LitElement {
     window.removeEventListener("pagehide", this.hide);
     if (this.toolbar) render(null, this.toolbar);
     this.toolbar = undefined;
-    if (this.settingsControls) render(null, this.settingsControls);
+    if (this.settingsControls) render(null, this.settingsControls.shadowRoot!);
     this.context?.settings?.setControls(null);
     this.settingsControls = undefined;
     super.disconnectedCallback();
@@ -187,10 +198,7 @@ export class ChladniExperiment extends LitElement {
       this.backend = this.renderer.backend;
       this.draw();
     }
-    if (this.helpOpen) {
-      const dialog = this.renderRoot.querySelector<HTMLDialogElement>("dialog");
-      if (dialog && !dialog.open) dialog.showModal();
-    }
+    if (this.helpOpen) this.syncHelp();
     if (this.context?.toolbar) {
       if (!this.toolbar) {
         this.toolbar = document.createElement("div");
@@ -206,6 +214,7 @@ export class ChladniExperiment extends LitElement {
     if (this.context?.settings) {
       if (!this.settingsControls) {
         this.settingsControls = document.createElement("div");
+        this.settingsControls.attachShadow({ mode: "open" });
         this.context.settings.setControls(this.settingsControls);
       }
       const key = JSON.stringify([
@@ -217,26 +226,39 @@ export class ChladniExperiment extends LitElement {
         this.settingsKey = key;
         const t = texts(this.locale);
         render(
-          html`<label
-              style="display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:13px;cursor:pointer"
-            >
-              ${t.mute}<input
-                type="checkbox"
-                style="accent-color:var(--primary)"
-                .checked=${this.data.muted}
-                ?disabled=${this.audioUnavailable}
-                @change=${(e: Event) => {
-                  this.set({ muted: (e.target as HTMLInputElement).checked });
-                  this.syncAudio();
-                }}
-              />
-            </label>
+          html`<style>
+              :host {
+                font-family: var(--font);
+                color: var(--text);
+              }
+              phy-switch {
+                display: block;
+                font-size: 13px;
+              }
+              phy-switch::part(base) {
+                width: 100%;
+                flex-direction: row-reverse;
+                justify-content: space-between;
+                gap: 16px;
+              }
+            </style>
+            <phy-switch
+              label=${t.mute}
+              .checked=${this.data.muted}
+              ?disabled=${this.audioUnavailable}
+              @change=${(e: Event) => {
+                this.set({
+                  muted: (e.currentTarget as CheckboxElement).checked,
+                });
+                this.syncAudio();
+              }}
+            ></phy-switch>
             <p
               style="font-size:12px;line-height:1.7;color:var(--muted);margin:10px 0 0"
             >
               ${this.audioUnavailable ? t.audioUnavailable : t.audioHint}
             </p>`,
-          this.settingsControls,
+          this.settingsControls.shadowRoot!,
         );
       }
     }
@@ -397,15 +419,16 @@ export class ChladniExperiment extends LitElement {
         >${this.playing ? "Ⅱ" : "▷"}
         ${this.playing ? t.pause : t.play}</phy-button
       ><phy-button @click=${() => this.seek(0)}>↺ ${t.restart}</phy-button
-      ><select
-        aria-label=${t.speed}
+      ><phy-select
+        label=${t.speed}
         .value=${String(this.data.rate)}
-        @change=${(e: Event) => this.set({ rate: Number((e.target as HTMLSelectElement).value) })}
-      >
-        <option value="1">1×</option>
-        <option value="0.5">0.5×</option>
-        <option value="0.25">0.25×</option>
-      </select>`;
+        .options=${[
+          { value: "1", label: "1×" },
+          { value: "0.5", label: "0.5×" },
+          { value: "0.25", label: "0.25×" },
+        ]}
+        @change=${(e: Event) => this.set({ rate: Number((e.target as SelectElement).value) })}
+      ></phy-select>`;
   }
   private movePoint = (e: PointerEvent) => {
     if (!e.isPrimary || (e.type === "pointerdown" && e.button !== 0)) return;
@@ -524,28 +547,6 @@ export class ChladniExperiment extends LitElement {
               ),
     });
   };
-  private observationKeys = async (e: KeyboardEvent) => {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
-    e.preventDefault();
-    const options = ["sand", "mode", "resonance"] as const,
-      index = options.indexOf(this.data.observation);
-    this.set({
-      observation:
-        options[
-          e.key === "Home"
-            ? 0
-            : e.key === "End"
-              ? 2
-              : (index + (e.key === "ArrowRight" ? 1 : 2)) % 3
-        ],
-    });
-    await this.updateComplete;
-    this.renderRoot
-      .querySelector<HTMLButtonElement>(
-        '.observation-tabs [aria-selected="true"]',
-      )
-      ?.focus();
-  };
   private slider(
     name: keyof Parameters | "count",
     label: string,
@@ -571,21 +572,20 @@ export class ChladniExperiment extends LitElement {
         >${label}<span class="val"
           >${f(value * multiplier, digits)} ${unit}</span
         ></label
-      ><input
+      ><phy-slider
         id=${name}
-        type="range"
         min=${min}
         max=${max}
         step=${step}
-        .value=${String(value)}
-        aria-label=${label}
-        aria-valuetext=${f(value * multiplier, digits) + " " + unit}
+        .value=${value}
+        label=${label}
+        value-text=${f(value * multiplier, digits) + " " + unit}
         @input=${(e: Event) => {
-          const v = Number((e.target as HTMLInputElement).value);
+          const v = Number((e.target as SliderElement).value);
           if (name === "count") this.changeCount(v);
           else this.changePhysics({ [name]: v });
         }}
-      />
+      ></phy-slider>
       <div class="limits">
         <span>${f(min * multiplier, limitDigits)}</span
         ><span>${f(max * multiplier, limitDigits)} ${unit}</span>
@@ -658,8 +658,7 @@ export class ChladniExperiment extends LitElement {
     return html`<div
       id="plate-observation"
       class="observation-content"
-      role="tabpanel"
-      aria-label=${t[observation]}
+      slot=${observation}
     >
       ${this.facts()}
       <p
@@ -676,9 +675,14 @@ export class ChladniExperiment extends LitElement {
               <p class="chart-caption">${t.truncated}</p>`
           : html`
               <p class="plot-heading">${t.probeHistory}</p>
-              <div class="metric-tabs" role="group" aria-label=${t.metric}>
-                ${(["w", "v", "a"] as const).map((metric) => html`<button class=${this.data.metric === metric ? "selected" : ""} aria-pressed=${this.data.metric === metric} @click=${() => this.set({ metric })}>${metric === "w" ? "w / μm" : metric === "v" ? "v / mm·s⁻¹" : "a / m·s⁻²"}</button>`)}
-              </div>
+              <phy-radio-group
+                class="metric-tabs"
+                variant="segmented"
+                label=${t.metric}
+                .value=${this.data.metric}
+                .options=${(["w", "v", "a"] as const).map((value) => ({ value, label: value === "w" ? "w / μm" : value === "v" ? "v / mm·s⁻¹" : "a / m·s⁻²" }))}
+                @change=${(e: Event) => this.set({ metric: (e.currentTarget as RadioGroupElement).value as Snapshot["metric"] })}
+              ></phy-radio-group>
               <div class="chart-wrap">
                 ${historyChart(this.data, this.state, this.locale, this.chartHeight)}
               </div>
@@ -687,17 +691,17 @@ export class ChladniExperiment extends LitElement {
                   (axis) =>
                     html`<div class="coordinate">
                       <label for=${"probe-" + axis}>${axis}</label
-                      ><input
+                      ><phy-input
                         id=${"probe-" + axis}
                         type="number"
                         min=${-this.p.length * 50}
                         max=${this.p.length * 50}
                         step="0.1"
-                        aria-label=${axis === "x" ? t.probeX : t.probeY}
+                        label=${axis === "x" ? t.probeX : t.probeY}
                         .value=${live(f(this.data.probe[axis] * this.p.length * 50, 1))}
                         @focus=${() => this.pause()}
                         @change=${(e: Event) => {
-                          const input = e.target as HTMLInputElement;
+                          const input = e.currentTarget as InputElement;
                           if (
                             input.value !== "" &&
                             Number.isFinite(input.valueAsNumber)
@@ -714,7 +718,8 @@ export class ChladniExperiment extends LitElement {
                             });
                           else this.requestUpdate();
                         }}
-                      /><span>cm</span>
+                      ></phy-input
+                      ><span>cm</span>
                     </div>`,
                 )}
               </div>
@@ -727,7 +732,9 @@ export class ChladniExperiment extends LitElement {
       observation = this.data.observation;
     return html`<section class="support">
         <div class="equation">
-          ${math(observation === "sand" ? String.raw`w(x,y,t)=\Re\!\left[W(x,y)e^{i\omega t}\right]` : observation === "mode" ? String.raw`D\nabla^4\Phi_j=\rho h\omega_j^2\Phi_j` : String.raw`Q_j=\frac{F_j/M_j}{\omega_j^2-\omega^2+i2\zeta\omega_j\omega}`)}
+          <phy-math
+            .source=${observation === "sand" ? String.raw`w(x,y,t)=\Re\!\left[W(x,y)e^{i\omega t}\right]` : observation === "mode" ? String.raw`D\nabla^4\Phi_j=\rho h\omega_j^2\Phi_j` : String.raw`Q_j=\frac{F_j/M_j}{\omega_j^2-\omega^2+i2\zeta\omega_j\omega}`}
+          ></phy-math>
         </div>
         <p>
           ${observation === "sand" ? t.formulaSand : observation === "mode" ? t.formulaMode : t.formulaResonance}
@@ -753,34 +760,69 @@ export class ChladniExperiment extends LitElement {
         </div>
       </section>`;
   }
-  private helpDialog() {
-    const t = texts(this.locale);
-    return html`<dialog
-      class="help-dialog"
-      @close=${() => {
-        this.helpOpen = false;
-        this.renderRoot
-          .querySelector<HTMLButtonElement>(".help-button")
-          ?.focus();
-      }}
-    >
-      <div class="dialog-heading">
-        <h2>${t.help}</h2>
-        <button
-          aria-label=${t.close}
-          @click=${() => this.renderRoot.querySelector<HTMLDialogElement>("dialog")?.close()}
-        >
-          ×
-        </button>
-      </div>
-      ${[t.helpIntro, t.helpModel, t.helpSteady, t.helpTime, t.helpSand, t.helpAudio, t.helpInteraction, t.helpLimits].map((text) => html`<p>${text}</p>`)}
-      <div class="help-formulas">
-        ${math(String.raw`D=\frac{Eh^3}{12(1-\nu^2)},\qquad D\nabla^4 w+\rho h\ddot w=p`)}${math(String.raw`\omega=2\pi f,\qquad t=N/f,\qquad f_j\propto h/L^2`)}
-      </div>
-      <div class="help-tasks">
-        ${[t.task1, t.task2, t.task3].map((task) => html`<p>${task}</p>`)}
-      </div>
-    </dialog>`;
+  private syncHelp() {
+    if (!this.context || (this.helpHandle && this.helpLocale === this.locale))
+      return;
+    const t = texts(this.locale),
+      root =
+        this.helpContent.shadowRoot ??
+        this.helpContent.attachShadow({ mode: "open" });
+    render(
+      html`<style>
+          :host {
+            color: var(--muted);
+          }
+          p {
+            margin: 0 0 16px;
+          }
+          .help-formulas {
+            display: grid;
+            gap: 18px;
+            margin: 20px 0;
+          }
+          .help-tasks {
+            display: grid;
+            gap: 10px;
+            border-top: 1px solid var(--border);
+            padding-top: 18px;
+          }
+          .help-tasks p {
+            margin: 0;
+          }
+        </style>
+        ${[t.helpIntro, t.helpModel, t.helpSteady, t.helpTime, t.helpSand, t.helpAudio, t.helpInteraction, t.helpLimits].map((text) => html`<p>${text}</p>`)}
+        <div class="help-formulas">
+          <phy-math
+            .source=${String.raw`D=\frac{Eh^3}{12(1-\nu^2)},\qquad D\nabla^4 w+\rho h\ddot w=p`}
+          ></phy-math
+          ><phy-math
+            .source=${String.raw`\omega=2\pi f,\qquad t=N/f,\qquad f_j\propto h/L^2`}
+          ></phy-math>
+        </div>
+        <div class="help-tasks">
+          ${[t.task1, t.task2, t.task3].map((task) => html`<p>${task}</p>`)}
+        </div> `,
+      root,
+    );
+    this.helpLocale = this.locale;
+    if (this.helpHandle) this.helpHandle.update({ title: t.help });
+    else {
+      const handle = this.context.dialog.open({
+        title: t.help,
+        content: this.helpContent,
+        width: 740,
+        returnFocus:
+          this.renderRoot.querySelector<HTMLElement>(".help-button") ??
+          undefined,
+      });
+      this.helpHandle = handle;
+      void handle.closed.then(() => {
+        if (this.helpHandle === handle) {
+          this.helpHandle = undefined;
+          this.helpOpen = false;
+        }
+      });
+    }
   }
   protected render() {
     if (!this.state) return html``;
@@ -795,21 +837,31 @@ export class ChladniExperiment extends LitElement {
         <p class="model-summary">${t.assumptions}</p>
       </div>
       <div class="lab">
-        <aside class="panel parameter-panel">
+        <phy-box role="complementary" class="panel parameter-panel">
           <div class="panel-heading">
             ${t.parameters}<span
               class=${"status" + (this.playing ? " running" : "")}
               >${this.playing ? t.playing : t.paused}</span
             >
           </div>
-          <div
+          <phy-tabs
             class="parameter-tabs"
-            role="group"
-            aria-label=${t.parameterGroup}
+            variant="segmented"
+            label=${t.parameterGroup}
+            .value=${this.data.parameterTab}
+            .items=${(["drive", "plate"] as const).map((value) => ({ value, label: t[value] }))}
+            @change=${(e: Event) => {
+              if (e.target !== e.currentTarget) return;
+              this.set({
+                parameterTab: (e.currentTarget as TabsElement)
+                  .value as Snapshot["parameterTab"],
+              });
+            }}
           >
-            ${(["drive", "plate"] as const).map((parameterTab) => html`<button class=${this.data.parameterTab === parameterTab ? "selected" : ""} aria-pressed=${this.data.parameterTab === parameterTab} @click=${() => this.set({ parameterTab })}>${t[parameterTab]}</button>`)}
-          </div>
-          <div class="parameter-body">${this.parameterPanel()}</div>
+            <div class="parameter-body" slot=${this.data.parameterTab}>
+              ${this.parameterPanel()}
+            </div>
+          </phy-tabs>
           <div class="parameter-footer">
             <div class="pair">
               <button @click=${() => this.sprinkle()}>${t.sprinkle}</button
@@ -825,32 +877,36 @@ export class ChladniExperiment extends LitElement {
               ${t.help}</button
             ><small>${t.restartHint}</small>
           </div>
-        </aside>
-        <section class="panel stage">
+        </phy-box>
+        <phy-box class="panel stage">
           <div class="scene-heading">
             <span>${t.surface}</span
             ><small>${t.steady} · ${f(this.p.frequency, 1)} Hz</small>
           </div>
           <div class="scene-tools">
-            <div class="pair" role="group" aria-label=${t.target}>
-              ${(["drive", "probe"] as const).map((target) => html`<button class=${this.data.target === target ? "selected" : ""} aria-pressed=${this.data.target === target} @click=${() => this.set({ target })}>${target === "drive" ? t.moveDrive : t.moveProbe}</button>`)}
-            </div>
-            <div class="camera" role="group" aria-label=${t.camera}>
-              <button
-                class=${!this.tilted ? "selected" : ""}
-                aria-pressed=${!this.tilted}
-                @click=${() => this.set({ tilt: false })}
-              >
-                ${t.top}</button
-              ><button
-                ?disabled=${this.backend !== "webgl2"}
-                class=${this.tilted ? "selected" : ""}
-                aria-pressed=${this.tilted}
-                @click=${() => this.set({ tilt: true })}
-              >
-                ${t.tilted}
-              </button>
-            </div>
+            <phy-radio-group
+              class="pair"
+              variant="segmented"
+              label=${t.target}
+              .value=${this.data.target}
+              .options=${(["drive", "probe"] as const).map((value) => ({ value, label: value === "drive" ? t.moveDrive : t.moveProbe }))}
+              @change=${(e: Event) => this.set({ target: (e.currentTarget as RadioGroupElement).value as Snapshot["target"] })}
+            ></phy-radio-group>
+            <phy-radio-group
+              class="camera"
+              variant="segmented"
+              label=${t.camera}
+              .value=${this.tilted ? "tilted" : "top"}
+              .options=${[
+                { value: "top", label: t.top },
+                {
+                  value: "tilted",
+                  label: t.tilted,
+                  disabled: this.backend !== "webgl2",
+                },
+              ]}
+              @change=${(e: Event) => this.set({ tilt: (e.currentTarget as RadioGroupElement).value === "tilted" })}
+            ></phy-radio-group>
           </div>
           <div
             class="scene-wrap"
@@ -898,19 +954,15 @@ export class ChladniExperiment extends LitElement {
             <div class="scene-scale">L = ${f(this.p.length * 100, 0)} cm</div>
           </div>
           <div class="layer-controls" role="group" aria-label=${t.layers}>
-            <label
-              ><input
-                type="checkbox"
-                .checked=${this.data.heat || observation === "mode"}
-                ?disabled=${observation === "mode"}
-                @change=${(e: Event) => this.set({ heat: (e.target as HTMLInputElement).checked })}
-              />${t.heat}</label
-            ><label
-              ><input
-                type="checkbox"
-                .checked=${this.data.nodes}
-                @change=${(e: Event) => this.set({ nodes: (e.target as HTMLInputElement).checked })}
-              />${t.nodes}</label
+            <phy-checkbox
+              .checked=${this.data.heat || observation === "mode"}
+              ?disabled=${observation === "mode"}
+              @change=${(e: Event) => this.set({ heat: (e.target as CheckboxElement).checked })}
+              >${t.heat}</phy-checkbox
+            ><phy-checkbox
+              .checked=${this.data.nodes}
+              @change=${(e: Event) => this.set({ nodes: (e.target as CheckboxElement).checked })}
+              >${t.nodes}</phy-checkbox
             ><small
               >${this.backend === "webgl2" ? t.gpu : t.flatFallback}</small
             >
@@ -932,34 +984,40 @@ export class ChladniExperiment extends LitElement {
           </div>
           <div class="timeline">
             <span>N</span
-            ><input
-              type="range"
+            ><phy-slider
               min="0"
               max=${MAX_CYCLES}
               step=".01"
-              .value=${String(this.data.cycles)}
-              aria-label=${t.timeline}
-              aria-valuetext=${f(this.data.cycles) + " " + t.cycles}
-              @input=${(e: Event) => this.seek(Number((e.target as HTMLInputElement).value))}
-            /><span>${f(this.data.cycles, 1)} / ${MAX_CYCLES}</span
+              .value=${this.data.cycles}
+              label=${t.timeline}
+              value-text=${f(this.data.cycles) + " " + t.cycles}
+              @input=${(e: Event) => this.seek(Number((e.target as SliderElement).value))}
+            ></phy-slider
+            ><span>${f(this.data.cycles, 1)} / ${MAX_CYCLES}</span
             ><span class="time-label" title=${t.physicalTime}
               >t ${f(s.time * 1000, 1)} ms</span
             >
           </div>
           ${this.context?.toolbar ? "" : html`<div class="scene-tools">${this.playback()}</div>`}
-        </section>
-        <aside class="panel observation-panel">
-          <div
+        </phy-box>
+        <phy-box role="complementary" class="panel observation-panel">
+          <phy-tabs
             class="observation-tabs"
-            role="tablist"
-            aria-label=${t.observation}
-            @keydown=${this.observationKeys}
+            label=${t.observation}
+            .value=${observation}
+            .items=${(["sand", "mode", "resonance"] as const).map((value) => ({ value, label: t[value] }))}
+            @change=${(e: Event) => {
+              if (e.target !== e.currentTarget) return;
+              this.set({
+                observation: (e.currentTarget as TabsElement)
+                  .value as Snapshot["observation"],
+              });
+            }}
           >
-            ${(["sand", "mode", "resonance"] as const).map((view) => html`<button role="tab" aria-selected=${observation === view} aria-controls="plate-observation" tabindex=${observation === view ? 0 : -1} class=${observation === view ? "selected" : ""} @click=${() => this.set({ observation: view })}>${t[view]}</button>`)}
-          </div>
-          ${this.observationPanel()}${this.supportPanel()}
-        </aside>
-      </div>
-      ${this.helpOpen ? this.helpDialog() : ""}`;
+            ${this.observationPanel()}
+          </phy-tabs>
+          ${this.supportPanel()}
+        </phy-box>
+      </div> `;
   }
 }
