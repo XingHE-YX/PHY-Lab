@@ -82,9 +82,15 @@ export class PhyTabs extends LitElement {
       this.value = this.items.find((item) => !item.disabled)?.value ?? "";
   }
   private choose(value: string) {
-    if (this.value === value) return;
+    const changed = this.value !== value;
     this.value = value;
-    this.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+    if (changed)
+      this.dispatchEvent(
+        new Event("change", { bubbles: true, composed: true }),
+      );
+    this.dispatchEvent(
+      new Event("activate", { bubbles: true, composed: true }),
+    );
   }
   private keys(event: KeyboardEvent) {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;

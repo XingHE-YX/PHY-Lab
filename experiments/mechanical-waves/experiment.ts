@@ -756,7 +756,7 @@ export class WaveExperiment extends LitElement {
             label=${t.observation}
             .value=${this.data.observation}
             .items=${(["record", "profile"] as const).map((value) => ({ value, label: t[value] }))}
-            @change=${(e: Event) => {
+            @activate=${(e: Event) => {
               if (e.target !== e.currentTarget) return;
               this.set({
                 observation: (e.currentTarget as TabsElement)

@@ -6,19 +6,19 @@
 
 ## 控件接口
 
-| 标签              | 属性、方法与内容                                                                                                                                                                             | 用户事件          |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| `phy-button`      | `variant="primary"`、`disabled`、无障碍名称 `label`、默认 slot、`focus()`                                                                                                                    | `click`           |
-| `phy-input`       | `type`、`value`、`valueAsNumber`、`label`、`placeholder`、`readOnly`、`autocomplete`、`min/max/step`、`pattern`、`minLength/maxLength`；`start/end` slots；`select()`、`setSelectionRange()` | `input`、`change` |
-| `phy-box`         | 默认 slot；统一背景、边框、圆角；布局由调用方 CSS 决定                                                                                                                                       | 无                |
-| `phy-select`      | `value`、`options`、无障碍名称 `label`                                                                                                                                                       | `input`、`change` |
-| `phy-switch`      | `checked`、`value`、无障碍名称 `label`；默认 slot 或 `label` 提供可见文字                                                                                                                    | `input`、`change` |
-| `phy-checkbox`    | 同开关，另有 `indeterminate`                                                                                                                                                                 | `input`、`change` |
-| `phy-progress`    | `value`、`max`（默认 100）、`label`；只展示确定进度                                                                                                                                          | 无                |
-| `phy-slider`      | 数值 `value/min/max/step`、`valueAsNumber`、`label`、`valueText`（属性名 `value-text`）                                                                                                      | `input`、`change` |
-| `phy-tabs`        | `value`、`items`、`label`、`variant="line/segmented"`、`focus()`；以选项值命名的内容 slots                                                                                                   | `change`          |
-| `phy-radio-group` | `value`、`options`、`label`、`variant="segmented"`；不设置 variant 时为普通单选框                                                                                                            | `input`、`change` |
-| `phy-math`        | `source` 为 TeX，`display` 为行间公式模式                                                                                                                                                    | 无                |
+| 标签              | 属性、方法与内容                                                                                                                                                                             | 用户事件             |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `phy-button`      | `variant="primary"`、`disabled`、无障碍名称 `label`、默认 slot、`focus()`                                                                                                                    | `click`              |
+| `phy-input`       | `type`、`value`、`valueAsNumber`、`label`、`placeholder`、`readOnly`、`autocomplete`、`min/max/step`、`pattern`、`minLength/maxLength`；`start/end` slots；`select()`、`setSelectionRange()` | `input`、`change`    |
+| `phy-box`         | 默认 slot；统一背景、边框、圆角；布局由调用方 CSS 决定                                                                                                                                       | 无                   |
+| `phy-select`      | `value`、`options`、无障碍名称 `label`                                                                                                                                                       | `input`、`change`    |
+| `phy-switch`      | `checked`、`value`、无障碍名称 `label`；默认 slot 或 `label` 提供可见文字                                                                                                                    | `input`、`change`    |
+| `phy-checkbox`    | 同开关，另有 `indeterminate`                                                                                                                                                                 | `input`、`change`    |
+| `phy-progress`    | `value`、`max`（默认 100）、`label`；只展示确定进度                                                                                                                                          | 无                   |
+| `phy-slider`      | 数值 `value/min/max/step`、`valueAsNumber`、`label`、`valueText`（属性名 `value-text`）                                                                                                      | `input`、`change`    |
+| `phy-tabs`        | `value`、`items`、`label`、`variant="line/segmented"`、`focus()`；以选项值命名的内容 slots                                                                                                   | `change`、`activate` |
+| `phy-radio-group` | `value`、`options`、`label`、`variant="segmented"`；不设置 variant 时为普通单选框                                                                                                            | `input`、`change`    |
+| `phy-math`        | `source` 为 TeX，`display` 为行间公式模式                                                                                                                                                    | 无                   |
 
 输入、选择、滑块、开关、多选和单选组共同支持 `name`、`disabled`、`required`、`focus()`、`form`、`labels`、`validity`、`validationMessage`、`willValidate`、`checkValidity()` 和 `reportValidity()`。使用 ElementInternals 参与原生 FormData、表单重置、fieldset 禁用和浏览器状态恢复。
 
@@ -117,7 +117,9 @@ html`<phy-tabs
 
 items 为 `{ value, label, disabled? }`，值在组内保持唯一。组件管理 tab、tabpanel、ARIA 关联、方向键、Home/End、焦点和隐藏内容。可以只渲染当前 slot 的内容，避免创建暂时不用的图表。
 
-嵌套内容也会发送 `change`，页签监听器应检查 `event.target === event.currentTarget`。互斥的模型或参数值用单选组；切换内容面板用 Tabs。
+`change` 只在选值变化时触发；`activate` 在用户点击或键盘选择时触发，重复选择当前项也会触发。需要从探索内容返回观察时监听 `activate`。代码设置属性不触发这两类用户事件。
+
+嵌套内容也可能发送事件，页签监听器应检查 `event.target === event.currentTarget`。互斥的模型或参数值用单选组；切换内容面板用 Tabs。
 
 ## 公式
 

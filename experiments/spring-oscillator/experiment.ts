@@ -1289,7 +1289,7 @@ export class SpringExperiment extends LitElement {
             label=${t.show}
             .value=${this.mode}
             .items=${this.observationModes.map((value) => ({ value, label: value === "motion" ? t.motion : value === "changes" ? t.changes : value === "energy" ? t.energy : l.resonance }))}
-            @change=${(event: Event) => {
+            @activate=${(event: Event) => {
               if (event.target !== event.currentTarget) return;
               this.mode = (event.currentTarget as TabsElement)
                 .value as typeof this.mode;

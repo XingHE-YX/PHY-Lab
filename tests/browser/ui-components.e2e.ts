@@ -128,6 +128,9 @@ test("tabs own valid panel associations and radio groups share keyboard selectio
       { value: "last", label: "Last view" },
     ];
     tabs.value = "first";
+    (window as any).tabEvents = { change: 0, activate: 0 };
+    for (const type of ["change", "activate"])
+      tabs.addEventListener(type, () => (window as any).tabEvents[type]++);
     tabs.innerHTML =
       '<p slot="first">First content</p><p slot="last">Last content</p>';
     const radio = document.createElement("phy-radio-group") as HTMLElement & {
@@ -147,6 +150,15 @@ test("tabs own valid panel associations and radio groups share keyboard selectio
   await page.getByRole("tab", { name: "First view" }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("tab", { name: "Last view" })).toBeFocused();
+  expect(await page.evaluate(() => (window as any).tabEvents)).toEqual({
+    change: 1,
+    activate: 1,
+  });
+  await page.getByRole("tab", { name: "Last view" }).click();
+  expect(await page.evaluate(() => (window as any).tabEvents)).toEqual({
+    change: 1,
+    activate: 2,
+  });
   await expect(page.getByRole("tabpanel", { name: "Last view" }))
     .toMatchAriaSnapshot(`
     - tabpanel "Last view":
