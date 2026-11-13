@@ -58,9 +58,11 @@ export class PhyRadioGroup extends FormControl {
       }
       :host([variant="segmented"]) input {
         position: absolute;
-        width: 1px;
-        height: 1px;
+        inset: 0;
+        width: 100%;
+        height: 100%;
         opacity: 0;
+        cursor: inherit;
       }
       :host([variant="segmented"]) span {
         display: flex;

@@ -130,6 +130,7 @@ test("tabs own valid panel associations and radio groups share keyboard selectio
       label: string;
     };
     radio.label = "Fixture boundary";
+    radio.setAttribute("variant", "segmented");
     radio.options = [
       { value: "fixed", label: "Fixture fixed" },
       { value: "free", label: "Fixture free" },
@@ -156,6 +157,9 @@ test("tabs own valid panel associations and radio groups share keyboard selectio
   ).toBe(true);
   await page.keyboard.press("Home");
   await expect(page.getByRole("tab", { name: "First view" })).toBeFocused();
+  await page.getByRole("radio", { name: "Fixture free" }).click();
+  await expect(page.getByRole("radio", { name: "Fixture free" })).toBeChecked();
+  await page.getByRole("radio", { name: "Fixture fixed" }).click();
   await page.getByRole("radio", { name: "Fixture fixed" }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("radio", { name: "Fixture free" })).toBeChecked();
