@@ -1,12 +1,5 @@
 import { test, expect } from "bun:test";
-import {
-  at,
-  derived,
-  parameters,
-  momentTime,
-  duration,
-  limits,
-} from "../model/physics";
+import { at, derived, parameters, momentTime, limits } from "../model/physics";
 import { normalizeSnapshot } from "../model/snapshot";
 
 test("LC initial state, charge continuity, KVL and power balance use one sign convention", () => {
@@ -133,6 +126,6 @@ test("saved states are bounded, preparation cannot retain elapsed oscillation ti
     support: "tasks",
     layers: { fields: false, current: false },
   });
-  expect(saved.time).toBe(duration(saved.params));
+  expect(saved.time).toBe(2);
   expect(normalizeSnapshot(JSON.parse(JSON.stringify(saved)))).toEqual(saved);
 });

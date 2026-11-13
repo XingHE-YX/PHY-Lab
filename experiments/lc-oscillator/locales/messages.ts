@@ -1,5 +1,7 @@
 import type { Locale } from "../../../src/infra/platform/protocols/v2";
+import { transientMessages } from "./transient";
 const zh = {
+  ...transientMessages["zh-CN"],
   title: "LC 电磁振荡",
   subtitle: "电荷往复 · 能量交换",
   model: "理想 LC · 无电阻、无辐射损耗",
@@ -17,8 +19,9 @@ const zh = {
   play: "继续",
   pause: "暂停",
   restart: "回到起点",
-  resetHint: "调参后暂停，重新充电并回到 t = 0。",
-  switchHint: "闭合开关即运行；再次操作暂停或继续。重新充电请用左侧按钮。",
+  resetHint: "调参后暂停并重新充电，t = 0。",
+  switchHint:
+    "闭合即运行；弹开立即进入断开瞬态。暂停用顶栏，重新充电用左侧按钮。",
   period: "固有周期 T",
   frequency: "固有频率 f",
   maximumCurrent: "峰值电流 Iₘ",
@@ -88,9 +91,9 @@ const zh = {
   helpAssumptions:
     "模型使用理想线性电容与电感，忽略电阻、辐射和寄生参数。充电是初始条件：振荡前移除电源，闭合后没有外部驱动。",
   helpReset:
-    "“重新充电”与修改参数都会停止当前实验，重新准备初态；不模拟带电流切断电感时的火花或充电暂态。“回到起点”保留已闭合的回路。",
+    "“重新充电”与修改回路参数会恢复设定电压并清除瞬态记录；开关参数只用于下一次断开。外部电源充电暂态不在本模型内。“回到起点”保留闭合回路，或把瞬态回放定位到起点。",
   helpClock:
-    "全场景、曲线和能量使用同一物理时间。每秒播放默认推进 4 ms 实验时间；慢放只改变推进速度，周期和频率仍由 L、C 计算。时间轴可回看四个周期。",
+    "闭合回路无限持续振荡，每秒播放默认推进 4 ms 实验时间；慢放只改变推进速度。曲线每四个周期向后推进窗口，时间读数持续累加。断开记录使用单独的微秒坐标和明确标注的慢放。",
   helpFields:
     "场线不是空间场求解。电场方向从正极板指向负极板；磁场按图示绕向表示，随电流反向。强弱分别按 |q|、|I| 与各自峰值之比显示，不能比较两类场线的长度。",
   helpSigns:
@@ -98,7 +101,7 @@ const zh = {
   helpAnalogy:
     "对应关系为 L ↔ m、1/C ↔ k、q ↔ x、−I ↔ v。弹簧图按各自峰值归一化，不代表真实机械装置的尺寸或速度单位。",
   controlsHint:
-    "图表可点击、拖动回看；时间滑块支持键盘。观察标签支持方向键、Home 和 End；切换图层不改变实验状态。",
+    "开关支持点击、Enter 与空格；顶栏暂停或继续。曲线可拖动回看，瞬态图支持方向键与 Home / End。观察标签切换只改变显示内容。",
   voltageUnit: "V",
   chartCharge: "电荷 q / μC",
   chartCurrent: "电流 I / mA",
@@ -108,6 +111,7 @@ const zh = {
 };
 type Texts = Record<keyof typeof zh, string>;
 const en: Texts = {
+  ...transientMessages.en,
   title: "LC oscillations",
   subtitle: "Charge in motion · energy in exchange",
   model: "Ideal LC · no resistance or radiation loss",
@@ -126,9 +130,9 @@ const en: Texts = {
   play: "Resume",
   pause: "Pause",
   restart: "Back to start",
-  resetHint: "Changing parameters pauses and recharges at t = 0.",
+  resetHint: "Edits pause and recharge at t = 0.",
   switchHint:
-    "Close to run; activate again to pause or resume. Use the left panel to recharge.",
+    "Close to run; open immediately to inspect the transient. Pause from the toolbar; recharge from the left panel.",
   period: "Natural period T",
   frequency: "Natural frequency f",
   maximumCurrent: "Peak current Iₘ",
@@ -208,9 +212,9 @@ const en: Texts = {
   helpAssumptions:
     "An ideal linear capacitor and inductor, without resistance, radiation or parasitic effects. Charging sets the initial state: the supply is removed before closing the undriven LC loop.",
   helpReset:
-    "Recharge and parameter changes stop the experiment and prepare a new initial state. Charging transients and interrupting inductor current are not simulated. Back to start keeps the circuit closed.",
+    "Recharge and circuit-parameter edits restore the configured voltage and clear the transient record. Switch parameters apply to the next opening. External charging transients are outside this model. Back to start preserves the closed loop, or returns a transient replay to its beginning.",
   helpClock:
-    "The scene, curves and energy share one physical time. Normal playback advances 4 ms of physical time per second. Slowing playback does not change the period or frequency calculated from L and C. Scrub through four periods.",
+    "The closed circuit oscillates continuously without a run limit. Normal playback advances 4 ms of physical time per second. Charts advance their four-period window while elapsed time keeps increasing. Switch-off records have their own physical microsecond axes and explicitly labelled slow motion.",
   helpFields:
     "Fields are qualitative, not a spatial field solution. Electric arrows run from positive to negative plate. Magnetic arrows follow the illustrated winding and reverse with current. Strengths are scaled separately by |q| and |I| relative to their own peaks; arrow lengths across the two fields cannot be compared.",
   helpSigns:
@@ -218,7 +222,7 @@ const en: Texts = {
   helpAnalogy:
     "L ↔ m, 1/C ↔ k, q ↔ x, and −I ↔ v. The spring is normalized to its own peaks, not a mechanical apparatus with physical dimensions or velocity units.",
   controlsHint:
-    "Click or drag charts to scrub; the time slider supports the keyboard. Use arrow keys, Home and End on observation tabs. Layers preserve the physical state.",
+    "Click, Enter or Space operates the switch; the toolbar pauses or resumes. Drag charts to scrub. Transient charts support arrows and Home / End. Observation tabs change the display only.",
   voltageUnit: "V",
   chartCharge: "Charge q / μC",
   chartCurrent: "Current I / mA",

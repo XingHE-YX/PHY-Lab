@@ -6,6 +6,7 @@ import type {
   SelectElement,
   SliderElement,
   TabsElement,
+  RadioGroupElement,
   DialogHandle,
 } from "../../src/infra/platform/protocols/v2";
 import {
@@ -13,7 +14,6 @@ import {
   limits,
   derived,
   at,
-  duration,
   playbackScale,
   momentTime,
   format,
@@ -21,11 +21,21 @@ import {
   type LCParameters,
 } from "./model/physics";
 import { normalizeSnapshot, type Snapshot } from "./model/snapshot";
+import {
+  buildTransient,
+  sampleTransient,
+  transientValues,
+  switchLimits,
+  switchParameters,
+  type SwitchParameters,
+  type TransientProfile,
+} from "./model/transient";
 import { texts } from "./locales/messages";
 import { styles } from "./styles/desktop";
 import { circuit } from "./components/circuit";
 import { chart } from "./components/chart";
 import { spring } from "./components/spring";
+import { transientChart } from "./components/transient-chart";
 
 const observations: Snapshot["observation"][] = [
   "oscillation",
@@ -57,6 +67,7 @@ export class LCExperiment extends LitElement {
   private helpHandle?: DialogHandle;
   private helpLocale = "";
   private readonly helpContent = document.createElement("div");
+  private transientCache?: { key: string; profile: TransientProfile };
   constructor() {
     super();
     this.data = normalizeSnapshot(null);
@@ -73,8 +84,60 @@ export class LCExperiment extends LitElement {
   get p() {
     return this.data.params;
   }
+  private get runParameters() {
+    return {
+      ...this.p,
+      voltage:
+        Math.hypot(
+          this.data.seed.q,
+          this.data.seed.current / derived(this.p).omega,
+        ) / this.p.capacitance,
+    };
+  }
   get state() {
-    return at(this.p, this.data.time);
+    const event = this.data.transient,
+      profile = this.profile;
+    if (!this.data.closed && event && profile) {
+      const point = sampleTransient(profile, event.elapsed);
+      const energy = transientValues(this.p, event.model, point);
+      return {
+        time: event.at + point.time,
+        phase: 0,
+        q: point.voltage * this.p.capacitance,
+        current: point.current,
+        voltage: point.voltage,
+        currentRate: energy.inductorVoltage / this.p.inductance,
+        electric: energy.electric,
+        magnetic: energy.magnetic,
+        total: energy.electric + energy.magnetic,
+      };
+    }
+    return at(this.p, this.data.time, this.data.seed);
+  }
+  private get profile() {
+    const event = this.data.transient;
+    if (!event) return undefined;
+    const key = JSON.stringify([this.p, event.initial, event.model]);
+    if (this.transientCache?.key !== key)
+      this.transientCache = {
+        key,
+        profile: buildTransient(this.p, event.initial, event.model),
+      };
+    return this.transientCache.profile;
+  }
+  private get replaying() {
+    return !this.data.closed && !!this.data.transient;
+  }
+  private get transientTime() {
+    return this.profile && this.data.transient
+      ? sampleTransient(this.profile, this.data.transient.elapsed).time
+      : 0;
+  }
+  private get switchVoltage() {
+    if (this.data.closed) return 0;
+    return this.profile && this.data.transient
+      ? sampleTransient(this.profile, this.data.transient.elapsed).switchVoltage
+      : this.state.voltage;
   }
   snapshot(): Snapshot {
     return structuredClone(this.data);
@@ -114,21 +177,29 @@ export class LCExperiment extends LitElement {
     if (!this.observer)
       this.observer = new ResizeObserver((entries) => {
         for (const entry of entries) {
-          const height = Math.max(
-            105,
-            Math.round(
-              ((entry.contentRect.height - 10) * 332) /
-                Math.max(1, entry.contentRect.width - 16) /
-                2,
-            ),
-          );
+          const height = entry.target.classList.contains("transient-plot")
+            ? Math.max(
+                150,
+                Math.round(
+                  (entry.contentRect.height * 332) /
+                    Math.max(1, entry.contentRect.width),
+                ),
+              )
+            : Math.max(
+                105,
+                Math.round(
+                  ((entry.contentRect.height - 10) * 332) /
+                    Math.max(1, entry.contentRect.width - 16) /
+                    2,
+                ),
+              );
           if (Math.abs(height - this.plotHeight) > 1) {
             this.plotHeight = height;
             this.requestUpdate();
           }
         }
       });
-    const next = this.renderRoot.querySelector(".chart-stack");
+    const next = this.renderRoot.querySelector(".chart-stack, .transient-plot");
     if (next !== this.chartNode) {
       if (this.chartNode) this.observer.unobserve(this.chartNode);
       if (next) this.observer.observe(next);
@@ -145,7 +216,14 @@ export class LCExperiment extends LitElement {
         this.toolbar.style.cssText = "display:flex;align-items:center;gap:8px";
         this.context.toolbar.setControls(this.toolbar);
       }
-      const key = JSON.stringify([this.data.rate, this.locale]);
+      const key = JSON.stringify([
+        this.playing,
+        this.data.closed,
+        this.data.transient?.elapsed === 0,
+        this.replaying,
+        this.data.rate,
+        this.locale,
+      ]);
       if (key !== this.toolbarKey) {
         this.toolbarKey = key;
         render(this.playback(), this.toolbar);
@@ -161,8 +239,13 @@ export class LCExperiment extends LitElement {
   play() {
     if (this.playing || this.context?.signal.aborted || !this.isConnected)
       return;
-    if (!this.data.closed || this.data.time >= duration(this.p))
-      this.set({ closed: true, time: 0 });
+    if (this.replaying) {
+      const event = this.data.transient!,
+        profile = this.profile!;
+      if (profile.duration === 0) return;
+      if (event.elapsed >= profile.duration)
+        this.set({ transient: { ...event, elapsed: 0 }, support: "transient" });
+    } else if (!this.data.closed) this.set({ closed: true, time: 0 });
     this.playing = true;
     this.last = 0;
     this.frame = requestAnimationFrame(this.tick);
@@ -170,42 +253,111 @@ export class LCExperiment extends LitElement {
   private tick = (now: number) => {
     if (!this.playing) return;
     if (this.last) {
-      const time = Math.min(
-        duration(this.p),
-        this.data.time +
-          Math.min(0.1, (now - this.last) / 1000) *
-            playbackScale *
-            this.data.rate,
-      );
-      this.data = { ...this.data, time };
-      if (time >= duration(this.p)) {
-        this.pause();
-        return;
-      }
+      const delta = Math.min(0.1, (now - this.last) / 1000) * this.data.rate;
+      if (this.replaying) {
+        const event = this.data.transient!,
+          profile = this.profile!;
+        const scale = Math.log1p(profile.duration / profile.timeScale);
+        const progress = Math.min(
+          1,
+          Math.log1p(event.elapsed / profile.timeScale) / scale + delta / 4,
+        );
+        const elapsed =
+          progress === 1
+            ? profile.duration
+            : profile.timeScale * Math.expm1(progress * scale);
+        this.data = { ...this.data, transient: { ...event, elapsed } };
+        if (progress === 1) {
+          this.pause();
+          return;
+        }
+      } else
+        this.data = {
+          ...this.data,
+          time: this.data.time + delta * playbackScale,
+        };
     }
     this.last = now;
     this.frame = requestAnimationFrame(this.tick);
   };
   private prepare = () => {
     this.pause();
-    this.set({ closed: false, time: 0 });
+    this.set({
+      closed: false,
+      time: 0,
+      seed: { q: this.p.capacitance * this.p.voltage, current: 0 },
+      transient: null,
+      support:
+        this.data.support === "transient" ? "formula" : this.data.support,
+    });
   };
   private connect = () => {
-    if (this.playing) this.pause();
-    else this.play();
+    this.pause();
+    if (this.data.closed) {
+      const state = this.state;
+      this.set({
+        closed: false,
+        support: "transient",
+        transient: {
+          at: this.data.time,
+          initial: { q: state.q, current: state.current },
+          model: { ...this.data.switch },
+          elapsed: 0,
+        },
+      });
+      this.play();
+    } else {
+      const point = this.profile?.points.at(-1);
+      const seed = point
+        ? { q: point.voltage * this.p.capacitance, current: point.current }
+        : this.data.seed;
+      this.set({
+        closed: true,
+        time: 0,
+        seed,
+        support: "formula",
+        transient:
+          this.data.transient && this.profile
+            ? { ...this.data.transient, elapsed: this.profile.duration }
+            : null,
+      });
+      this.play();
+    }
   };
   private restart = () => {
     this.pause();
-    this.set({ time: 0 });
+    if (this.replaying)
+      this.set({
+        transient: { ...this.data.transient!, elapsed: 0 },
+        support: "transient",
+      });
+    else this.set({ time: 0 });
   };
   private seek = (time: number) => {
     this.pause();
-    this.set({ closed: true, time: clamp(time, 0, duration(this.p)) });
+    if (this.replaying) return;
+    this.set({ closed: true, time: Math.max(0, time) });
+  };
+  private seekTransient = (time: number) => {
+    this.pause();
+    if (this.data.transient && this.profile)
+      this.set({
+        closed: false,
+        transient: {
+          ...this.data.transient,
+          elapsed: clamp(time, 0, this.profile.duration),
+        },
+      });
   };
   private changeParameter(name: keyof LCParameters, value: number) {
     this.pause();
+    const params = parameters({ ...this.p, [name]: value });
     this.set({
-      params: parameters({ ...this.p, [name]: value }),
+      params,
+      seed: { q: params.capacitance * params.voltage, current: 0 },
+      transient: null,
+      support:
+        this.data.support === "transient" ? "formula" : this.data.support,
       closed: false,
       time: 0,
     });
@@ -218,6 +370,8 @@ export class LCExperiment extends LitElement {
     this.set({
       task,
       params,
+      seed: { q: params.capacitance * params.voltage, current: 0 },
+      transient: null,
       support: "formula",
       closed: task === "current",
       time: task === "current" ? momentTime(params, 1) : 0,
@@ -228,7 +382,7 @@ export class LCExperiment extends LitElement {
   }
   private taskComparison() {
     const t = texts(this.locale),
-      d = derived(this.p),
+      d = derived(this.runParameters),
       reference = derived(parameters(null));
     return html`<small class="task-reference">${t.taskBaseline}</small>
       <output class="task-comparison" aria-label=${t.taskCompare}>
@@ -262,7 +416,15 @@ export class LCExperiment extends LitElement {
       variant="segmented"
       label=${t.support}
       .value=${this.data.support}
-      .items=${(["formula", "tasks"] as const).map((value) => ({ value, label: t[value] }))}
+      .items=${[
+        ...[
+          { value: "formula", label: t.formula },
+          { value: "tasks", label: t.tasks },
+        ],
+        ...(this.data.transient
+          ? [{ value: "transient", label: t.transientTab }]
+          : []),
+      ]}
       @change=${(e: Event) => {
         if (e.target !== e.currentTarget) return;
         this.set({
@@ -272,12 +434,89 @@ export class LCExperiment extends LitElement {
       }}
     >
       <div
-        class=${"support-body " + (this.data.support === "formula" ? "formula-content" : "task-content")}
+        class=${"support-body " + (this.data.support === "formula" ? "formula-content" : this.data.support === "transient" ? "transient-content" : "task-content")}
         slot=${this.data.support}
       >
-        ${this.data.support === "formula" ? html`${this.formulas()}<small class="support-note">${this.data.observation === "analogy" ? t.normalized : t.fieldHint}</small>` : this.tasks()}
+        ${this.data.support === "transient" ? this.transientPanel() : this.data.support === "formula" ? html`${this.formulas()}<small class="support-note">${this.data.observation === "analogy" ? t.normalized : t.fieldHint}</small>` : this.tasks()}
       </div>
     </phy-tabs>`;
+  }
+  private transientPanel() {
+    const t = texts(this.locale),
+      event = this.data.transient,
+      profile = this.profile;
+    if (!event || !profile) return "";
+    const point = sampleTransient(profile, event.elapsed),
+      values = transientValues(this.p, event.model, point);
+    const error =
+      profile.initialEnergy === 0
+        ? 0
+        : (Math.abs(values.stored + values.dissipated - profile.initialEnergy) /
+            profile.initialEnergy) *
+          100;
+    return html`<p class="transient-model">
+        ${t.transientApprox}<br />Cₚ ${format(event.model.capacitance * 1e9, 1)}
+        nF · Uᵦ ${format(event.model.breakdown, 0)} V · Rₜ
+        ${format(event.model.resistance, 0)} Ω
+      </p>
+      <phy-radio-group
+        variant="segmented"
+        label=${t.transientPlot}
+        .value=${this.data.transientMetric}
+        .options=${[
+          { value: "voltage", label: t.voltage },
+          { value: "current", label: t.current },
+          { value: "energy", label: t.transientEnergy },
+        ]}
+        @change=${(e: Event) => this.set({ transientMetric: (e.currentTarget as RadioGroupElement).value as Snapshot["transientMetric"] })}
+      ></phy-radio-group>
+      <div class="transient-legend">
+        ${this.data.transientMetric === "voltage" ? "━ Uₛ　┄ Uʟ" : this.data.transientMetric === "current" ? "━ I / mA" : `━ E꜀　┄ Eʟ　┈ Eₚ　━ ${t.lossShort}`}
+      </div>
+      <div class="transient-plot">
+        ${transientChart(this.p, profile, event.elapsed, this.data.transientMetric, this.data.transientZoom, t, this.seekTransient, this.plotHeight)}
+      </div>
+      <div class="transient-summary">
+        <div>
+          <small>${t.peakSwitch}</small
+          ><output data-transient="peak"
+            >${format(profile.peakVoltage)} V</output
+          >
+        </div>
+        <div title=${t.transientTimeHint}>
+          <small>${t.settlingTime}</small
+          ><output>${format(profile.duration * 1e6, 1)} μs</output>
+        </div>
+        <div>
+          <small>${t.dissipatedEnergy}</small
+          ><output data-transient="loss"
+            >${format(values.dissipated * 1e3, 4)} mJ</output
+          >
+        </div>
+        <div>
+          <small>${t.energyBalance}</small
+          ><output data-transient="balance">${format(error, 6)}%</output>
+        </div>
+      </div>
+      <div class="transient-tools">
+        <phy-button
+          ?disabled=${profile.duration === 0}
+          @click=${() => {
+            this.seekTransient(0);
+            this.play();
+          }}
+          >${t.transientReplay}</phy-button
+        >
+        <phy-select
+          label=${t.transientZoomLabel}
+          .value=${this.data.transientZoom}
+          .options=${[
+            { value: "impulse", label: t.impulseZoom },
+            { value: "full", label: t.fullTransient },
+          ]}
+          @change=${(e: Event) => this.set({ transientZoom: (e.currentTarget as SelectElement).value as Snapshot["transientZoom"] })}
+        ></phy-select>
+      </div>`;
   }
   private energyBar() {
     const t = texts(this.locale),
@@ -321,8 +560,11 @@ export class LCExperiment extends LitElement {
   }
   private plots() {
     const t = texts(this.locale);
+    const p = this.runParameters;
+    if (this.replaying)
+      return html`<p class="normalization-empty">${t.transientUnavailable}</p>`;
     if (this.data.observation === "analogy") {
-      if (derived(this.p).energy === 0)
+      if (derived(p).energy === 0)
         return html`<div class="normalization-empty">
           ${t.noNormalization}
         </div>`;
@@ -331,9 +573,9 @@ export class LCExperiment extends LitElement {
           ><span class="current">┄ −I/Iₘ ↔ v/vₘ</span>
         </div>
         <div class="chart-stack analogy-stack">
-          ${spring(this.p, this.state, t)}
+          ${spring(p, this.state, t)}
           ${chart(
-            this.p,
+            p,
             this.data.time,
             [
               { metric: "position", color: "var(--blue)" },
@@ -343,6 +585,7 @@ export class LCExperiment extends LitElement {
             t.chartTime,
             this.plotHeight,
             this.seek,
+            this.data.seed,
           )}
         </div>`;
     }
@@ -354,7 +597,7 @@ export class LCExperiment extends LitElement {
         </div>
         <div class="chart-stack single">
           ${chart(
-            this.p,
+            p,
             this.data.time,
             [
               { metric: "electric", color: "var(--blue)" },
@@ -365,15 +608,38 @@ export class LCExperiment extends LitElement {
             t.chartTime,
             this.plotHeight * 2,
             this.seek,
+            this.data.seed,
           )}
         </div>`;
     return html`<div class="chart-stack">
-      ${chart(this.p, this.data.time, [{ metric: "q", color: "var(--blue)" }], t.chartCharge, t.chartTime, this.plotHeight, this.seek)}
-      ${chart(this.p, this.data.time, [{ metric: "current", color: "var(--green)" }], t.chartCurrent, t.chartTime, this.plotHeight, this.seek)}
+      ${chart(p, this.data.time, [{ metric: "q", color: "var(--blue)" }], t.chartCharge, t.chartTime, this.plotHeight, this.seek, this.data.seed)}
+      ${chart(p, this.data.time, [{ metric: "current", color: "var(--green)" }], t.chartCurrent, t.chartTime, this.plotHeight, this.seek, this.data.seed)}
     </div>`;
   }
   private formulas() {
     const t = texts(this.locale);
+    if (this.replaying)
+      return html`<phy-math
+          .source=${String.raw`E_0=E_C+E_L+E_p+E_{\mathrm{diss}}`}
+        ></phy-math>
+        <p>${t.transientBalanceHint}</p>`;
+    if (
+      this.data.observation !== "analogy" &&
+      (Math.abs(this.data.seed.q - this.p.capacitance * this.p.voltage) >
+        1e-12 ||
+        Math.abs(this.data.seed.current) > 1e-12)
+    )
+      return html`<div class="equation">
+          <phy-math
+            .source=${String.raw`q=q_0\cos(\omega t)-\frac{I_0}{\omega}\sin(\omega t)`}
+          ></phy-math>
+        </div>
+        <div class="equation">
+          <phy-math
+            .source=${String.raw`I=q_0\omega\sin(\omega t)+I_0\cos(\omega t)`}
+          ></phy-math>
+        </div>
+        <p>${t.residualInitial}</p>`;
     if (this.data.observation === "analogy")
       return html` <div class="equation">
           <phy-math
@@ -416,7 +682,8 @@ export class LCExperiment extends LitElement {
   }
   private playback() {
     const t = texts(this.locale);
-    return html`<phy-button @click=${this.restart}>↺ ${t.restart}</phy-button>
+    return html`${this.data.closed || (this.replaying && this.profile!.duration > 0) ? html`<phy-button variant="primary" @click=${() => (this.playing ? this.pause() : this.play())}>${this.playing ? "Ⅱ" : "▷"} ${this.replaying ? (this.playing ? t.pauseReplay : t.resumeReplay) : this.playing ? t.pause : t.play}</phy-button>` : ""}
+      <phy-button @click=${this.restart}>↺ ${t.restart}</phy-button>
       <phy-select
         label=${t.rate}
         .value=${String(this.data.rate)}
@@ -461,8 +728,9 @@ export class LCExperiment extends LitElement {
   private hint() {
     const t = texts(this.locale),
       s = this.state,
-      d = derived(this.p);
+      d = derived(this.runParameters);
     if (d.energy === 0) return t.empty;
+    if (this.replaying) return t.transientUnavailable;
     if (!this.data.closed) return t.readyHint;
     if (Math.abs(s.electric - s.magnetic) < d.energy * 1e-5) return t.equalHint;
     if (Math.abs(s.current) < d.current * 1e-5)
@@ -470,6 +738,37 @@ export class LCExperiment extends LitElement {
     if (Math.abs(s.q) < Math.abs(d.charge) * 1e-5)
       return s.current >= 0 ? t.firstCurrent : t.reversedCurrent;
     return t.exchange;
+  }
+  private switchParameter(
+    name: keyof SwitchParameters,
+    label: string,
+    unit: string,
+    scale: number,
+    step: number,
+  ) {
+    const range = switchLimits[name],
+      value = this.data.switch[name] * scale;
+    return html`<div class="parameter">
+      <label for=${"switch-" + name}
+        >${label}<output
+          >${format(value, name === "capacitance" ? 1 : 0)} ${unit}</output
+        ></label
+      >
+      <phy-slider
+        id=${"switch-" + name}
+        label=${label}
+        value-text=${`${value} ${unit}`}
+        .value=${value}
+        min=${range.min * scale}
+        max=${range.max * scale}
+        step=${step}
+        @input=${(event: Event) => this.set({ switch: switchParameters({ ...this.data.switch, [name]: (event.currentTarget as SliderElement).value / scale }) })}
+      ></phy-slider>
+      <div class="range-ends">
+        <span>${format(range.min * scale, name === "capacitance" ? 1 : 0)}</span
+        ><span>${format(range.max * scale, 0)} ${unit}</span>
+      </div>
+    </div>`;
   }
   private openHelp = (e: Event) => {
     this.returnFocus = e.currentTarget as HTMLElement;
@@ -514,6 +813,7 @@ export class LCExperiment extends LitElement {
           ></phy-math>
         </div>
         <p>${t.helpClock}</p>
+        <p>${t.helpTransient}</p>
         <p>${t.helpReset}</p>
         <p>${t.helpFields}</p>
         <p>${t.helpAnalogy}</p>
@@ -541,14 +841,16 @@ export class LCExperiment extends LitElement {
   protected render() {
     const t = texts(this.locale),
       s = this.state,
-      d = derived(this.p);
+      d = derived(this.runParameters);
     const noCurrent = Math.abs(s.current) < d.current * 1e-6 || d.current === 0;
     return html`<header class="heading">
         <div class="heading-main">
           <h1>${t.title}</h1>
           <span class="subtitle">${t.subtitle}</span>
         </div>
-        <span class="model-note">${t.model}</span>
+        <span class="model-note"
+          >${this.replaying ? t.transientApprox : t.model}</span
+        >
       </header>
       <div class="lab">
         <phy-box
@@ -558,11 +860,31 @@ export class LCExperiment extends LitElement {
         >
           <div class="panel-heading">
             <h2>${t.parameters}</h2>
-            <small>${this.data.closed ? t.closed : t.prepared}</small>
+            <small
+              >${this.replaying ? t.disconnected : this.data.closed ? t.closed : t.prepared}</small
+            >
           </div>
-          <div class="parameters">
-            ${this.parameter("inductance", t.inductance, "mH", 1e3, 5)}${this.parameter("capacitance", t.capacitance, "μF", 1e6, 5)}${this.parameter("voltage", t.initialVoltage, "V", 1, 0.5)}
-          </div>
+          <phy-tabs
+            class="parameter-tabs"
+            variant="segmented"
+            label=${t.parameterGroup}
+            .value=${this.data.parameterTab}
+            .items=${[
+              { value: "circuit", label: t.circuitGroup },
+              { value: "switch", label: t.switchGroup },
+            ]}
+            @change=${(event: Event) => {
+              if (event.target === event.currentTarget)
+                this.set({
+                  parameterTab: (event.currentTarget as TabsElement)
+                    .value as Snapshot["parameterTab"],
+                });
+            }}
+          >
+            <div class="parameters" slot=${this.data.parameterTab}>
+              ${this.data.parameterTab === "circuit" ? html`${this.parameter("inductance", t.inductance, "mH", 1e3, 5)}${this.parameter("capacitance", t.capacitance, "μF", 1e6, 5)}${this.parameter("voltage", t.initialVoltage, "V", 1, 0.5)}` : html`${this.switchParameter("capacitance", t.switchCapacitance, "nF", 1e9, 0.1)}${this.switchParameter("breakdown", t.breakdownVoltage, "V", 1, 50)}${this.switchParameter("resistance", t.transientResistance, "Ω", 1, 50)}`}
+            </div>
+          </phy-tabs>
           <div class="derived">
             <div>
               <span>${t.period}</span
@@ -585,22 +907,45 @@ export class LCExperiment extends LitElement {
           </div>
           <div class="comparison-summary">${this.taskComparison()}</div>
           <div class="parameter-footer">
-            <phy-button @click=${this.data.closed ? this.prepare : this.connect}
-              >${this.data.closed ? t.charge : t.close}</phy-button
+            <phy-button @click=${this.prepare}>${t.charge}</phy-button
             ><phy-button @click=${this.openHelp}>${t.help}</phy-button
-            ><small>${t.resetHint}</small>
+            ><small
+              >${this.data.parameterTab === "switch" ? t.switchParameterNote : t.resetHint}</small
+            >
           </div>
         </phy-box>
         <phy-box role="region" class="panel main-panel" aria-label=${t.circuit}>
           <div class="panel-heading">
             <h2>${t.circuit}</h2>
             <small
-              >${this.data.closed ? t.closed : t.open} ·
-              ${format((s.phase * 180) / Math.PI, 1)}°</small
+              >${this.replaying ? t.transientSlow : this.data.closed ? t.closed : t.open}
+              ·
+              ${this.replaying ? `${format(this.transientTime * 1e6, 1)} μs` : `${format((s.phase * 180) / Math.PI, 1)}°`}</small
             >
           </div>
           <div class="scene-wrap">
-            ${circuit(this.p, s, this.data.closed, this.playing, this.data.layers, t, this.connect)}
+            ${circuit(
+              this.p,
+              s,
+              this.data.closed,
+              this.data.layers,
+              t,
+              this.connect,
+              {
+                voltage: this.switchVoltage,
+                power:
+                  this.replaying && this.profile
+                    ? transientValues(
+                        this.p,
+                        this.data.transient!.model,
+                        sampleTransient(
+                          this.profile,
+                          this.data.transient!.elapsed,
+                        ),
+                      ).arcPower
+                    : 0,
+              },
+            )}
           </div>
           <div class="layer-controls">
             <div>
@@ -626,34 +971,30 @@ export class LCExperiment extends LitElement {
               ><output data-readout="voltage">${format(s.voltage)}</output
               ><small>V</small>
             </div>
+            <div class="readout switch-voltage">
+              <label>${t.switchVoltage}</label
+              ><output data-readout="switch-voltage"
+                >${format(this.switchVoltage)}</output
+              ><small>V</small>
+            </div>
           </div>
           ${this.energyBar()}
-          <div class="timeline">
+          <div class="clock-readout">
             <div class="time-values">
-              <output>${t.time} t = ${format(this.data.time * 1e3)} ms</output
+              <output
+                >${this.replaying ? `Δt = ${format(this.transientTime * 1e6, 1)} μs` : `${t.time} t = ${format(this.data.time * 1e3)} ms`}</output
               ><span
-                >${t.playbackSecond} =
-                ${format(playbackScale * this.data.rate * 1e3, 0)} ms
-                ${t.experimentTime}</span
+                >${this.replaying ? t.transientSlow : `${t.playbackSecond} = ${format(playbackScale * this.data.rate * 1e3, 0)} ms ${t.experimentTime}`}</span
               >
             </div>
-            <phy-slider
-              label=${t.timeCursor}
-              value-text=${format(this.data.time * 1e3) + " ms"}
-              min="0"
-              max=${duration(this.p)}
-              step=${derived(this.p).period / 1000}
-              .value=${this.data.time}
-              @input=${(e: Event) => this.seek((e.currentTarget as SliderElement).value)}
-            ></phy-slider>
           </div>
           <div class="moments" role="group" aria-label=${t.moment}>
-            ${[t.electricMaximum, t.magneticMaximum, t.reverseCharge, t.reverseCurrent, t.equalEnergy].map((label, i) => html`<button ?disabled=${d.energy === 0} @click=${() => this.seek(momentTime(this.p, i))}>${label}<small>${["0", "T/4", "T/2", "3T/4", "T/8"][i]}</small></button>`)}
+            ${[t.electricMaximum, t.magneticMaximum, t.reverseCharge, t.reverseCurrent, t.equalEnergy].map((label, i) => html`<button ?disabled=${d.energy === 0 || this.replaying} @click=${() => this.seek(momentTime(this.p, i))}>${label}<small>${["0", "T/4", "T/2", "3T/4", "T/8"][i]}</small></button>`)}
           </div>
         </phy-box>
         <phy-box
           role="complementary"
-          class=${"panel observation-panel" + (this.data.support === "tasks" ? " exploring" : "")}
+          class=${"panel observation-panel" + (this.data.support !== "formula" ? " exploring" : "")}
           aria-label=${t.observe}
         >
           <phy-tabs

@@ -14,7 +14,7 @@ async function layoutViolations(page: Page) {
   return page.locator("phy-experiment-page").evaluate((el) => {
     const root = (el as ExperimentPage).instance!.element.shadowRoot!;
     const nodes = root.querySelectorAll<HTMLElement>(
-      ".heading,.panel,.scene-wrap,.readouts,.energy-strip,.timeline,.moments,.chart-stack,.lc-chart,.support,.task-content,.formula-content,.comparison-summary,button,phy-slider,phy-tabs,phy-checkbox",
+      ".heading,.panel,.scene-wrap,.readouts,.energy-strip,.clock-readout,.moments,.chart-stack,.lc-chart,.support,.task-content,.formula-content,.comparison-summary,button,phy-slider,phy-tabs,phy-checkbox",
     );
     return Array.from(nodes).flatMap((node) => {
       const rect = node.getBoundingClientRect();
@@ -71,9 +71,8 @@ test("LC charging, switch, synchronized current and key moments obey one physica
   await expect.poll(async () => (await saved(page)).time).toBeGreaterThan(0);
   await page.keyboard.press("Space");
   await expect(switchControl).toHaveAttribute("aria-pressed", "false");
-  const pausedAtSwitch = (await saved(page)).time;
-  await page.evaluate(() => new Promise(requestAnimationFrame));
-  expect((await saved(page)).time).toBe(pausedAtSwitch);
+  expect((await saved(page)).transient).not.toBeNull();
+  await page.getByRole("button", { name: "重新充电", exact: true }).click();
   await page.getByRole("button", { name: /磁场能最大/ }).click();
   const snapshot = await saved(page),
     s = at(snapshot.params, snapshot.time);
@@ -112,11 +111,11 @@ test("LC charging, switch, synchronized current and key moments obey one physica
     "data-direction",
     "-1",
   );
-  await page.getByRole("button", { name: "继续", exact: true }).click();
+  await page.getByRole("button", { name: /^(?:▷\s*)?继续$/ }).click();
   await expect
     .poll(async () => (await saved(page)).time)
     .toBeGreaterThan(momentTime(snapshot.params, 3));
-  await page.getByRole("button", { name: "暂停", exact: true }).click();
+  await page.getByRole("button", { name: /^(?:Ⅱ\s*)?暂停$/ }).click();
   const paused = await saved(page);
   await page.getByLabel("场示意", { exact: true }).uncheck();
   await page.getByLabel("电流方向", { exact: true }).uncheck();
@@ -209,12 +208,12 @@ test("LC energy ratios and shared-unit curves conserve energy while views preser
     page.getByRole("tab", { name: "看振荡", exact: true }),
   ).toBeFocused();
   expect((await saved(page)).time).toBe(momentTime(before.params, 1));
-  await page.getByRole("button", { name: "继续", exact: true }).click();
+  await page.getByRole("button", { name: /^(?:▷\s*)?继续$/ }).click();
   await page.getByRole("tab", { name: "看能量", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "暂停", exact: true }),
+    page.getByRole("button", { name: /^(?:Ⅱ\s*)?暂停$/ }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "暂停", exact: true }).click();
+  await page.getByRole("button", { name: /^(?:Ⅱ\s*)?暂停$/ }).click();
   await page.reload();
   await expect(
     page.getByRole("tab", { name: "看能量", exact: true }),
@@ -324,7 +323,7 @@ test("LC exploration replaces the plots and every observation tab returns withou
     expect(await saved(page)).toEqual({ ...before, observation });
     expect(await page.locator(".scene-wrap").boundingBox()).toEqual(scene);
   }
-  await page.getByRole("button", { name: "继续", exact: true }).click();
+  await page.getByRole("button", { name: /^(?:▷\s*)?继续$/ }).click();
   await page.getByRole("tab", { name: "探索", exact: true }).click();
   const exploring = (await saved(page)).time;
   await expect
@@ -332,7 +331,7 @@ test("LC exploration replaces the plots and every observation tab returns withou
     .toBeGreaterThan(exploring);
   await page.getByRole("tab", { name: "类比弹簧", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "暂停", exact: true }),
+    page.getByRole("button", { name: /^(?:Ⅱ\s*)?暂停$/ }),
   ).toBeVisible();
 });
 test("LC main controls, all observations and tasks fit both desktop sizes in both themes and languages", async ({
@@ -408,7 +407,7 @@ test("LC main controls, all observations and tasks fit both desktop sizes in bot
     }
   }
 });
-test("LC time charts scrub with pointer capture and keyboard, and playback stops at four physical periods", async ({
+test("LC charts scrub with pointer capture and the closed circuit runs beyond four periods", async ({
   page,
 }) => {
   await open(page);
@@ -439,29 +438,41 @@ test("LC time charts scrub with pointer capture and keyboard, and playback stops
   await page.mouse.move((await plot.boundingBox())!.x - 30, point.y);
   await page.mouse.up();
   expect((await saved(page)).time).toBe(0);
-  const slider = page.getByRole("slider", {
-    name: "拖动实验时间",
-    exact: true,
+  await expect(page.getByRole("slider")).toHaveCount(3);
+  // Start just before the former run limit, without waiting for a full real-time run.
+  await page.locator("phy-experiment-page").evaluate((el) => {
+    const element = (el as ExperimentPage).instance!.element as LCExperiment;
+    element.data = {
+      ...element.data,
+      time:
+        3.99 *
+        2 *
+        Math.PI *
+        Math.sqrt(
+          element.data.params.inductance * element.data.params.capacitance,
+        ),
+    };
   });
-  await slider.focus();
-  await page.keyboard.press("End");
-  expect((await saved(page)).time).toBeCloseTo(duration(params), 8);
-  await page.keyboard.press("ArrowLeft");
-  const nearEnd = (await saved(page)).time;
-  expect(nearEnd).toBeLessThan(duration(params));
-  await page.getByRole("button", { name: "继续", exact: true }).click();
+  await page.getByRole("button", { name: /^(?:▷\s*)?继续$/ }).click();
   await expect
     .poll(async () => (await saved(page)).time)
-    .toBe(duration(params));
+    .toBeGreaterThan(duration(params));
   await expect(
-    page.getByRole("button", { name: "继续", exact: true }),
+    page.getByRole("button", { name: /^(?:Ⅱ\s*)?暂停$/ }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "继续", exact: true }).click();
-  await expect.poll(async () => (await saved(page)).time).toBeLessThan(nearEnd);
-  await page.getByRole("button", { name: "暂停", exact: true }).click();
-  await slider.focus();
-  await page.keyboard.press("Home");
-  expect((await saved(page)).time).toBe(0);
+  await page.getByRole("button", { name: /^(?:Ⅱ\s*)?暂停$/ }).click();
+  const beyond = await saved(page);
+  for (const circle of await page
+    .locator(".chart-point")
+    .evaluateAll((nodes) =>
+      nodes.map((node) => Number(node.getAttribute("cx"))),
+    )) {
+    expect(circle).toBeGreaterThanOrEqual(49);
+    expect(circle).toBeLessThanOrEqual(318);
+  }
+  await page.reload();
+  await expect(page.locator(".lc-chart").first()).toBeVisible();
+  expect((await saved(page)).time).toBe(beyond.time);
 });
 test("LC appearance changes preserve playback, and hidden or disposed experiments stop advancing", async ({
   page,
@@ -474,7 +485,7 @@ test("LC appearance changes preserve playback, and hidden or disposed experiment
   const lightWire = await page
     .locator(".wire")
     .evaluate((node) => getComputedStyle(node).stroke);
-  await page.getByRole("button", { name: "继续", exact: true }).click();
+  await page.getByRole("button", { name: /^(?:▷\s*)?继续$/ }).click();
   await page.getByRole("button", { name: "切换明暗", exact: true }).click();
   const darkWire = await page
     .locator(".wire")
@@ -487,7 +498,7 @@ test("LC appearance changes preserve playback, and hidden or disposed experiment
   expect((await saved(page)).time).toBeGreaterThan(before.time);
   expect(await page.locator(".scene-wrap").boundingBox()).toEqual(scene);
   await expect(
-    page.getByRole("button", { name: "Pause", exact: true }),
+    page.getByRole("button", { name: /^(?:Ⅱ\s*)?Pause$/ }),
   ).toBeVisible();
   const element = await page
     .locator("phy-experiment-page")
@@ -502,7 +513,7 @@ test("LC appearance changes preserve playback, and hidden or disposed experiment
     document.dispatchEvent(new Event("visibilitychange"));
   });
   await expect(
-    page.getByRole("button", { name: "Resume", exact: true }),
+    page.getByRole("button", { name: /^(?:▷\s*)?Resume$/ }),
   ).toBeVisible();
   const hidden = (await saved(page)).time;
   await page.evaluate(() => new Promise(requestAnimationFrame));
@@ -513,7 +524,7 @@ test("LC appearance changes preserve playback, and hidden or disposed experiment
       value: false,
     });
   });
-  await page.getByRole("button", { name: "Resume", exact: true }).click();
+  await page.getByRole("button", { name: /^(?:▷\s*)?Resume$/ }).click();
   await page
     .getByRole("link", { name: "Back to console", exact: true })
     .click();
@@ -579,7 +590,7 @@ test("LC corrupt storage recovers finite defaults without touching other experim
   );
   await open(page);
   const snapshot = await saved(page);
-  expect(snapshot.time).toBe(duration(snapshot.params));
+  expect(snapshot.time).toBe(999);
   expect(snapshot.params.inductance).toBe(0.01);
   expect(snapshot.params.capacitance).toBe(10e-6);
   expect(snapshot.params.voltage).toBe(6);
@@ -598,7 +609,7 @@ test("LC corrupt storage recovers finite defaults without touching other experim
 test("LC v2 preserves v1 saves and independent observation and support preferences", async ({
   page,
 }) => {
-  const legacy: Snapshot = {
+  const legacy = {
     version: 1,
     params: { inductance: 0.1, capacitance: 50e-6, voltage: -3 },
     time: 0.003,
@@ -622,7 +633,8 @@ test("LC v2 preserves v1 saves and independent observation and support preferenc
   await page.getByRole("link", { name: /LC 电磁振荡/ }).click();
   await expect(page.locator(".task")).toHaveCount(3);
   await expect(page.locator(".spring-analogy")).toHaveCount(0);
-  expect(await saved(page)).toEqual(legacy);
+  const restored = await saved(page);
+  expect(restored).toMatchObject(legacy);
   await expect(
     page.getByRole("combobox", { name: "慢放速度", exact: true }),
   ).toHaveValue("0.5");
@@ -630,7 +642,7 @@ test("LC v2 preserves v1 saves and independent observation and support preferenc
     page.getByRole("checkbox", { name: "场示意", exact: true }),
   ).not.toBeChecked();
   await page.getByRole("tab", { name: "公式", exact: true }).click();
-  const expected = { ...legacy, support: "formula" };
+  const expected = { ...restored, support: "formula" };
   expect(await saved(page)).toEqual(expected);
   await expect(
     page.getByRole("tab", { name: "类比弹簧", exact: true }),
@@ -639,7 +651,7 @@ test("LC v2 preserves v1 saves and independent observation and support preferenc
   await expect(page.locator(".spring-analogy")).toBeVisible();
   expect(await saved(page)).toEqual(expected);
   await expect(
-    page.getByRole("button", { name: "继续", exact: true }),
+    page.getByRole("button", { name: /^(?:▷\s*)?继续$/ }),
   ).toBeVisible();
 });
 test("LC spring analogy uses normalized charge and opposite current, including reversed polarity and zero energy", async ({

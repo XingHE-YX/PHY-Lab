@@ -26,10 +26,10 @@ export function circuit(
   p: LCParameters,
   s: LCState,
   closed: boolean,
-  playing: boolean,
   layers: { fields: boolean; current: boolean },
   t: LCTexts,
   connect: () => void,
+  shock?: { voltage: number; power: number },
 ) {
   const d = derived(p),
     charge = d.charge === 0 ? 0 : s.q / Math.abs(d.charge),
@@ -141,13 +141,13 @@ export function circuit(
     </g>
 
     ${
-      closed && iStrength > 1e-5
+      iStrength > 1e-5
         ? svg`<path d=${wirePath} fill="none" stroke="var(--green)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round" opacity=${0.06 + 0.16 * iStrength}/>`
         : ""
     }
     <path class="wire" d=${wirePath} fill="none" stroke="var(--muted)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
 
-    <g class="circuit-switch" role="button" tabindex="0" aria-label=${!closed ? t.close : playing ? t.pause : t.play} aria-pressed=${playing} @click=${connect} @keydown=${(
+    <g class="circuit-switch" role="button" tabindex="0" aria-label=${closed ? t.openSwitch : t.close} aria-pressed=${closed} @click=${connect} @keydown=${(
       e: KeyboardEvent,
     ) => {
       if (["Enter", " "].includes(e.key)) {
@@ -156,6 +156,7 @@ export function circuit(
       }
     }}>
       <rect class="switch-hitbox" x="284" y="42" width="116" height="68" rx="6" fill="none"/>
+      ${!closed && shock && shock.power > 1e-8 ? svg`<path class="switch-arc" data-power=${shock.power} d="M372 49L367 57L379 64L371 70L379 82" fill="none" stroke="var(--red)" stroke-width=${1 + 2 * Math.min(1, Math.sqrt(shock.power / 200))} opacity=${0.3 + 0.7 * Math.min(1, Math.sqrt(shock.power / 200))}/>` : ""}
       ${
         !closed
           ? svg`<path d="M366 52A68 68 0 0 1 378 80" fill="none" stroke="var(--border)" stroke-width="1.3" stroke-dasharray="3 3"/>`
@@ -168,6 +169,7 @@ export function circuit(
       <circle cx="378" cy="82" r="5" fill="var(--surface)" stroke=${closed ? "var(--green)" : "var(--text)"} stroke-width="2"/>
       <circle cx="378" cy="82" r="1.8" fill=${closed ? "var(--green)" : "var(--muted)"}/>
       <text x="342" y="104" text-anchor="middle" class="axis-text switch-label">S</text>
+      ${shock ? svg`<text x="342" y="126" text-anchor="middle" class="axis-text switch-voltage-label">Uₛ ${format(shock.voltage, 1)} V</text>` : ""}
       <title>${t.switchHint}</title>
     </g>
 

@@ -117,6 +117,15 @@ export const styles = css`
   .parameters {
     padding: 4px 13px 0;
   }
+  .parameter-tabs {
+    flex-shrink: 0;
+    --tab-height: 30px;
+    --tab-font-size: 11px;
+    padding-top: 8px;
+  }
+  .parameter-tabs::part(tabs) {
+    padding: 0 12px;
+  }
   .parameter {
     margin-top: 16px;
   }
@@ -139,16 +148,19 @@ export const styles = css`
   }
   .derived {
     display: grid;
-    gap: 11px;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
     margin: 20px 13px 0;
     padding-top: 14px;
     border-top: 1px solid var(--border);
   }
   .derived div {
-    display: flex;
-    justify-content: space-between;
-    gap: 8px;
-    font-size: 11px;
+    display: block;
+    font-size: 10px;
+    line-height: 14px;
+  }
+  .derived span {
+    display: block;
   }
   .derived output {
     font: 11px var(--mono);
@@ -268,7 +280,7 @@ export const styles = css`
   }
   .readouts {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     border-top: 1px solid var(--border);
     flex-shrink: 0;
   }
@@ -294,6 +306,9 @@ export const styles = css`
   }
   .readout.current output {
     color: var(--green);
+  }
+  .readout.switch-voltage output {
+    color: var(--red);
   }
   .readout small {
     margin-left: 3px;
@@ -328,7 +343,7 @@ export const styles = css`
     background: var(--subtle);
     margin-top: 8px;
   }
-  .timeline {
+  .clock-readout {
     border-top: 1px solid var(--border);
     padding: 8px 12px;
     flex-shrink: 0;
@@ -344,9 +359,6 @@ export const styles = css`
   }
   .time-values output {
     color: var(--text);
-  }
-  .timeline phy-slider {
-    margin: 8px 0 0;
   }
   .moments {
     display: grid;
@@ -521,6 +533,55 @@ export const styles = css`
     line-height: 1.5;
     color: var(--muted);
   }
+  .transient-content {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    height: 100%;
+  }
+  .transient-model,
+  .transient-legend {
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .transient-plot {
+    flex: 1;
+    min-height: 150px;
+  }
+  .transient-chart {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: ew-resize;
+  }
+  .transient-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 10px;
+    flex-shrink: 0;
+  }
+  .transient-summary small {
+    display: block;
+    font-size: 10px;
+    line-height: 14px;
+  }
+  .transient-summary output {
+    font: 13px/18px var(--mono);
+  }
+  .transient-tools {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .transient-tools phy-select {
+    min-width: 140px;
+  }
   .comparison-summary {
     margin: 12px 13px 0;
   }
@@ -544,11 +605,11 @@ export const styles = css`
       padding-top: 6px;
     }
     .parameter {
-      margin-top: 12px;
+      margin-top: 10px;
     }
     .derived {
       gap: 9px;
-      margin-top: 16px;
+      margin-top: 12px;
       padding-top: 12px;
     }
     .observation-summary {
@@ -561,6 +622,10 @@ export const styles = css`
     .chart-stack {
       gap: 6px;
       padding: 8px;
+    }
+    .parameter-footer {
+      padding-top: 10px;
+      padding-bottom: 10px;
     }
   }
   @media (max-height: 650px) {
