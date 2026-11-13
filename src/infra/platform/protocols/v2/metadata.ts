@@ -1,3 +1,4 @@
+import { thumbnailUrls } from "../../thumbnails";
 import { parseCatagory } from "../../categories";
 import type {
   ExperimentMetadata as Base,
@@ -10,9 +11,11 @@ import {
   text,
   webUrl,
   localized,
+  parseThumbnail,
 } from "../../metadata";
 export type {
   ExperimentAuthor,
+  ExperimentThumbnail,
   ExperimentCategory,
   ExperimentSettingsTab,
   ExperimentSettingsDefinition,
@@ -27,6 +30,8 @@ export function parseMetadata(value: unknown): ExperimentMetadata {
     metadata = baseMetadata(raw);
   if (metadata.apiVersion !== 2) throw new Error("Expected protocol v2");
   const result: ExperimentMetadata = { ...metadata, apiVersion: 2 };
+  if (raw.thumbnail !== undefined)
+    result.thumbnail = parseThumbnail(raw.thumbnail);
   if (raw.author !== undefined) {
     const parseAuthor = (value: unknown) => {
       const author = record(value);
@@ -87,5 +92,16 @@ export function parseMetadata(value: unknown): ExperimentMetadata {
   if (raw.license !== undefined) result.license = text(raw.license, "license");
   return result;
 }
-export const parseManifest = (value: unknown): ExperimentManifest =>
-  manifestWith(value, parseMetadata);
+export function parseManifest(value: unknown): ExperimentManifest {
+  const manifest = manifestWith(value, parseMetadata, parseThumbnail);
+  if (typeof manifest.thumbnail !== "string") {
+    const resources = new Set(
+      manifest.resources.map((resource) => resource.url),
+    );
+    for (const url of thumbnailUrls(manifest.thumbnail)) {
+      if (!resources.has(url))
+        throw new Error("Themed thumbnail missing from resources");
+    }
+  }
+  return manifest;
+}

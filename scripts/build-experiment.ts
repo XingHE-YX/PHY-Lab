@@ -1,6 +1,8 @@
+import { thumbnailUrls } from "../src/infra/platform/thumbnails";
+import { resolveThumbnails, publishThumbnails } from "./experiment-thumbnails";
 import { parseExperimentMetadata } from "../src/infra/platform/compatibility";
 import { build } from "vite";
-import { cp, mkdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { ExperimentManifest } from "../src/infra/platform/types";
 import {
@@ -21,6 +23,7 @@ export async function buildExperiment(id: string) {
     await json<unknown>(join(source, "experiment.json")),
   );
   if (metadata.id !== id) throw new Error("Experiment identity mismatch");
+  const thumbnails = await resolveThumbnails(source, metadata.thumbnail);
   const stage = join(root, ".build", id);
   await rm(stage, { recursive: true, force: true });
   const previousNodeEnv = process.env.NODE_ENV;
@@ -48,6 +51,11 @@ export async function buildExperiment(id: string) {
   }
   await cp(join(source, "assets"), stage, { recursive: true });
   const fingerprints = await resources(stage, "");
+  const builtFiles = new Set(fingerprints.map((resource) => resource.url));
+  for (const path of thumbnailUrls(thumbnails)) {
+    if (!builtFiles.has(path))
+      throw new Error("Thumbnail missing from built assets: " + path);
+  }
   const buildId = hash(JSON.stringify({ metadata, fingerprints })).slice(0, 16);
   const prefix =
     base + "experiments/" + id + "/" + metadata.version + "/" + buildId + "/";
@@ -55,7 +63,7 @@ export async function buildExperiment(id: string) {
     ...metadata,
     buildId,
     entry: prefix + "entry.js",
-    thumbnail: prefix + "thumbnail.svg",
+    thumbnail: publishThumbnails(thumbnails, prefix),
     resources: await resources(stage, prefix),
   };
   const destination = join(dist, "experiments", id, metadata.version, buildId);

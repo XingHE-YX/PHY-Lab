@@ -5,12 +5,18 @@ import type {
 import { baseMetadata, manifestWith } from "../../metadata";
 export interface ExperimentMetadata extends Omit<
   Base,
-  "apiVersion" | "author" | "repository" | "license" | "catagory" | "settings"
+  | "apiVersion"
+  | "author"
+  | "repository"
+  | "license"
+  | "catagory"
+  | "settings"
+  | "thumbnail"
 > {
   apiVersion: 1;
 }
 export type ExperimentManifest = ExperimentMetadata &
-  Pick<Published, "buildId" | "entry" | "thumbnail" | "resources">;
+  Pick<Published, "buildId" | "entry" | "resources"> & { thumbnail: string };
 export function parseMetadata(value: unknown): ExperimentMetadata {
   const metadata = baseMetadata(value);
   if (metadata.apiVersion !== 1) throw new Error("Expected protocol v1");

@@ -2,6 +2,7 @@ import type {
   ExperimentMetadata,
   ExperimentManifest,
   Localized,
+  ExperimentThumbnail,
 } from "./types";
 export function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -70,9 +71,28 @@ export function baseMetadata(value: unknown): ExperimentMetadata {
     tags: { "zh-CN": list("zh-CN"), en: list("en") },
   };
 }
+export function parseThumbnail(value: unknown): ExperimentThumbnail {
+  if (typeof value === "string") return text(value, "thumbnail");
+  const raw = record(value);
+  return {
+    light: text(raw.light, "light thumbnail"),
+    dark: text(raw.dark, "dark thumbnail"),
+  };
+}
 export function manifestWith<M extends ExperimentMetadata>(
   value: unknown,
   parse: (value: unknown) => M,
+): M & ExperimentManifest & { thumbnail: string };
+export function manifestWith<M extends ExperimentMetadata>(
+  value: unknown,
+  parse: (value: unknown) => M,
+  parseImage: (value: unknown) => ExperimentThumbnail,
+): M & ExperimentManifest;
+export function manifestWith<M extends ExperimentMetadata>(
+  value: unknown,
+  parse: (value: unknown) => M,
+  parseImage: (value: unknown) => ExperimentThumbnail = (value) =>
+    text(value, "thumbnail"),
 ): M & ExperimentManifest {
   const raw = record(value),
     metadata = parse(raw);
@@ -98,7 +118,7 @@ export function manifestWith<M extends ExperimentMetadata>(
     ...metadata,
     buildId: text(raw.buildId, "buildId"),
     entry,
-    thumbnail: text(raw.thumbnail, "thumbnail"),
+    thumbnail: parseImage(raw.thumbnail),
     resources,
   };
 }

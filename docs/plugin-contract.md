@@ -87,7 +87,7 @@ LocalStorage 键为 `phy-lab:experiment:<id>:state:<stateVersion>`。这是命�
 
 ## 独立构建与离线
 
-`just build-exp <id>` 编译独立 ESM，复制实验 assets，生成资源大小及 SHA-256；`just catalog` 更新目录。发布地址为 `experiments/id/version/buildId`，不可覆盖。缩略图使用 `assets/thumbnail.svg`。
+`just build-exp <id>` 编译独立 ESM，复制实验 assets，生成资源大小及 SHA-256；`just catalog` 更新目录。发布地址为 `experiments/id/version/buildId`，不可覆盖。缩略图默认使用 `assets/thumbnail.svg`。v2 可在 metadata 中用 `thumbnail` 指定固定图片，或 `{ light, dark }` 两张图片；路径均在实验 assets 内，详见 [v2 缩略图](protocols/v2.md#缩略图)。
 
 平台资源和实验资源分别进入发布、离线清单。公共公式组件及其字体归平台所有，v2 实验无需重复打包 KaTeX。原有 v1 实验携带的资源仍按原清单缓存。运行中的实验固定当前构建，离开再进入才启用更新。
 

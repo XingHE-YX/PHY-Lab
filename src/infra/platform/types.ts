@@ -1,6 +1,7 @@
 export type Locale = "zh-CN" | "en";
 export type Theme = "light" | "dark";
 export type Localized = Record<Locale, string>;
+export type ExperimentThumbnail = string | { light: string; dark: string };
 export interface Resource {
   url: string;
   sha256: string;
@@ -32,6 +33,7 @@ export interface ExperimentMetadata {
   title: Localized;
   description: Localized;
   tags: Record<Locale, string[]>;
+  thumbnail?: ExperimentThumbnail;
   author?: ExperimentAuthor | ExperimentAuthor[];
   catagory?: ExperimentCategory;
   settings?: ExperimentSettingsDefinition;
@@ -41,7 +43,7 @@ export interface ExperimentMetadata {
 export interface ExperimentManifest extends ExperimentMetadata {
   buildId: string;
   entry: string;
-  thumbnail: string;
+  thumbnail: ExperimentThumbnail;
   resources: Resource[];
 }
 export interface Catalog {
@@ -57,7 +59,7 @@ export interface Catalog {
     | "description"
     | "tags"
     | "catagory"
-  > & { thumbnail: string; manifest: string })[];
+  > & { thumbnail: ExperimentThumbnail; manifest: string })[];
 }
 export interface AppRelease {
   version: string;

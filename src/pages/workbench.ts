@@ -1,3 +1,5 @@
+import { thumbnailForTheme } from "../infra/platform/thumbnails";
+import type { Theme } from "../infra/platform/types";
 import { collectCategories } from "../infra/platform/categories";
 import type { TabsElement } from "../infra/platform/protocols/v2/components";
 import { supportsProtocol } from "../infra/platform/compatibility";
@@ -10,17 +12,20 @@ export class Workbench extends LitElement {
   static properties = {
     catalog: { attribute: false },
     locale: { type: String },
+    theme: { type: String },
     query: { type: String },
     category: { type: String },
   };
   declare catalog: Catalog | null;
   declare locale: Locale;
+  declare theme: Theme;
   declare query: string;
   declare category: string;
   constructor() {
     super();
     this.catalog = null;
     this.locale = "zh-CN";
+    this.theme = "light";
     this.query = "";
     this.category = "all";
   }
@@ -211,7 +216,11 @@ export class Workbench extends LitElement {
             (e) =>
               html`<a class="card" href=${"#/experiments/" + e.id}
                 ><phy-box class="card-box"
-                  ><img class="thumb" src=${e.thumbnail} alt="" />
+                  ><img
+                    class="thumb"
+                    src=${thumbnailForTheme(e.thumbnail, this.theme)}
+                    alt=""
+                  />
                   <div class="body">
                     <h3>${e.title[this.locale]}</h3>
                     <p class="description">${e.description[this.locale]}</p>

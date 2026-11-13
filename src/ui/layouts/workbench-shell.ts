@@ -438,6 +438,7 @@ export class App extends LitElement {
             : html`<phy-workbench
                 .catalog=${this.catalog}
                 .locale=${s.locale}
+                .theme=${currentTheme()}
                 .query=${this.query}
                 .category=${this.category}
                 @category-change=${(event: CustomEvent<string>) => {

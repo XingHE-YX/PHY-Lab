@@ -1,3 +1,5 @@
+import { parseThumbnail } from "./metadata";
+import { thumbnailUrls } from "./thumbnails";
 import { collectCategories } from "./categories";
 import { parseExperimentManifest } from "./compatibility";
 import type { Catalog, ExperimentManifest } from "./types";
@@ -27,6 +29,8 @@ export async function loadCatalog(): Promise<Catalog> {
       throw new Error("Invalid catalog entry");
     ids.add(e.id);
     scopedUrl(e.manifest);
+    e.thumbnail = parseThumbnail(e.thumbnail);
+    for (const url of thumbnailUrls(e.thumbnail)) scopedUrl(url);
   }
   collectCategories(catalog.experiments);
   return catalog;
@@ -40,7 +44,7 @@ export async function loadManifest(
   const manifest = parseExperimentManifest(await response.json());
   if (manifest.id !== id) throw new Error("Experiment identity mismatch");
   scopedUrl(manifest.entry);
-  scopedUrl(manifest.thumbnail);
+  for (const url of thumbnailUrls(manifest.thumbnail)) scopedUrl(url);
   for (const resource of manifest.resources) scopedUrl(resource.url);
   return manifest;
 }
