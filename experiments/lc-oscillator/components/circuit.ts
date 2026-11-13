@@ -6,6 +6,22 @@ import {
   type LCState,
 } from "../model/physics";
 import type { LCTexts } from "../locales/messages";
+
+function fieldChevron(x: number, y: number, dirY: number, scale = 1) {
+  const tip = 3.2 * dirY * scale,
+    base = -2.3 * dirY * scale,
+    notch = -1 * dirY * scale,
+    wing = 2.7 * scale;
+  return svg`<path d=${`M${x} ${y + tip}L${x + wing} ${y + base}L${x} ${y + notch}L${x - wing} ${y + base}Z`} fill="var(--green)" stroke="none"/>`;
+}
+
+function chargeSign(x: number, y: number, positive: boolean) {
+  return svg`<g class="charge-badge">
+    <circle cx=${x} cy=${y} r="6.4" fill="var(--primary-soft)" stroke="var(--blue)" stroke-width="1"/>
+    <path d=${positive ? `M${x - 3} ${y}H${x + 3}M${x} ${y - 3}V${y + 3}` : `M${x - 3} ${y}H${x + 3}`} stroke="var(--blue)" stroke-width="1.5" stroke-linecap="round"/>
+  </g>`;
+}
+
 export function circuit(
   p: LCParameters,
   s: LCState,
@@ -21,10 +37,34 @@ export function circuit(
     iSign = Math.sign(current),
     qStrength = Math.abs(charge),
     iStrength = Math.abs(current);
-  const coils = Array.from({ length: 7 }, (_, i) => {
-    const y = 143 + i * 20;
-    return `M500 ${y}c-44 -20 -44 31 0 20c44 -11 44 -31 0 -20`;
+
+  // 8-turn cylindrical helix centered at (500, 210).
+  // Front turns advance left-to-right (x: 466 -> 534) as y increases,
+  // so I > 0 (top-to-bottom) gives B pointing upward (-y) by the right-hand grip rule.
+  const turns = 8,
+    pitch = 16,
+    yStart = 150;
+  const backWindings =
+    `M500 140C500 144 466 145 466 ${yStart}` +
+    Array.from({ length: turns - 1 }, (_, i) => {
+      const y = yStart + i * pitch;
+      return `M534 ${y + 8}C534 ${y + 10.8} 466 ${y + 13.2} 466 ${y + 16}`;
+    }).join("") +
+    `M534 ${yStart + (turns - 1) * pitch + 8}C534 275 500 276 500 280`;
+
+  const frontWindings = Array.from({ length: turns }, (_, i) => {
+    const y = yStart + i * pitch;
+    return `M466 ${y}C466 ${y + 2.8} 534 ${y + 5.2} 534 ${y + 8}`;
   }).join("");
+
+  const frontShine = Array.from({ length: turns }, (_, i) => {
+    const y = yStart + i * pitch;
+    return `M473 ${y + 0.7}C487 ${y + 2.2} 513 ${y + 4.4} 527 ${y + 5.9}`;
+  }).join("");
+
+  const wirePath =
+    "M186 173V94Q186 82 198 82H306M378 82H488Q500 82 500 94V133M500 287V326Q500 338 488 338H198Q186 338 186 326V247";
+
   const arrow = (
     x: number,
     y: number,
@@ -32,21 +72,86 @@ export function circuit(
     dy: number,
     color: string,
     marker: string,
+    width = 2.1,
   ) =>
-    svg`<path d=${`M${x} ${y}l${dx} ${dy}`} stroke=${color} stroke-width="2.4" marker-end=${`url(#${marker})`}/>`;
+    svg`<path d=${`M${x} ${y}l${dx} ${dy}`} fill="none" stroke=${color} stroke-width=${width} stroke-linecap="round" marker-end=${`url(#${marker})`}/>`;
+
+  const eHalf = 5.5 + 15 * qStrength;
+  const iHalf = 13 + 21 * iStrength;
+
   return svg`<svg class="circuit-scene" viewBox="0 0 700 410" role="group" aria-label=${t.circuit} data-q=${s.q} data-current=${s.current} data-voltage=${s.voltage}>
     <defs>
-      <linearGradient id="lc-plate" x2="0" y2="1"><stop stop-color="var(--blue)"/><stop offset=".5" stop-color="var(--primary-soft)"/><stop offset="1" stop-color="var(--blue)"/></linearGradient>
-      <linearGradient id="lc-coil"><stop stop-color="var(--muted)"/><stop offset=".4" stop-color="var(--text)"/><stop offset=".7" stop-color="var(--muted)"/><stop offset="1" stop-color="var(--text)"/></linearGradient>
-      <marker id="lc-e-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="var(--blue)"/></marker>
-      <marker id="lc-i-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="var(--green)"/></marker>
+      <pattern id="lc-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+        <path d="M24 0H0V24" fill="none" stroke="var(--border)" stroke-width="0.65"/>
+      </pattern>
+      <linearGradient id="lc-plate" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="var(--plate-hi)"/>
+        <stop offset="0.45" stop-color="var(--plate-mid)"/>
+        <stop offset="1" stop-color="var(--plate-lo)"/>
+      </linearGradient>
+      <linearGradient id="lc-plate-idle" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="var(--surface)"/>
+        <stop offset="1" stop-color="var(--border)"/>
+      </linearGradient>
+      <linearGradient id="lc-e-glow" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="var(--blue)" stop-opacity="0.32"/>
+        <stop offset="0.5" stop-color="var(--blue)" stop-opacity="0.12"/>
+        <stop offset="1" stop-color="var(--blue)" stop-opacity="0.32"/>
+      </linearGradient>
+      <radialGradient id="lc-b-glow" cx="0.5" cy="0.5" r="0.5">
+        <stop offset="0" stop-color="var(--green)" stop-opacity="0.34"/>
+        <stop offset="0.65" stop-color="var(--green)" stop-opacity="0.09"/>
+        <stop offset="1" stop-color="var(--green)" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="lc-core" gradientUnits="userSpaceOnUse" x1="476" y1="0" x2="524" y2="0">
+        <stop offset="0" stop-color="var(--core-lo)"/>
+        <stop offset="0.32" stop-color="var(--core-hi)"/>
+        <stop offset="0.72" stop-color="var(--core-mid)"/>
+        <stop offset="1" stop-color="var(--core-lo)"/>
+      </linearGradient>
+      <linearGradient id="lc-flange" gradientUnits="userSpaceOnUse" x1="469" y1="0" x2="531" y2="0">
+        <stop offset="0" stop-color="var(--flange-lo)"/>
+        <stop offset="0.3" stop-color="var(--flange-hi)"/>
+        <stop offset="1" stop-color="var(--flange-lo)"/>
+      </linearGradient>
+      <linearGradient id="lc-coil" gradientUnits="userSpaceOnUse" x1="466" y1="0" x2="534" y2="0">
+        <stop offset="0" stop-color="var(--coil-lo)"/>
+        <stop offset="0.28" stop-color="var(--coil-hi)"/>
+        <stop offset="0.64" stop-color="var(--coil-mid)"/>
+        <stop offset="0.88" stop-color="var(--coil-lo)"/>
+        <stop offset="1" stop-color="var(--coil-edge)"/>
+      </linearGradient>
+      <linearGradient id="lc-coil-back" gradientUnits="userSpaceOnUse" x1="466" y1="0" x2="534" y2="0">
+        <stop offset="0" stop-color="var(--coil-edge)"/>
+        <stop offset="0.5" stop-color="var(--coil-back)"/>
+        <stop offset="1" stop-color="var(--coil-edge)"/>
+      </linearGradient>
+      <marker id="lc-e-arrow" markerWidth="6.5" markerHeight="6.5" refX="5.2" refY="3.25" orient="auto">
+        <path d="M0 0.5L6.2 3.25L0 6L1.4 3.25Z" fill="var(--blue)"/>
+      </marker>
+      <marker id="lc-i-arrow" markerWidth="6.5" markerHeight="6.5" refX="5.2" refY="3.25" orient="auto">
+        <path d="M0 0.5L6.2 3.25L0 6L1.4 3.25Z" fill="var(--green)"/>
+      </marker>
     </defs>
-    <g class="circuit-grid" stroke="var(--border)" stroke-dasharray="2 7" opacity=".55">
-      ${[100, 200, 300, 400, 500, 600].map((x) => svg`<path d=${`M${x} 25V385`}/>`)}
-      ${[80, 160, 240, 320].map((y) => svg`<path d=${`M55 ${y}H645`}/>`)}
+
+    <g class="circuit-grid">
+      <rect x="24" y="38" width="652" height="334" rx="6" fill="url(#lc-grid)" opacity="0.62"/>
+      <rect x="24" y="38" width="652" height="334" rx="6" fill="none" stroke="var(--border)" stroke-width="1" opacity="0.8"/>
     </g>
-    <text x="36" y="28" class="scene-caption">LC / ${closed ? "OSCILLATION" : "INITIAL STATE"}</text>
-    <path class="wire" d="M180 177V80H280M350 80H500V143M500 283V340H180V243" fill="none" stroke="var(--muted)" stroke-width="3" stroke-linecap="round"/>
+
+    <g class="scene-status">
+      <circle cx="33" cy="21" r="6" fill=${closed ? "var(--green)" : "var(--blue)"} opacity="0.16"/>
+      <circle cx="33" cy="21" r="3" fill=${closed ? "var(--green)" : "var(--blue)"}/>
+      <text x="45" y="25" class="scene-caption">LC / ${closed ? "OSCILLATION" : "INITIAL STATE"}</text>
+    </g>
+
+    ${
+      closed && iStrength > 1e-5
+        ? svg`<path d=${wirePath} fill="none" stroke="var(--green)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round" opacity=${0.06 + 0.16 * iStrength}/>`
+        : ""
+    }
+    <path class="wire" d=${wirePath} fill="none" stroke="var(--muted)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+
     <g class="circuit-switch" role="button" tabindex="0" aria-label=${closed ? t.charge : t.close} @click=${connect} @keydown=${(
       e: KeyboardEvent,
     ) => {
@@ -55,50 +160,123 @@ export function circuit(
         connect();
       }
     }}>
-      <rect x="264" y="36" width="104" height="66" fill="transparent"/>
-      <circle cx="280" cy="80" r="4" fill="var(--surface)" stroke="var(--text)" stroke-width="2"/>
-      <circle cx="350" cy="80" r="4" fill="var(--surface)" stroke="var(--text)" stroke-width="2"/>
-      <path class="switch-contact" d=${closed ? "M280 80L350 80" : "M280 80L339 48"} stroke="var(--text)" stroke-width="3" stroke-linecap="round"/>
-      <text x="316" y="117" text-anchor="middle" class="axis-text">S</text>
+      <rect class="switch-hitbox" x="284" y="42" width="116" height="68" rx="6" fill="transparent"/>
+      ${
+        !closed
+          ? svg`<path d="M366 52A68 68 0 0 1 378 80" fill="none" stroke="var(--border)" stroke-width="1.3" stroke-dasharray="3 3"/>`
+          : svg`<line x1="306" y1="82" x2="378" y2="82" stroke="var(--green)" stroke-width="6.5" stroke-linecap="round" opacity="0.16"/>`
+      }
+      <path class="switch-contact" d=${closed ? "M306 82L384 82" : "M306 82L371 49"} stroke="var(--text)" stroke-width="3.2" stroke-linecap="round"/>
+      <circle cx=${closed ? 385 : 372.5} cy=${closed ? 82 : 48.2} r="3.2" fill=${closed ? "var(--green)" : "var(--primary)"}/>
+      <circle cx="306" cy="82" r="5" fill="var(--surface)" stroke="var(--text)" stroke-width="2"/>
+      <circle cx="306" cy="82" r="1.8" fill="var(--text)"/>
+      <circle cx="378" cy="82" r="5" fill="var(--surface)" stroke=${closed ? "var(--green)" : "var(--text)"} stroke-width="2"/>
+      <circle cx="378" cy="82" r="1.8" fill=${closed ? "var(--green)" : "var(--muted)"}/>
+      <text x="342" y="104" text-anchor="middle" class="axis-text switch-label">S</text>
       <title>${t.switchHint}</title>
     </g>
+
     <g class="capacitor" data-polarity=${qStrength < 1e-8 ? 0 : qSign}>
-      <rect x="128" y="177" width="104" height="7" rx="2" fill="url(#lc-plate)" stroke="var(--blue)"/>
-      <rect x="128" y="236" width="104" height="7" rx="2" fill="url(#lc-plate)" stroke="var(--blue)"/>
-      ${qStrength > 1e-8 ? svg`<g fill="var(--blue)" opacity=${0.35 + 0.65 * qStrength} font-size="20" text-anchor="middle">${[140, 160, 180, 200, 220].map((x) => svg`<text x=${x} y="168">${qSign > 0 ? "+" : "−"}</text><text x=${x} y="268">${qSign > 0 ? "−" : "+"}</text>`)}</g>` : ""}
-      <text x="102" y="204" text-anchor="end" class="component-label">C</text>
-      <text x="102" y="225" text-anchor="end" class="axis-text">${format(p.capacitance * 1e6, 0)} μF</text>
-      <text x="180" y="300" text-anchor="middle" class="voltage-label">${format(s.voltage)} V</text>
+      ${
+        qStrength > 1e-8
+          ? svg`<rect x="134" y="182" width="104" height="56" rx="3" fill="url(#lc-e-glow)" opacity=${0.18 + 0.82 * qStrength}/>`
+          : ""
+      }
+      <rect x="179" y="168" width="14" height="6" rx="1.5" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.4"/>
+      <rect x="179" y="246" width="14" height="6" rx="1.5" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.4"/>
+      <rect x="130" y="173" width="112" height="9" rx="2.5" fill=${qStrength > 1e-8 ? "url(#lc-plate)" : "url(#lc-plate-idle)"} stroke=${qStrength > 1e-8 ? "var(--blue)" : "var(--muted)"} stroke-width="1.4"/>
+      <line x1="133" y1="175.3" x2="239" y2="175.3" stroke="var(--surface)" stroke-opacity="0.55" stroke-width="1" stroke-linecap="round"/>
+      <rect x="130" y="238" width="112" height="9" rx="2.5" fill=${qStrength > 1e-8 ? "url(#lc-plate)" : "url(#lc-plate-idle)"} stroke=${qStrength > 1e-8 ? "var(--blue)" : "var(--muted)"} stroke-width="1.4"/>
+      <line x1="133" y1="240.3" x2="239" y2="240.3" stroke="var(--surface)" stroke-opacity="0.55" stroke-width="1" stroke-linecap="round"/>
+      ${
+        qStrength > 1e-8
+          ? svg`<g opacity=${0.38 + 0.62 * qStrength}>${[142, 164, 186, 208, 230].map((x) => svg`${chargeSign(x, 158, qSign > 0)}${chargeSign(x, 262, qSign < 0)}`)}</g>`
+          : ""
+      }
+      <text x="110" y="201" text-anchor="end" class="component-label">C</text>
+      <text x="110" y="221" text-anchor="end" class="axis-text">${format(p.capacitance * 1e6, 0)} μF</text>
+      <rect x="142" y="279" width="88" height="24" rx="4" fill="var(--surface)" stroke="var(--border)"/>
+      <text x="186" y="295" text-anchor="middle" class="voltage-label">${format(s.voltage)} V</text>
     </g>
+
     ${
       layers.fields && qStrength > 1e-5
-        ? svg`<g class="electric-field" data-direction=${qSign} opacity=${0.2 + 0.8 * qStrength}>
-      ${[143, 161, 180, 199, 217].map((x) => arrow(x, qSign > 0 ? 192 : 228, 0, qSign * (8 + 27 * qStrength), "var(--blue)", "lc-e-arrow"))}
-      <text x="252" y="211" fill="var(--blue)" font-size="13">E</text>
+        ? svg`<g class="electric-field" data-direction=${qSign} opacity=${0.28 + 0.72 * qStrength}>
+      <path d=${`M132 ${210 - qSign * eHalf}Q121 210 132 ${210 + qSign * eHalf}M240 ${210 - qSign * eHalf}Q251 210 240 ${210 + qSign * eHalf}`} fill="none" stroke="var(--blue)" stroke-width="1.2" stroke-dasharray="2.5 2.5" opacity="0.55"/>
+      ${[144, 165, 186, 207, 228].map((x) => arrow(x, 210 - qSign * eHalf, 0, 2 * qSign * eHalf, "var(--blue)", "lc-e-arrow", 1.85))}
+      <text x="258" y="214" fill="var(--blue)" class="field-label">E</text>
     </g>`
         : ""
     }
+
     ${
-      layers.fields && iStrength > 1e-5
-        ? svg`<g class="magnetic-field" data-direction=${iSign} fill="none" stroke="var(--green)" opacity=${0.2 + 0.65 * iStrength}>
-      ${[52, 75, 94].map((r) => svg`<path d=${`M500 128C${500 - r} 128 ${500 - r} 298 500 298C${500 + r} 298 ${500 + r} 128 500 128`} stroke-width="1"/>`)}
-      ${arrow(500, 214 + 22 * iSign * iStrength, 0, -44 * iSign * iStrength, "var(--green)", "lc-i-arrow")}
-      <text x="615" y="250" text-anchor="middle" fill="var(--green)" stroke="none" font-size="13">B ∝ I</text>
-    </g>`
+      iStrength > 1e-5
+        ? svg`<ellipse cx="500" cy="210" rx="68" ry="96" fill="url(#lc-b-glow)" opacity=${0.25 + 0.75 * iStrength}/>`
         : ""
     }
-    <path class="inductor" d=${coils} fill="none" stroke="url(#lc-coil)" stroke-width="4" stroke-linecap="round"/>
-    <text x="615" y="188" text-anchor="middle" class="component-label">L</text>
-    <text x="615" y="209" text-anchor="middle" class="axis-text">${format(p.inductance * 1e3, 0)} mH</text>
+
+    <g class="inductor-assembly">
+      <g class="inductor-back" fill="none" stroke-linecap="round">
+        <path d=${backWindings} stroke="var(--coil-edge)" stroke-width="8.4"/>
+        <path d=${backWindings} stroke="url(#lc-coil-back)" stroke-width="6.2"/>
+      </g>
+
+      <g class="inductor-core">
+        <rect x="493" y="131" width="14" height="8" rx="1.8" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.4"/>
+        <rect x="493" y="281" width="14" height="8" rx="1.8" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.4"/>
+        <rect x="476" y="144" width="48" height="132" fill="url(#lc-core)" stroke="var(--core-stroke)" stroke-width="1.1"/>
+        ${
+          iStrength > 1e-5
+            ? svg`<rect x="479" y="145" width="42" height="130" fill="var(--green)" opacity=${0.06 + 0.18 * iStrength}/>`
+            : ""
+        }
+        <line x1="487" y1="146" x2="487" y2="274" stroke="var(--surface)" stroke-opacity="0.45" stroke-width="1.4"/>
+        <rect x="469" y="138" width="62" height="7" rx="2.5" fill="url(#lc-flange)" stroke="var(--core-stroke)" stroke-width="1.2"/>
+        <rect x="469" y="275" width="62" height="7" rx="2.5" fill="url(#lc-flange)" stroke="var(--core-stroke)" stroke-width="1.2"/>
+      </g>
+
+      ${
+        layers.fields && iStrength > 1e-5
+          ? svg`<g class="magnetic-field" data-direction=${iSign} fill="none" stroke="var(--green)" opacity=${0.28 + 0.68 * iStrength}>
+        <path d="M483 282V138C483 88 404 96 404 210C404 324 483 332 483 282Z" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.72"/>
+        <path d="M517 282V138C517 88 596 96 596 210C596 324 517 332 517 282Z" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.72"/>
+        <path d="M491 282V138C491 103 434 110 434 210C434 310 491 317 491 282Z" stroke-width="1.45"/>
+        <path d="M509 282V138C509 103 566 110 566 210C566 310 509 317 509 282Z" stroke-width="1.45"/>
+        <line x1="500" y1="138" x2="500" y2="282" stroke-width="1.6"/>
+        ${fieldChevron(404, 210, iSign, 1.05)}
+        ${fieldChevron(434, 210, iSign, 1.15)}
+        ${fieldChevron(566, 210, iSign, 1.15)}
+        ${fieldChevron(596, 210, iSign, 1.05)}
+        ${fieldChevron(491, 210, -iSign, 0.92)}
+        ${fieldChevron(500, 210, -iSign, 1)}
+        ${fieldChevron(509, 210, -iSign, 0.92)}
+        <text x="614" y="244" fill="var(--green)" stroke="none" class="field-label">B ∝ I</text>
+      </g>`
+          : ""
+      }
+
+      <g class="inductor" fill="none" stroke-linecap="round">
+        <path d=${frontWindings} stroke="var(--coil-edge)" stroke-width="9"/>
+        <path d=${frontWindings} stroke="url(#lc-coil)" stroke-width="6.8"/>
+        <path d=${frontShine} stroke="var(--coil-shine)" stroke-width="1.35" opacity="0.7"/>
+      </g>
+    </g>
+
+    <text x="614" y="201" class="component-label">L</text>
+    <text x="614" y="221" class="axis-text">${format(p.inductance * 1e3, 0)} mH</text>
+
     ${
       closed && layers.current && iStrength > 1e-5
-        ? svg`<g class="current-arrows" data-direction=${iSign}>
-      ${arrow(398 - iSign * 25 * iStrength, 62, iSign * 50 * iStrength, 0, "var(--green)", "lc-i-arrow")}
-      ${arrow(340 + iSign * 25 * iStrength, 358, -iSign * 50 * iStrength, 0, "var(--green)", "lc-i-arrow")}
-      <text x="401" y="45" text-anchor="middle" fill="var(--green)" font-size="12">I</text>
+        ? svg`<g class="current-arrows" data-direction=${iSign} opacity=${0.42 + 0.58 * iStrength}>
+      ${arrow(434 - iSign * iHalf, 63, 2 * iSign * iHalf, 0, "var(--green)", "lc-i-arrow", 2.2)}
+      ${arrow(342 + iSign * iHalf, 357, -2 * iSign * iHalf, 0, "var(--green)", "lc-i-arrow", 2.2)}
+      ${fieldChevron(186, 128, -iSign, 1.05)}
+      ${fieldChevron(186, 292, -iSign, 1.05)}
+      <text x="434" y="51" text-anchor="middle" fill="var(--green)" class="field-label">I</text>
     </g>`
         : ""
     }
-    <text x="36" y="393" class="axis-text">${t.convention}</text>
+
+    <text x="28" y="393" class="axis-text">${t.convention}</text>
   </svg>`;
 }

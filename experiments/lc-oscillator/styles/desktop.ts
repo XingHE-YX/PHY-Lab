@@ -180,7 +180,26 @@ export const styles = css`
     position: relative;
     flex: 1;
     min-height: 200px;
-    background: var(--bg);
+    background: radial-gradient(
+      circle at 50% 48%,
+      var(--surface) 0%,
+      var(--bg) 78%
+    );
+    --plate-hi: light-dark(#6c9aff, #9ec0ff);
+    --plate-mid: light-dark(#3b73ea, #6896f6);
+    --plate-lo: light-dark(#2256c7, #4472d4);
+    --core-hi: light-dark(#ffffff, #2c313b);
+    --core-mid: light-dark(#eaedf2, #20242c);
+    --core-lo: light-dark(#d5dae3, #171a20);
+    --core-stroke: light-dark(#aeb6c4, #404754);
+    --flange-hi: light-dark(#f4f6f9, #353b47);
+    --flange-lo: light-dark(#cbd2de, #1e222a);
+    --coil-hi: light-dark(#f0b584, #f5be91);
+    --coil-mid: light-dark(#c77743, #cf814d);
+    --coil-lo: light-dark(#8f4c24, #935028);
+    --coil-back: light-dark(#7d4220, #6d3a1c);
+    --coil-edge: light-dark(#522810, #2b1509);
+    --coil-shine: light-dark(#fff3e6, #ffe9d2);
   }
   .circuit-scene {
     display: block;
@@ -195,25 +214,44 @@ export const styles = css`
   .scene-caption {
     fill: var(--muted);
     font: 10px var(--mono);
-    letter-spacing: 1.6px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
   }
   .component-label {
-    font: 22px var(--mono);
+    font:
+      600 20px Georgia,
+      "Times New Roman",
+      serif;
+    font-style: italic;
     fill: var(--text);
   }
+  .field-label {
+    font: 600 12.5px var(--mono);
+  }
   .voltage-label {
-    font: 16px var(--mono);
+    font: 500 13.5px var(--mono);
+    font-variant-numeric: tabular-nums;
     fill: var(--blue);
   }
   .circuit-switch {
     cursor: pointer;
   }
+  .circuit-switch .switch-hitbox {
+    transition:
+      fill 0.15s,
+      stroke 0.15s;
+  }
+  .circuit-switch:hover .switch-hitbox {
+    fill: var(--subtle);
+    stroke: var(--border);
+  }
   .circuit-switch:focus-visible {
     outline: none;
   }
-  .circuit-switch:focus-visible rect {
+  .circuit-switch:focus-visible .switch-hitbox {
+    fill: var(--primary-soft);
     stroke: var(--primary);
-    stroke-width: 2;
+    stroke-width: 1.6;
     stroke-dasharray: 4 3;
   }
   .layer-controls {
@@ -223,6 +261,7 @@ export const styles = css`
     gap: 12px;
     padding: 8px 12px;
     border-top: 1px solid var(--border);
+    background: var(--surface);
     flex-shrink: 0;
   }
   .layer-controls label {
@@ -231,9 +270,15 @@ export const styles = css`
     gap: 5px;
     font-size: 11px;
     line-height: 16px;
+    cursor: pointer;
   }
   .circuit-scene .axis-text {
-    font-size: 14px;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .circuit-scene .switch-label {
+    font-weight: 600;
+    fill: var(--text);
   }
   .layer-controls > div {
     display: flex;
@@ -300,6 +345,8 @@ export const styles = css`
   .energy-bar {
     display: flex;
     height: 5px;
+    border-radius: 999px;
+    overflow: hidden;
     background: var(--subtle);
     margin-top: 8px;
   }
