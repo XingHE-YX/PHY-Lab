@@ -113,14 +113,14 @@ const surface = `#version 300 es
 precision highp float;
 in vec3 world;in float amp;
 uniform float heat;uniform float nodes;
+uniform vec3 plateColor;uniform vec3 heatColor;uniform vec3 lineColor;
 out vec4 color;
 void main(){
   vec3 normal=normalize(cross(dFdx(world),dFdy(world)));normal=faceforward(normal,vec3(0.,0.,-1.),normal);
   float light=.62+.38*abs(dot(normal,normalize(vec3(-.4,-.7,1.))));
-  vec3 base=vec3(.125,.145,.165)*light;
-  base+=heat*amp*vec3(.035,.17,.37);
+  vec3 base=mix(plateColor,heatColor,heat*amp*.6)*light;
   float line=1.-smoothstep(.001,max(fwidth(amp)*1.3,.003),abs(amp-.065));
-  base=mix(base,vec3(.22,.49,.95),line*nodes*.75);
+  base=mix(base,lineColor,line*nodes*.85);
   // Fine etched coordinates belong to the surface, not a decorative animation.
   vec2 grid=abs(fract((world.xy+1.)*8.-.5)-.5)/max(fwidth(world.xy*8.),vec2(.001));
   float ink=1.-min(min(grid.x,grid.y),1.);
@@ -129,13 +129,30 @@ void main(){
 }`;
 const grains = `#version 300 es
 precision highp float;
+uniform vec3 grainColor;
 out vec4 color;
 void main(){
   vec2 uv=gl_PointCoord-.5;float d=length(uv);
   if(d>.5)discard;
   float light=.85+.15*dot(normalize(vec3(uv,.7)),normalize(vec3(-.3,-.5,1.)));
-  color=vec4(vec3(.92,.895,.81)*light,smoothstep(.5,.28,d));
+  color=vec4(grainColor*light,smoothstep(.5,.28,d));
 }`;
+// The same material palette is used by the GPU and the Canvas fallback.
+function palette(dark: boolean) {
+  return dark
+    ? {
+        plate: [32, 37, 42],
+        heat: [48, 104, 186],
+        line: [102, 153, 255],
+        grain: [235, 228, 207],
+      }
+    : {
+        plate: [222, 229, 235],
+        heat: [143, 181, 237],
+        line: [36, 94, 219],
+        grain: [49, 57, 65],
+      };
+}
 function program(gl: WebGL2RenderingContext, fragment: string) {
   const shaders = [gl.VERTEX_SHADER, gl.FRAGMENT_SHADER].map((type, i) => {
     const s = gl.createShader(type)!;
@@ -276,6 +293,7 @@ export class PlateRenderer {
         Math.cos(2 * Math.PI * scene.cycles),
         -Math.sin(2 * Math.PI * scene.cycles),
       ];
+    const colors = palette(scene.dark);
     if (this.currentField !== g) {
       this.upload(g);
       this.currentField = g;
@@ -314,6 +332,15 @@ export class PlateRenderer {
       gl.uniform1f(gl.getUniformLocation(p, "pointSize"), 2 * dpr);
     };
     bind(this.plateProgram!, this.plateBuffer!);
+    for (const [name, color] of [
+      ["plateColor", colors.plate],
+      ["heatColor", colors.heat],
+      ["lineColor", colors.line],
+    ] as const)
+      gl.uniform3fv(
+        gl.getUniformLocation(this.plateProgram!, name),
+        color.map((v) => v / 255),
+      );
     gl.uniform1f(
       gl.getUniformLocation(this.plateProgram!, "heat"),
       scene.heat ? 1 : 0,
@@ -351,6 +378,10 @@ export class PlateRenderer {
       gl.DYNAMIC_DRAW,
     );
     bind(this.sandProgram!, this.sandBuffer!);
+    gl.uniform3fv(
+      gl.getUniformLocation(this.sandProgram!, "grainColor"),
+      colors.grain.map((v) => v / 255),
+    );
     // Grain sprites are on the top surface; avoid depth fighting with the mesh.
     gl.disable(gl.DEPTH_TEST);
     gl.drawArrays(gl.POINTS, 0, count);
@@ -363,15 +394,18 @@ export class PlateRenderer {
       g = scene.field,
       n = g.size,
       peak = Math.max(g.peak, 1e-30);
+    const colors = palette(scene.dark);
     if (
       this.currentField !== g ||
       this.texture.dataset.heat !== String(scene.heat) ||
-      this.texture.dataset.nodes !== String(scene.nodes)
+      this.texture.dataset.nodes !== String(scene.nodes) ||
+      this.texture.dataset.dark !== String(scene.dark)
     ) {
       this.currentField = g;
       this.texture.width = this.texture.height = n;
       this.texture.dataset.heat = String(scene.heat);
       this.texture.dataset.nodes = String(scene.nodes);
+      this.texture.dataset.dark = String(scene.dark);
       const c = this.texture.getContext("2d")!,
         img = c.createImageData(n, n);
       for (let i = 0; i < n * n; i++) {
@@ -380,8 +414,13 @@ export class PlateRenderer {
           line = scene.nodes && g.peak > 0 && amp < 0.08;
         img.data.set(
           line
-            ? [50, 113, 220, 255]
-            : [32 + heat * 9, 37 + heat * 43, 42 + heat * 94, 255],
+            ? [...colors.line, 255]
+            : [
+                ...colors.plate.map(
+                  (v, channel) => v + (colors.heat[channel] - v) * heat * 0.6,
+                ),
+                255,
+              ],
           i * 4,
         );
       }
@@ -394,7 +433,7 @@ export class PlateRenderer {
       2 * cam.scale,
       2 * cam.scale,
     );
-    ctx.fillStyle = "#e7e0cc";
+    ctx.fillStyle = `rgb(${colors.grain.join(" ")})`;
     for (let i = 0; i < scene.sand.length; i += 2) {
       const x = scene.sand[i],
         y = scene.sand[i + 1];

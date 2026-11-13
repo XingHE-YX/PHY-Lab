@@ -73,7 +73,7 @@ export function renderScene(o: SceneOptions) {
   const arrowSide = o.probe > 0.9 ? -1 : 1;
   return svg`<svg class="wave-scene" viewBox=${`0 0 ${width} ${height}`} role="group" aria-label=${t.spaceTitle}>
     <defs>
-      <radialGradient id="wave-bead" cx="30%" cy="25%" r="78%"><stop stop-color="#b4d3ff"/><stop offset=".25" stop-color="#5a98ff"/><stop offset=".65" stop-color="#286eed"/><stop offset="1" stop-color="#103778"/></radialGradient>
+      <radialGradient id="wave-bead" cx="30%" cy="25%" r="78%"><stop stop-color="var(--primary-soft)"/><stop offset=".25" stop-color="var(--blue)"/><stop offset=".65" stop-color="color-mix(in srgb, var(--blue) 85%, #12366b)"/><stop offset="1" stop-color="color-mix(in srgb, var(--blue) 35%, #12366b)"/></radialGradient>
       <filter id="wave-glow" x="-20%" y="-100%" width="140%" height="300%"><feGaussianBlur stdDeviation="3"/></filter>
       <marker id="wave-v-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 6 3 0 6" fill="var(--green)"/></marker>
     </defs>
@@ -109,7 +109,7 @@ export function renderScene(o: SceneOptions) {
     <g class="probe-handle" role="slider" tabindex="0" aria-label=${t.probe} aria-valuemin="0" aria-valuemax=${p.length} aria-valuenow=${Number(format(probe.x, 3))} aria-valuetext=${format(probe.x) + " m. " + t.probeHelp}
       @pointerdown=${o.pointerDown} @pointermove=${o.pointerMove} @keydown=${o.keyDown}>
       <circle cx=${px} cy=${py} r="22" fill="transparent"/>
-      <circle class="tracked-particle" data-x=${probe.x} data-y=${probe.y} cx=${px} cy=${py} r="9" fill="url(#wave-bead)" stroke="#6da0ff"/>
+      <circle class="tracked-particle" data-x=${probe.x} data-y=${probe.y} cx=${px} cy=${py} r="9" fill="url(#wave-bead)" stroke="var(--blue)"/>
       <text x=${px} y=${g.top - 8} text-anchor=${o.probe > 0.85 ? "end" : "middle"} fill="var(--blue)" font-size="12">xₚ = ${format(probe.x)} m</text>
     </g>
   </svg>`;

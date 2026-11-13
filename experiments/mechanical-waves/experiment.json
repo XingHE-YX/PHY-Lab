@@ -1,6 +1,6 @@
 {
   "id": "mechanical-waves",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "apiVersion": 1,
   "stateVersion": 1,
   "title": { "zh-CN": "机械波实验台", "en": "Mechanical waves" },

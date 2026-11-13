@@ -304,7 +304,7 @@ export const styles = css`
     min-height: 32px;
     min-width: 32px;
     padding: 0;
-    color: #f5f7fa;
+    color: var(--text);
     touch-action: none;
     cursor: move;
   }
@@ -316,14 +316,14 @@ export const styles = css`
     display: block;
     position: absolute;
     inset: 9px;
-    border: 1.5px solid #edf3ff;
+    border: 1.5px solid var(--text);
     border-radius: 50%;
-    box-shadow: 0 0 0 3px #13182080;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--surface) 70%, transparent);
   }
   .handle.drive::before {
     border-radius: 2px;
-    border-color: #4e8fff;
-    background: #327bff80;
+    border-color: var(--blue);
+    background: color-mix(in srgb, var(--blue) 40%, var(--surface));
     transform: rotate(45deg);
   }
   .handle span {
@@ -333,24 +333,26 @@ export const styles = css`
     font: 10px var(--mono);
     pointer-events: none;
     white-space: nowrap;
-    text-shadow: 0 1px 2px #000;
+    background: var(--surface);
+    padding: 2px 3px;
+    border-radius: 2px;
   }
   .center-mount {
     position: absolute;
     pointer-events: none;
-    background: #64707a;
-    border: 1px solid #9da6ad;
+    background: var(--muted);
+    border: 1px solid var(--text);
     border-radius: 2px;
     transform: translate(-50%, -50%);
     z-index: 1;
-    box-shadow: inset 0 0 0 4px #3e4852;
+    box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--text) 35%, transparent);
   }
   .center-mount::after {
     content: "";
     position: absolute;
     inset: 40%;
     border-radius: 50%;
-    background: #a9b3bb;
+    background: var(--surface);
   }
   .layer-controls {
     display: flex;

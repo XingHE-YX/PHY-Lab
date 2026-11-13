@@ -25,13 +25,17 @@ for (let i = 0; i < sand.positions.length; i += 2) {
 }
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
   <title>Chladni figures</title><desc>Mode 21, 72 cycles; particles computed by the experiment model.</desc>
-  <rect width="640" height="360" fill="#121519"/>
+  <style>
+    :root { --bg: #f3f4f6; --plate: #dee5eb; --edge: #9aa7b3; --sand: #313941; --mount: #8a96a2; --ink: #626d7b; --bolt: #f5f7fa; --blue: #245edb; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #121519; --plate: #20262c; --edge: #56616c; --sand: #e7dfc6; --mount: #64707c; --ink: #92a0ae; --bolt: #b9c3cc; --blue: #7ca4ff; } }
+  </style>
+  <rect width="640" height="360" fill="var(--bg)"/>
   <g transform="translate(320 183) rotate(-10)">
-    <rect x="-132" y="-132" width="264" height="264" rx="2" fill="#20262c" stroke="#56616c"/>
-    <path d="${dots.join("")}" fill="none" stroke="#e7dfc6" stroke-width="1.25" stroke-linecap="round"/>
-    <rect x="-12" y="-12" width="24" height="24" rx="2" fill="#64707c" stroke="#92a0ae"/><circle r="2.5" fill="#b9c3cc"/>
-    <path d="M90 43l5 7-5 7-5-7z" fill="#397dff"/>
+    <rect x="-132" y="-132" width="264" height="264" rx="2" fill="var(--plate)" stroke="var(--edge)"/>
+    <path d="${dots.join("")}" fill="none" stroke="var(--sand)" stroke-width="1.25" stroke-linecap="round"/>
+    <rect x="-12" y="-12" width="24" height="24" rx="2" fill="var(--mount)" stroke="var(--ink)"/><circle r="2.5" fill="var(--bolt)"/>
+    <path d="M90 43l5 7-5 7-5-7z" fill="var(--blue)"/>
   </g>
-  <text x="24" y="28" fill="#92a0ae" font-family="monospace" font-size="10" letter-spacing="2">CHLADNI / TWO-DIMENSIONAL WAVES</text>
+  <text x="24" y="28" fill="var(--ink)" font-family="monospace" font-size="10" letter-spacing="2">CHLADNI / TWO-DIMENSIONAL WAVES</text>
 </svg>`;
 await writeFile(new URL("../assets/thumbnail.svg", import.meta.url), svg);
