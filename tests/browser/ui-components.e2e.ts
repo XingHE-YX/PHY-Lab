@@ -9,7 +9,7 @@ test("inputs support arbitrary slots, native forms, reset and one event per edit
     form.id = "controls-fixture";
     form.innerHTML = `<phy-input name="query" label="Fixture query" required><span slot="start">Prefix</span><button type="button" slot="end">Suffix action</button></phy-input>
       <phy-input name="password" type="password" label="Fixture password" autocomplete="current-password"></phy-input>
-      <phy-checkbox name="trail" label="Fixture trail"></phy-checkbox>
+      <phy-checkbox name="trail">Fixture trail</phy-checkbox>
       <phy-switch name="sound" label="Fixture sound"></phy-switch>
       <phy-select name="speed" label="Fixture speed"></phy-select>
       <phy-slider name="position" label="Fixture position" value="10"></phy-slider>`;
@@ -43,7 +43,13 @@ test("inputs support arbitrary slots, native forms, reset and one event per edit
     true,
   ]);
   await fixture.getByLabel("Fixture password").fill("test-password");
-  await fixture.getByRole("checkbox", { name: "Fixture trail" }).check();
+  await fixture.getByLabel("Fixture trail", { exact: true }).check();
+  await fixture.locator("phy-checkbox").evaluate((el) => {
+    el.textContent = "Translated trail";
+  });
+  await expect(
+    fixture.getByLabel("Translated trail", { exact: true }),
+  ).toBeChecked();
   await fixture.getByRole("switch", { name: "Fixture sound" }).check();
   await fixture
     .getByRole("combobox", { name: "Fixture speed" })
@@ -70,7 +76,7 @@ test("inputs support arbitrary slots, native forms, reset and one event per edit
     fixture.getByRole("textbox", { name: "Fixture query" }),
   ).toHaveValue("");
   await expect(
-    fixture.getByRole("checkbox", { name: "Fixture trail" }),
+    fixture.getByRole("checkbox", { name: "Translated trail" }),
   ).not.toBeChecked();
   await expect(
     fixture.getByRole("slider", { name: "Fixture position" }),

@@ -4,11 +4,13 @@ import { FormControl } from "./form-control";
 import { baseStyles } from "../styles/shared";
 export class PhyCheckbox extends FormControl {
   static properties = {
+    slotLabel: { state: true },
     checked: { type: Boolean, reflect: true },
     indeterminate: { type: Boolean },
     value: { type: String },
     label: { type: String },
   };
+  declare slotLabel: string;
   declare checked: boolean;
   declare indeterminate: boolean;
   declare value: string;
@@ -18,6 +20,7 @@ export class PhyCheckbox extends FormControl {
   }
   constructor() {
     super();
+    this.slotLabel = "";
     this.checked = false;
     this.indeterminate = false;
     this.value = "on";
@@ -85,6 +88,28 @@ export class PhyCheckbox extends FormControl {
       }
     `,
   ];
+  private readonly labelObserver = new MutationObserver(() => this.syncLabel());
+  connectedCallback() {
+    super.connectedCallback();
+    this.labelObserver.observe(this, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+  }
+  disconnectedCallback() {
+    this.labelObserver.disconnect();
+    super.disconnectedCallback();
+  }
+  private syncLabel() {
+    const nodes =
+      this.renderRoot.querySelector("slot")?.assignedNodes({ flatten: true }) ??
+      [];
+    this.slotLabel = nodes
+      .map((node) => node.textContent ?? "")
+      .join("")
+      .trim();
+  }
   protected get currentValue() {
     return this.checked;
   }
@@ -112,7 +137,7 @@ export class PhyCheckbox extends FormControl {
         part="input"
         type="checkbox"
         role=${ifDefined(this.controlRole)}
-        aria-label=${ifDefined(this.label || undefined)}
+        aria-label=${ifDefined(this.label || this.slotLabel || undefined)}
         .checked=${this.checked}
         .indeterminate=${this.indeterminate}
         .value=${this.value}
@@ -120,7 +145,9 @@ export class PhyCheckbox extends FormControl {
         ?required=${this.required}
         @input=${this.onValue}
         @change=${this.onValue}
-      /><span part="label"><slot>${this.label}</slot></span></label
+      /><span part="label"
+        ><slot @slotchange=${this.syncLabel}>${this.label}</slot></span
+      ></label
     >`;
   }
 }
