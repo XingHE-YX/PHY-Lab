@@ -67,6 +67,7 @@ export class App extends LitElement {
   static properties = {
     catalog: { state: true },
     query: { state: true },
+    category: { state: true },
     route: { state: true },
     menu: { state: true },
     modal: { state: true },
@@ -75,6 +76,7 @@ export class App extends LitElement {
   };
   declare catalog: Catalog | null;
   declare query: string;
+  declare category: string;
   declare route: string;
   declare menu: boolean;
   declare modal: boolean;
@@ -304,6 +306,7 @@ export class App extends LitElement {
     this.experimentControls.className = "experiment-controls";
     this.catalog = null;
     this.query = "";
+    this.category = "all";
     this.route = location.hash;
     this.menu = false;
     this.modal = false;
@@ -567,6 +570,7 @@ export class App extends LitElement {
                             aria-label=${t.clear}
                             @click=${() => {
                               this.query = "";
+    this.category = "all";
                               this.renderRoot
                                 .querySelector<InputElement>(".search")
                                 ?.focus();
@@ -609,7 +613,7 @@ export class App extends LitElement {
         </div>
       </header>
       <main>
-        ${this.catalogError ? html`<div class="catalog-error">${t.error} · <phy-button @click=${() => this.refreshCatalog()}>${t.retry}</phy-button></div>` : ""}${id && this.catalog ? html`<phy-experiment-page .catalog=${this.catalog} .experimentId=${id} .locale=${s.locale} .theme=${currentTheme()} .toolbar=${this.experimentControls} .settingsApi=${this.experimentSettingsApi}></phy-experiment-page>` : html`<phy-workbench .catalog=${this.catalog} .locale=${s.locale} .query=${this.query}></phy-workbench>`}
+        ${this.catalogError ? html`<div class="catalog-error">${t.error} · <phy-button @click=${() => this.refreshCatalog()}>${t.retry}</phy-button></div>` : ""}${id && this.catalog ? html`<phy-experiment-page .catalog=${this.catalog} .experimentId=${id} .locale=${s.locale} .theme=${currentTheme()} .toolbar=${this.experimentControls} .settingsApi=${this.experimentSettingsApi}></phy-experiment-page>` : html`<phy-workbench .catalog=${this.catalog} .locale=${s.locale} .query=${this.query} .category=${this.category} @category-change=${(event: CustomEvent<string>) => { this.category = event.detail; }}></phy-workbench>`}
       </main> `;
   }
 }

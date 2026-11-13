@@ -8,11 +8,13 @@ export class PhyTabs extends LitElement {
     items: { attribute: false },
     label: { type: String },
     variant: { type: String, reflect: true },
+    orientation: { type: String, reflect: true },
   };
   declare value: string;
   declare items: readonly TabItem[];
   declare label: string;
   declare variant: string;
+  declare orientation: "horizontal" | "vertical";
   private readonly tabPrefix = `phy-tabs-${++nextTabs}`;
   constructor() {
     super();
@@ -20,6 +22,7 @@ export class PhyTabs extends LitElement {
     this.items = [];
     this.label = "";
     this.variant = "line";
+    this.orientation = "horizontal";
   }
   static styles = [
     baseStyles,
@@ -76,9 +79,41 @@ export class PhyTabs extends LitElement {
         background: var(--primary-soft);
         border-color: var(--primary);
       }
+      :host([orientation="vertical"]) {
+        flex-direction: row;
+      }
+      :host([orientation="vertical"]) .tabs {
+        flex: 0 0 var(--tab-sidebar-width, 180px);
+        width: var(--tab-sidebar-width, 180px);
+        min-height: 0;
+        flex-direction: column;
+        gap: var(--tab-gap, 4px);
+        border: 0;
+        border-inline-end: 1px solid var(--border);
+        padding-inline-end: 16px;
+        overflow: auto;
+      }
+      :host([orientation="vertical"]) button {
+        flex: 0 0 auto;
+        border: 1px solid transparent;
+        border-radius: var(--radius);
+        padding: 8px 12px;
+        text-align: start;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+      :host([orientation="vertical"]) button[aria-selected="true"] {
+        background: var(--primary-soft);
+        color: var(--primary);
+      }
+      :host([orientation="vertical"]) [role="tabpanel"] {
+        padding-inline-start: 24px;
+        overflow: auto;
+      }
     `,
   ];
   protected willUpdate() {
+    if (this.orientation !== "vertical") this.orientation = "horizontal";
     if (!this.items.some((item) => item.value === this.value && !item.disabled))
       this.value = this.items.find((item) => !item.disabled)?.value ?? "";
   }
@@ -94,7 +129,9 @@ export class PhyTabs extends LitElement {
     );
   }
   private keys(event: KeyboardEvent) {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    const previous = this.orientation === "vertical" ? "ArrowUp" : "ArrowLeft";
+    const next = this.orientation === "vertical" ? "ArrowDown" : "ArrowRight";
+    if (![previous, next, "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     const enabled = this.items.filter((item) => !item.disabled);
     if (!enabled.length) return;
@@ -107,7 +144,7 @@ export class PhyTabs extends LitElement {
         ? 0
         : event.key === "End"
           ? enabled.length - 1
-          : (current + (event.key === "ArrowRight" ? 1 : -1) + enabled.length) %
+          : (current + (event.key === next ? 1 : -1) + enabled.length) %
             enabled.length;
     this.choose(enabled[index].value);
     void this.updateComplete.then(() =>
@@ -128,6 +165,7 @@ export class PhyTabs extends LitElement {
         class="tabs"
         role="tablist"
         aria-label=${this.label}
+        aria-orientation=${this.orientation}
         @keydown=${this.keys}
         part="tabs"
       >

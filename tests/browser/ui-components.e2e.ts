@@ -313,3 +313,43 @@ test("tab styles support compact content buttons and taller observation rows", a
       .boundingBox())!.height,
   ).toBe(36);
 });
+
+test("vertical tabs use a column and up/down keyboard navigation", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    const tabs = document.createElement("phy-tabs") as HTMLElement & {
+      items: unknown[];
+      value: string;
+    };
+    tabs.id = "vertical-fixture";
+    tabs.setAttribute("orientation", "vertical");
+    tabs.items = [
+      { value: "one", label: "First page" },
+      { value: "skip", label: "Disabled page", disabled: true },
+      { value: "two", label: "Second page" },
+    ];
+    tabs.value = "one";
+    tabs.innerHTML =
+      '<p slot="one">First panel</p><p slot="two">Second panel</p>';
+    document.body.append(tabs);
+  });
+  const fixture = page.locator("#vertical-fixture");
+  await expect(fixture.getByRole("tablist")).toHaveAttribute(
+    "aria-orientation",
+    "vertical",
+  );
+  const first = fixture.getByRole("tab", { name: "First page" });
+  const second = fixture.getByRole("tab", { name: "Second page" });
+  expect((await first.boundingBox())!.x).toBe((await second.boundingBox())!.x);
+  expect((await second.boundingBox())!.y).toBeGreaterThan(
+    (await first.boundingBox())!.y,
+  );
+  await first.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(second).toBeFocused();
+  await expect(fixture.getByText("Second panel")).toBeVisible();
+  await page.keyboard.press("ArrowUp");
+  await expect(first).toBeFocused();
+});

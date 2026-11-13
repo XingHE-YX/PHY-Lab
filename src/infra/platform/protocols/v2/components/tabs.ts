@@ -8,4 +8,5 @@ export interface TabsElement extends HTMLElement {
   items: readonly TabItem[];
   label: string;
   variant: string;
+  orientation: "horizontal" | "vertical";
 }
