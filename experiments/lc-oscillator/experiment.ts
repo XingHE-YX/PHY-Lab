@@ -1,9 +1,12 @@
 import { LitElement, html, render } from "lit";
-import { live } from "lit/directives/live.js";
 import type {
   ExperimentContext,
   Locale,
-} from "../../src/infra/platform/contract";
+  CheckboxElement,
+  SelectElement,
+  SliderElement,
+  TabsElement,
+} from "../../src/infra/platform/protocols/v2";
 import {
   parameters,
   limits,
@@ -209,40 +212,6 @@ export class LCExperiment extends LitElement {
       time: 0,
     });
   }
-  private observationKey(e: KeyboardEvent) {
-    const index = observations.indexOf(this.data.observation);
-    const next =
-      e.key === "Home"
-        ? 0
-        : e.key === "End"
-          ? observations.length - 1
-          : e.key === "ArrowRight"
-            ? (index + 1) % observations.length
-            : e.key === "ArrowLeft"
-              ? (index + observations.length - 1) % observations.length
-              : -1;
-    if (next < 0) return;
-    e.preventDefault();
-    const observation = observations[next]!;
-    this.set({ observation });
-    this.renderRoot
-      .querySelector<HTMLElement>(`#observe-${observation}`)
-      ?.focus();
-  }
-  private supportKey(e: KeyboardEvent) {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
-    e.preventDefault();
-    const support =
-      e.key === "Home"
-        ? "formula"
-        : e.key === "End"
-          ? "tasks"
-          : this.data.support === "formula"
-            ? "tasks"
-            : "formula";
-    this.set({ support });
-    this.renderRoot.querySelector<HTMLElement>(`#support-${support}`)?.focus();
-  }
   private loadTask(task: Snapshot["task"]) {
     this.pause();
     const params = parameters(null);
@@ -410,19 +379,15 @@ export class LCExperiment extends LitElement {
         ${this.playing ? t.pause : this.data.closed ? t.play : t.start}</phy-button
       >
       <phy-button @click=${this.restart}>↺ ${t.restart}</phy-button>
-      <select
-        aria-label=${t.rate}
-        .value=${live(String(this.data.rate))}
-        style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:7px;font-size:12px"
+      <phy-select
+        label=${t.rate}
+        .value=${String(this.data.rate)}
+        .options=${[1, 0.5, 0.25].map((rate) => ({ value: String(rate), label: `${rate}×` }))}
         @change=${(e: Event) => {
           this.last = 0;
-          this.set({ rate: Number((e.target as HTMLSelectElement).value) });
+          this.set({ rate: Number((e.currentTarget as SelectElement).value) });
         }}
-      >
-        <option value="1">1×</option>
-        <option value="0.5">0.5×</option>
-        <option value="0.25">0.25×</option>
-      </select>`;
+      ></phy-select>`;
   }
   private parameter(
     name: keyof LCParameters,
@@ -439,16 +404,16 @@ export class LCExperiment extends LitElement {
           >${format(this.p[name] * scale, digits)} ${unit}</output
         ></label
       >
-      <input
+      <phy-slider
         id=${name}
-        type="range"
-        aria-label=${label}
+        label=${label}
+        value-text=${`${format(this.p[name] * scale, digits)} ${unit}`}
         min=${range.min * scale}
         max=${range.max * scale}
         step=${step}
-        .value=${live(String(this.p[name] * scale))}
-        @input=${(e: Event) => this.changeParameter(name, Number((e.target as HTMLInputElement).value) / scale)}
-      />
+        .value=${this.p[name] * scale}
+        @input=${(e: Event) => this.changeParameter(name, (e.currentTarget as SliderElement).value / scale)}
+      ></phy-slider>
       <div class="range-ends">
         <span>${format(range.min * scale, 0)}</span
         ><span>${format(range.max * scale, 0)} ${unit}</span>
@@ -561,7 +526,7 @@ export class LCExperiment extends LitElement {
           </div>
           <div class="layer-controls">
             <div>
-              ${(["fields", "current"] as const).map((key) => html`<label><input type="checkbox" .checked=${this.data.layers[key]} @change=${(e: Event) => this.set({ layers: { ...this.data.layers, [key]: (e.target as HTMLInputElement).checked } })} />${key === "fields" ? t.fields : t.currentArrows}</label>`)}
+              ${(["fields", "current"] as const).map((key) => html`<phy-checkbox .checked=${this.data.layers[key]} @change=${(e: Event) => this.set({ layers: { ...this.data.layers, [key]: (e.currentTarget as CheckboxElement).checked } })}>${key === "fields" ? t.fields : t.currentArrows}</phy-checkbox>`)}
             </div>
             <span class="direction"
               >${noCurrent ? t.noCurrent : s.current > 0 ? t.clockwise : t.counterclockwise}</span
@@ -594,57 +559,64 @@ export class LCExperiment extends LitElement {
                 ${t.experimentTime}</span
               >
             </div>
-            <input
-              type="range"
-              aria-label=${t.timeCursor}
-              aria-valuetext=${format(this.data.time * 1e3) + " ms"}
+            <phy-slider
+              label=${t.timeCursor}
+              value-text=${format(this.data.time * 1e3) + " ms"}
               min="0"
               max=${duration(this.p)}
               step=${derived(this.p).period / 1000}
-              .value=${live(String(this.data.time))}
-              @input=${(e: Event) => this.seek(Number((e.target as HTMLInputElement).value))}
-            />
+              .value=${this.data.time}
+              @input=${(e: Event) => this.seek((e.currentTarget as SliderElement).value)}
+            ></phy-slider>
           </div>
           <div class="moments" role="group" aria-label=${t.moment}>
             ${[t.electricMaximum, t.magneticMaximum, t.reverseCharge, t.reverseCurrent, t.equalEnergy].map((label, i) => html`<button ?disabled=${d.energy === 0} @click=${() => this.seek(momentTime(this.p, i))}>${label}<small>${["0", "T/4", "T/2", "3T/4", "T/8"][i]}</small></button>`)}
           </div>
         </section>
         <section class="panel observation-panel" aria-label=${t.observe}>
-          <div
-            class="tabs observation-tabs"
-            role="tablist"
-            aria-label=${t.observe}
+          <phy-tabs
+            class="observation-tabs"
+            label=${t.observe}
+            .value=${this.data.observation}
+            .items=${observations.map((value) => ({ value, label: t[value] }))}
+            @change=${(e: Event) => {
+              if (e.target !== e.currentTarget) return;
+              this.set({
+                observation: (e.currentTarget as TabsElement)
+                  .value as Snapshot["observation"],
+              });
+            }}
           >
-            ${observations.map((view) => html`<button id=${`observe-${view}`} role="tab" aria-selected=${view === this.data.observation} aria-controls="observation-content" tabindex=${view === this.data.observation ? 0 : -1} @click=${() => this.set({ observation: view })} @keydown=${this.observationKey}>${t[view]}</button>`)}
-          </div>
-          <div
-            class="observation-content"
-            id="observation-content"
-            role="tabpanel"
-            aria-labelledby=${`observe-${this.data.observation}`}
-          >
-            <p class="observation-summary">
-              ${this.data.support === "tasks" ? this.taskHint() : this.hint()}
-            </p>
-            ${this.plots()}
-            <div class="support-area">
-              <div
-                class="tabs support-tabs"
-                role="tablist"
-                aria-label=${t.support}
-              >
-                ${(["formula", "tasks"] as const).map((support) => html`<button id=${`support-${support}`} role="tab" aria-selected=${support === this.data.support} aria-controls="support-content" tabindex=${support === this.data.support ? 0 : -1} @click=${() => this.set({ support })} @keydown=${this.supportKey}>${t[support]}</button>`)}
-              </div>
-              <div
-                class=${this.data.support === "formula" ? "formula-content" : "task-content"}
-                id="support-content"
-                role="tabpanel"
-                aria-labelledby=${`support-${this.data.support}`}
-              >
-                ${this.data.support === "formula" ? html`${this.formulas()}<small class="support-note">${this.data.observation === "analogy" ? t.normalized : t.fieldHint}</small>` : this.tasks()}
+            <div class="observation-content" slot=${this.data.observation}>
+              <p class="observation-summary">
+                ${this.data.support === "tasks" ? this.taskHint() : this.hint()}
+              </p>
+              ${this.plots()}
+              <div class="support-area">
+                <phy-tabs
+                  class="support-tabs"
+                  variant="segmented"
+                  label=${t.support}
+                  .value=${this.data.support}
+                  .items=${(["formula", "tasks"] as const).map((value) => ({ value, label: t[value] }))}
+                  @change=${(e: Event) => {
+                    if (e.target !== e.currentTarget) return;
+                    this.set({
+                      support: (e.currentTarget as TabsElement)
+                        .value as Snapshot["support"],
+                    });
+                  }}
+                >
+                  <div
+                    class=${this.data.support === "formula" ? "formula-content" : "task-content"}
+                    slot=${this.data.support}
+                  >
+                    ${this.data.support === "formula" ? html`${this.formulas()}<small class="support-note">${this.data.observation === "analogy" ? t.normalized : t.fieldHint}</small>` : this.tasks()}
+                  </div>
+                </phy-tabs>
               </div>
             </div>
-          </div>
+          </phy-tabs>
         </section>
       </div>
       ${this.help()}`;

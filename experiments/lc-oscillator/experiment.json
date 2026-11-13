@@ -1,12 +1,17 @@
 {
   "id": "lc-oscillator",
   "version": "0.1.0",
-  "apiVersion": 1,
+  "apiVersion": 2,
+  "apiRevision": 0,
   "stateVersion": 1,
   "title": { "zh-CN": "LC 电磁振荡", "en": "LC oscillations" },
   "description": {
     "zh-CN": "闭合回路，让电荷往复，探索电场能与磁场能的转换。",
     "en": "Close the circuit, follow the charge and explore electric–magnetic energy exchange."
+  },
+  "catagory": {
+    "id": "electromagnetism",
+    "title": { "zh-CN": "电磁学", "en": "Electromagnetism" }
   },
   "tags": {
     "zh-CN": ["电磁学", "LC 回路", "振荡", "能量"],

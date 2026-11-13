@@ -45,14 +45,8 @@ export const styles = css`
     outline: 2px solid var(--primary);
     outline-offset: 3px;
   }
-  input[type="range"],
-  input[type="checkbox"] {
-    accent-color: var(--primary);
-  }
-  input[type="range"] {
-    width: 100%;
+  .parameter phy-slider {
     margin: 7px 0 4px;
-    cursor: pointer;
   }
   h1,
   h2,
@@ -264,14 +258,6 @@ export const styles = css`
     background: var(--surface);
     flex-shrink: 0;
   }
-  .layer-controls label {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    line-height: 16px;
-    cursor: pointer;
-  }
   .circuit-scene .axis-text {
     font-size: 12.5px;
     font-variant-numeric: tabular-nums;
@@ -367,7 +353,7 @@ export const styles = css`
   .time-values output {
     color: var(--text);
   }
-  .timeline input {
+  .timeline phy-slider {
     margin: 8px 0 0;
   }
   .moments {
@@ -390,27 +376,14 @@ export const styles = css`
   .moments button small {
     font: 10px var(--mono);
   }
-  .tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .tabs button {
+  .observation-tabs {
     flex: 1;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    border-bottom: 2px solid transparent;
-    min-width: 0;
-    font-size: 11px;
+    --tab-height: 40px;
+    --tab-font-size: 11px;
   }
-  .tabs button[aria-selected="true"] {
-    background: var(--primary-soft);
-    color: var(--primary);
-    border-bottom-color: var(--primary);
-  }
-  .observation-tabs button {
-    min-height: 40px;
+  .observation-tabs::part(panel) {
+    display: flex;
+    flex-direction: column;
   }
   .observation-content {
     display: flex;
@@ -491,9 +464,14 @@ export const styles = css`
     border-top: 1px solid var(--border);
     flex-shrink: 0;
   }
-  .support-tabs button {
-    min-height: 30px;
-    padding: 5px;
+  .support-tabs {
+    --tab-height: 30px;
+    --tab-font-size: 11px;
+    --tab-flex: 0 0 auto;
+    --tab-padding: 4px 10px;
+  }
+  .support-tabs::part(tabs) {
+    padding: 4px 12px 0;
   }
   .support-note {
     display: block;

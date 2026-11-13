@@ -1,4 +1,4 @@
-import type { Locale } from "../../../src/infra/platform/contract";
+import type { Locale } from "../../../src/infra/platform/protocols/v2";
 const zh = {
   title: "LC 电磁振荡",
   subtitle: "电荷往复 · 能量交换",

@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import type { ExperimentPage } from "../../src/pages/experiment-page";
 import type { Snapshot } from "../../experiments/lc-oscillator/model/snapshot";
 import type { LCExperiment } from "../../experiments/lc-oscillator/experiment";
+import { settingsPage } from "./helpers/settings";
 import {
   at,
   derived,
@@ -13,7 +14,7 @@ async function layoutViolations(page: Page) {
   return page.locator("phy-experiment-page").evaluate((el) => {
     const root = (el as ExperimentPage).instance!.element.shadowRoot!;
     const nodes = root.querySelectorAll<HTMLElement>(
-      ".heading,.panel,.scene-wrap,.readouts,.energy-strip,.timeline,.moments,.chart-stack,.lc-chart,.support-area,.task-content,.formula-content,button,input",
+      ".heading,.panel,.scene-wrap,.readouts,.energy-strip,.timeline,.moments,.chart-stack,.lc-chart,.support-area,.task-content,.formula-content,button,phy-slider,phy-tabs,phy-checkbox",
     );
     return Array.from(nodes).flatMap((node) => {
       const rect = node.getBoundingClientRect();
@@ -58,7 +59,7 @@ test("LC charging, switch, synchronized current and key moments obey one physica
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await page.getByRole("textbox").fill("LC");
+  await page.getByRole("searchbox").fill("LC");
   await page.getByRole("link", { name: /LC 电磁振荡/ }).click();
   await expect(page.locator(".circuit-scene")).toBeVisible();
   expect((await saved(page)).closed).toBe(false);
@@ -289,14 +290,23 @@ test("LC main controls, all observations and tasks fit both desktop sizes in bot
             .getByRole("button", { name: /^(切换语言|Switch language)$/ })
             .click();
         for (const support of [0, 1]) {
-          await page.locator(".support-tabs button").nth(support).click();
+          await page
+            .locator(".support-tabs")
+            .getByRole("tab")
+            .nth(support)
+            .click();
           for (const view of [0, 1, 2]) {
-            await page.locator(".observation-tabs button").nth(view).click();
+            await page
+              .getByRole("tablist", { name: /^(观察方式|Observation)$/ })
+              .getByRole("tab")
+              .nth(view)
+              .click();
             if (support === 1) {
               for (const task of [0, 1, 2]) {
                 await page.locator(".task-choices button").nth(task).click();
                 await page
-                  .locator(".observation-tabs button")
+                  .getByRole("tablist", { name: /^(观察方式|Observation)$/ })
+                  .getByRole("tab")
                   .nth(view)
                   .click();
                 await expect
@@ -440,7 +450,7 @@ test("LC is available offline before its first visit and restores independent pr
   context,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await settingsPage(page, "cache");
   await expect(page.getByText("✓ 可离线使用", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "关闭", exact: true }).click();
   await context.setOffline(true);
@@ -500,6 +510,50 @@ test("LC corrupt storage recovers finite defaults without touching other experim
     ),
   ).toBe('{"sentinel":true}');
   await expect(page.locator(".readouts")).not.toContainText(/NaN|Infinity/);
+});
+test("LC v2 preserves v1 saves and keeps nested support tabs independent", async ({
+  page,
+}) => {
+  const legacy: Snapshot = {
+    version: 1,
+    params: { inductance: 0.1, capacitance: 50e-6, voltage: -3 },
+    time: 0.003,
+    closed: true,
+    rate: 0.5,
+    observation: "analogy",
+    support: "tasks",
+    task: "current",
+    layers: { fields: false, current: false },
+  };
+  await page.addInitScript(
+    ({ key, legacy }) => {
+      if (!localStorage.getItem(key))
+        localStorage.setItem(key, JSON.stringify(legacy));
+    },
+    { key, legacy },
+  );
+  await page.goto("/");
+  await page.getByRole("tab", { name: "电磁学", exact: true }).click();
+  await expect(page.locator(".card")).toHaveCount(1);
+  await page.getByRole("link", { name: /LC 电磁振荡/ }).click();
+  await expect(page.locator(".spring-analogy")).toBeVisible();
+  expect(await saved(page)).toEqual(legacy);
+  await expect(
+    page.getByRole("combobox", { name: "慢放速度", exact: true }),
+  ).toHaveValue("0.5");
+  await expect(
+    page.getByRole("checkbox", { name: "场示意", exact: true }),
+  ).not.toBeChecked();
+  await page.getByRole("tab", { name: "公式", exact: true }).click();
+  const expected = { ...legacy, support: "formula" };
+  expect(await saved(page)).toEqual(expected);
+  await expect(
+    page.getByRole("tab", { name: "类比弹簧", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await page.reload();
+  await expect(page.locator(".spring-analogy")).toBeVisible();
+  expect(await saved(page)).toEqual(expected);
+  await expect(page.getByRole("button", { name: /▷ 继续/ })).toBeVisible();
 });
 test("LC spring analogy uses normalized charge and opposite current, including reversed polarity and zero energy", async ({
   page,
