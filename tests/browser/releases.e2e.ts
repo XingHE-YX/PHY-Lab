@@ -117,7 +117,7 @@ test("failed experiment integrity keeps the committed offline catalog usable", a
   try {
     await check(page);
     await expect(
-      page.getByText(/Integrity check failed/).first(),
+      page.getByRole("alert").filter({ hasText: /Integrity check failed/ }),
     ).toBeVisible();
     await page.getByRole("button", { name: "关闭", exact: true }).click();
     await context.setOffline(true);

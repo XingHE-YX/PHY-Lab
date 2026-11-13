@@ -50,7 +50,7 @@ test.describe("home category navigation", () => {
 
 test("wide settings has vertical pages, no search or footer, and current experiment credits", async ({
   page,
-}) => {
+}, info) => {
   await page.goto("/");
   let dialog = await settingsPage(page, "about");
   await expect(dialog).toHaveCSS("width", "960px");
@@ -80,6 +80,10 @@ test("wide settings has vertical pages, no search or footer, and current experim
     .getByRole("button", { name: "检查更新", exact: true })
     .boundingBox())!;
   expect(currentBox.y + currentBox.height).toBeLessThan(updateBox.y);
+  await page.screenshot({
+    path: info.outputPath("settings-about.png"),
+    animations: "disabled",
+  });
   await page.keyboard.press("Escape");
   await page.goto("/#/experiments/chladni-plate");
   await expect(
@@ -277,7 +281,7 @@ test("every retained settings page refreshes when reopened after background chan
   await settingsPage(page, "appearance");
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "切换语言", exact: true }).click();
-  await page.getByRole("button", { name: "切换明暗", exact: true }).click();
+  await page.getByRole("button", { name: "Toggle theme", exact: true }).click();
   const theme = await page.locator("html").getAttribute("data-theme");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   let dialog = page.getByRole("dialog", { name: "Settings", exact: true });
