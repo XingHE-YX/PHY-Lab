@@ -162,7 +162,7 @@ export class ChladniExperiment extends LitElement {
     if (this.toolbar) render(null, this.toolbar);
     this.toolbar = undefined;
     if (this.settingsControls) render(null, this.settingsControls.shadowRoot!);
-    this.context?.settings?.setControls(null);
+    this.context?.settings?.setControls(null, "experiment");
     this.settingsControls = undefined;
     super.disconnectedCallback();
   }
@@ -215,7 +215,7 @@ export class ChladniExperiment extends LitElement {
       if (!this.settingsControls) {
         this.settingsControls = document.createElement("div");
         this.settingsControls.attachShadow({ mode: "open" });
-        this.context.settings.setControls(this.settingsControls);
+        this.context.settings.setControls(this.settingsControls, "experiment");
       }
       const key = JSON.stringify([
         this.data.muted,

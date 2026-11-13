@@ -1,3 +1,4 @@
+import { settingsPage } from "./helpers/settings";
 import { test, expect, type Page } from "@playwright/test";
 import type { ExperimentPage } from "../../src/pages/experiment-page";
 import {
@@ -77,7 +78,7 @@ test("an unopened experiment and all new mode preferences work through an offlin
   context,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await settingsPage(page, "cache");
   await expect(page.getByText("✓ 可离线使用", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "关闭", exact: true }).click();
   await context.setOffline(true);

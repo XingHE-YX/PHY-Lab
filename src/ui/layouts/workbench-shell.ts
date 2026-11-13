@@ -1,15 +1,11 @@
+import { ExperimentSettingsStore } from "../../services/experiment-settings";
+import { SettingsPanel } from "./settings-panel";
+import { brand, brandStyles } from "../components/brand";
 import { dialogs } from "../../services/dialog";
 import type { DialogHandle } from "../../infra/platform/protocols/v2/api/dialog";
-import type {
-  InputElement,
-  SelectElement,
-  SwitchElement,
-} from "../../infra/platform/protocols/v2/components";
-import { LitElement, html, css, render } from "lit";
-import type {
-  Catalog,
-  ExperimentControls,
-} from "../../infra/platform/contract";
+import type { InputElement } from "../../infra/platform/protocols/v2/components";
+import { LitElement, html, css } from "lit";
+import type { Catalog } from "../../infra/platform/types";
 import { loadCatalog } from "../../infra/platform/registry";
 import { settings } from "../../services/settings";
 import { currentTheme, toggleTheme } from "../../services/theme";
@@ -19,50 +15,6 @@ import { icon } from "../components/icons";
 import type { ExperimentPage } from "../../pages/experiment-page";
 import { offline } from "../../services/offline";
 import { updates } from "../../services/updates";
-const settingsStyles = css`
-  .experiment-settings {
-    margin-bottom: 24px;
-  }
-  .row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 14px;
-    margin: 0 0 22px;
-    font-size: 13px;
-  }
-  phy-select {
-    max-width: 180px;
-  }
-  phy-switch.row {
-    width: 100%;
-  }
-  phy-switch.row::part(base) {
-    width: 100%;
-    flex-direction: row-reverse;
-    justify-content: space-between;
-    gap: 14px;
-  }
-  .section-label {
-    font-size: 10px;
-    color: var(--muted);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin: 28px 0 15px;
-  }
-  .section-label.first-section {
-    margin-top: 0;
-  }
-  .offline {
-    padding: 14px;
-    background: var(--subtle);
-    font-size: 12px;
-    line-height: 1.8;
-  }
-  phy-progress {
-    margin-top: 10px;
-  }
-`;
 export class App extends LitElement {
   static properties = {
     catalog: { state: true },
@@ -84,18 +36,11 @@ export class App extends LitElement {
   declare catalogError: string;
   private settingsDialog?: DialogHandle;
   private settingsController = new AbortController();
-  private readonly settingsContent = document.createElement("div");
-  private readonly settingsFooter = document.createElement("div");
+  private readonly settingsContent = new SettingsPanel();
   private readonly experimentControls = document.createElement("div");
-  private readonly experimentSettings = document.createElement("div");
-  private readonly experimentSettingsApi: ExperimentControls = {
-    setControls: (element) => {
-      this.experimentSettings.replaceChildren(...(element ? [element] : []));
-      this.requestUpdate();
-    },
-  };
+  private readonly experimentSettings = new ExperimentSettingsStore();
   private onRoute = () => {
-    this.experimentSettings.replaceChildren();
+    this.experimentSettings.setExperiment(null);
     this.experimentControls.replaceChildren();
     this.route = location.hash;
     this.menu = false;
@@ -128,6 +73,7 @@ export class App extends LitElement {
   static styles = [
     baseStyles,
     buttonStyles,
+    brandStyles,
     css`
       :host {
         display: flex;
@@ -172,14 +118,6 @@ export class App extends LitElement {
       .right {
         justify-content: flex-end;
         gap: 5px;
-      }
-      .brand {
-        font-size: 17px;
-        font-weight: 650;
-        letter-spacing: -0.6px;
-      }
-      .brand span {
-        color: var(--primary);
       }
       .icon {
         width: 36px;
@@ -304,6 +242,7 @@ export class App extends LitElement {
   constructor() {
     super();
     this.experimentControls.className = "experiment-controls";
+    this.settingsContent.store = this.experimentSettings;
     this.catalog = null;
     this.query = "";
     this.category = "all";
@@ -362,17 +301,18 @@ export class App extends LitElement {
     }
   }
   updated() {
-    if (this.modal) this.renderSettings();
+    if (this.modal)
+      this.settingsDialog?.update({
+        title: messages(settings.value.locale).settings,
+      });
   }
   openSettings() {
     if (this.settingsDialog) return;
     this.modal = true;
-    this.renderSettings();
     const handle = dialogs.scope(this.settingsController.signal).open({
       title: messages(settings.value.locale).settings,
       content: this.settingsContent,
-      footer: this.settingsFooter,
-      width: "sm",
+      width: "lg",
       returnFocus:
         this.renderRoot.querySelector<HTMLElement>("#settings") ?? undefined,
     });
@@ -384,139 +324,12 @@ export class App extends LitElement {
       }
     });
   }
-  private renderSettings() {
-    const s = settings.value,
-      t = messages(s.locale);
-    const id = this.route.match(/^#\/experiments\/([a-z][a-z0-9-]*)$/)?.[1];
-    const hasExperimentSettings = Boolean(
-      id && this.experimentSettings.hasChildNodes(),
-    );
-    const root =
-      this.settingsContent.shadowRoot ??
-      this.settingsContent.attachShadow({ mode: "open" });
-    render(
-      html`<style>
-          ${baseStyles.cssText}${buttonStyles.cssText}${settingsStyles.cssText}
-        </style>
-        ${
-          hasExperimentSettings
-            ? html`<section
-                class="experiment-settings"
-                aria-label=${t.experimentSettings}
-              >
-                <div class="section-label first-section">
-                  ${t.experimentSettings}
-                </div>
-                ${this.experimentSettings}
-              </section>`
-            : ""
-        }
-        <div
-          class=${hasExperimentSettings ? "section-label" : "section-label first-section"}
-        >
-          ${t.appearance}
-        </div>
-        <div class="row">
-          <span>${t.language}</span
-          ><phy-select
-            label=${t.language}
-            .value=${s.locale}
-            .options=${[
-              { value: "zh-CN", label: "简体中文" },
-              { value: "en", label: "English" },
-            ]}
-            @change=${(e: Event) => settings.set({ locale: (e.currentTarget as SelectElement).value as typeof s.locale })}
-          ></phy-select>
-        </div>
-        <div class="row">
-          <span>${t.appearance}</span
-          ><phy-select
-            label=${t.appearance}
-            .value=${s.theme}
-            .options=${[
-              { value: "light", label: t.light },
-              { value: "dark", label: t.dark },
-              { value: "system", label: t.system },
-            ]}
-            @change=${(e: Event) => settings.set({ theme: (e.currentTarget as SelectElement).value as typeof s.theme })}
-          ></phy-select>
-        </div>
-        <phy-switch
-          class="row"
-          label=${t.motion}
-          .checked=${s.reduceMotion}
-          @change=${(e: Event) => settings.set({ reduceMotion: (e.currentTarget as SwitchElement).checked })}
-        ></phy-switch>
-        <div class="section-label">${t.offline}</div>
-        <phy-box class="offline" id="offline-panel"
-          >${this.offlinePanel()}</phy-box
-        > `,
-      root,
-    );
-    const footer =
-      this.settingsFooter.shadowRoot ??
-      this.settingsFooter.attachShadow({ mode: "open" });
-    render(
-      html`<style>
-          :host {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            font-size: 11px;
-            color: var(--muted);
-          }</style
-        ><span>${t.local}</span><span>PHY Lab v${__APP_VERSION__}</span>`,
-      footer,
-    );
-    this.settingsDialog?.update({ title: t.settings });
-  }
-  offlinePanel() {
-    const zh = settings.value.locale === "zh-CN",
-      s = offline.status;
-    if (s.state === "dev")
-      return html`${messages(settings.value.locale).offlineDev}`;
-    return html`<div role="status">
-        ${s.state === "ready" ? (zh ? "✓ 可离线使用" : "✓ Ready for offline use") : s.state === "loading" ? (zh ? "正在准备离线资源…" : "Preparing offline resources…") : s.state === "unavailable" ? (zh ? "此浏览器不支持离线缓存" : "Offline caching is unavailable") : zh ? "离线缓存未完成" : "Offline preparation failed"}
-      </div>
-      <div class="mono muted">
-        ${s.complete} / ${s.total} ${zh ? "个实验已缓存" : "experiments cached"}
-      </div>
-      ${s.total > 0 ? html`<phy-progress label=${zh ? "离线缓存进度" : "Offline caching progress"} .value=${s.complete} .max=${s.total}></phy-progress>` : ""}
-      ${s.error ? html`<p>${s.error}</p>` : ""}
-      <div style="margin-top:12px">
-        <phy-button
-          ?disabled=${updates.checking}
-          @click=${() => updates.check()}
-          >${updates.checking ? (zh ? "正在检查…" : "Checking…") : zh ? "检查更新" : "Check for updates"}</phy-button
-        >
-        <phy-button
-          ?disabled=${updates.checking}
-          @click=${() => updates.clean()}
-          >${zh ? "清理历史缓存" : "Clean old cache"}</phy-button
-        >
-      </div>
-      ${
-        offline.waiting
-          ? html`<div style="margin-top:12px">
-              <div>
-                ${zh ? "平台新版本已准备完成" : "Platform update is ready"}
-              </div>
-              <phy-button
-                variant="primary"
-                ?disabled=${updates.checking}
-                @click=${() => updates.apply()}
-                >${zh ? "保存并更新" : "Save and update"}</phy-button
-              >
-            </div>`
-          : ""
-      }${updates.checked && !offline.waiting ? html`<div>${zh ? "检查完成，已使用当前可用版本" : "Checked. Using the available version."}</div>` : ""}${updates.removed !== null ? html`<div>${zh ? "已清理历史缓存" : "Old caches removed"}: ${updates.removed}</div>` : ""}${updates.error ? html`<p>${updates.error}</p>` : ""}`;
-  }
   render() {
     const s = settings.value,
       t = messages(s.locale),
       id = this.route.match(/^#\/experiments\/([a-z][a-z0-9-]*)$/)?.[1];
     return html`<div class="viewport-warning">
-        <div class="brand">PHY<span> Lab</span></div>
+        ${brand()}
         <h1>
           ${s.locale === "zh-CN" ? "请使用桌面大小的窗口" : "A desktop-sized window is required"}
         </h1>
@@ -542,7 +355,7 @@ export class App extends LitElement {
                       ${icon("grid")}</button
                     >${this.menu ? html`<nav class="menu" aria-label=${t.menu}><a href="#/" @click=${() => (this.menu = false)}>${t.home}</a></nav>` : ""}
                   </div>
-                  <a class="brand" href="#/">PHY<span> Lab</span></a>
+                  <a class="brand-link" href="#/">${brand()}</a>
                 `
           }
         </div>
@@ -570,7 +383,7 @@ export class App extends LitElement {
                             aria-label=${t.clear}
                             @click=${() => {
                               this.query = "";
-    this.category = "all";
+                              this.category = "all";
                               this.renderRoot
                                 .querySelector<InputElement>(".search")
                                 ?.focus();
@@ -613,7 +426,26 @@ export class App extends LitElement {
         </div>
       </header>
       <main>
-        ${this.catalogError ? html`<div class="catalog-error">${t.error} · <phy-button @click=${() => this.refreshCatalog()}>${t.retry}</phy-button></div>` : ""}${id && this.catalog ? html`<phy-experiment-page .catalog=${this.catalog} .experimentId=${id} .locale=${s.locale} .theme=${currentTheme()} .toolbar=${this.experimentControls} .settingsApi=${this.experimentSettingsApi}></phy-experiment-page>` : html`<phy-workbench .catalog=${this.catalog} .locale=${s.locale} .query=${this.query} .category=${this.category} @category-change=${(event: CustomEvent<string>) => { this.category = event.detail; }}></phy-workbench>`}
+        ${this.catalogError ? html`<div class="catalog-error">${t.error} · <phy-button @click=${() => this.refreshCatalog()}>${t.retry}</phy-button></div>` : ""}${
+          id && this.catalog
+            ? html`<phy-experiment-page
+                .catalog=${this.catalog}
+                .experimentId=${id}
+                .locale=${s.locale}
+                .theme=${currentTheme()}
+                .toolbar=${this.experimentControls}
+                .settingsApi=${this.experimentSettings}
+              ></phy-experiment-page>`
+            : html`<phy-workbench
+                .catalog=${this.catalog}
+                .locale=${s.locale}
+                .query=${this.query}
+                .category=${this.category}
+                @category-change=${(event: CustomEvent<string>) => {
+                  this.category = event.detail;
+                }}
+              ></phy-workbench>`
+        }
       </main> `;
   }
 }

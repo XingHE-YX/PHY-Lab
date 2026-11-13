@@ -1,3 +1,4 @@
+import { settingsPage } from "./helpers/settings";
 import { test, expect, type Page } from "@playwright/test";
 import type { ExperimentPage } from "../../src/pages/experiment-page";
 import type { Snapshot } from "../../experiments/chladni-plate/model/snapshot";
@@ -350,7 +351,7 @@ test("an unvisited Chladni experiment loads offline with isolated state", async 
   context,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await settingsPage(page, "cache");
   await expect(page.getByText("✓ 可离线使用", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "关闭", exact: true }).click();
   await context.setOffline(true);
@@ -460,7 +461,7 @@ test("vibration audio follows drive frequency, mutes in settings and releases on
       }),
     )
     .toBeGreaterThan(0.001);
-  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await settingsPage(page, "experiment");
   const settings = page.getByRole("region", { name: "实验设置", exact: true });
   await settings.getByRole("switch", { name: "静音", exact: true }).check();
   expect((await saved(page)).muted).toBe(true);
@@ -479,10 +480,12 @@ test("vibration audio follows drive frequency, mutes in settings and releases on
       page.evaluate(() => (window as any).plateAudio[0].context.state),
     )
     .toBe("running");
+  await settingsPage(page, "appearance");
   await page
     .getByRole("dialog")
     .getByRole("combobox", { name: "切换语言", exact: true })
     .selectOption("en");
+  await settingsPage(page, "experiment");
   await expect(
     page
       .getByRole("region", { name: "Experiment settings", exact: true })
@@ -511,7 +514,7 @@ test("vibration audio follows drive frequency, mutes in settings and releases on
       page.evaluate(() => (window as any).plateAudio[0].tone.frequency.value),
     )
     .toBeCloseTo(changedFrequency, 3);
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await settingsPage(page, "experiment");
   await page.getByRole("switch", { name: "Mute", exact: true }).check();
   await page.reload();
   await expect(
@@ -520,7 +523,7 @@ test("vibration audio follows drive frequency, mutes in settings and releases on
   expect((await saved(page)).muted).toBe(true);
   await page.getByRole("button", { name: "▷ Play", exact: true }).click();
   expect(await page.evaluate(() => (window as any).plateAudio.length)).toBe(0);
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await settingsPage(page, "experiment");
   await expect(
     page.getByRole("switch", { name: "Mute", exact: true }),
   ).toBeChecked();
@@ -540,7 +543,7 @@ test("vibration audio follows drive frequency, mutes in settings and releases on
       page.evaluate(() => (window as any).plateAudio[0].context.state),
     )
     .toBe("closed");
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await settingsPage(page, "appearance");
   await expect(
     page.getByRole("region", { name: "Experiment settings", exact: true }),
   ).toHaveCount(0);
@@ -557,7 +560,7 @@ test("unavailable audio leaves the experiment operable with a localized explanat
   await open(page);
   await page.getByRole("button", { name: "▷ 开始", exact: true }).click();
   await expect.poll(async () => (await saved(page)).cycles).toBeGreaterThan(0);
-  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await settingsPage(page, "experiment");
   await expect(
     page.getByRole("switch", { name: "静音", exact: true }),
   ).toBeDisabled();

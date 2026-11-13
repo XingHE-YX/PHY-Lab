@@ -49,7 +49,7 @@ export class Workbench extends LitElement {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 25px 0 22px;
+        padding: 8px 0 22px;
       }
       h2 {
         font-size: 15px;

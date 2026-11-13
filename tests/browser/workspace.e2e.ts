@@ -1,3 +1,4 @@
+import { settingsPage, type SettingsPage } from "./helpers/settings";
 import { test, expect, type Page } from "@playwright/test";
 import type { ExperimentPage } from "../../src/pages/experiment-page";
 import type { Snapshot } from "../../experiments/spring-oscillator/experiment";
@@ -21,18 +22,21 @@ async function range(page: Page, name: string, value: string) {
   }, value);
 }
 async function expectFirstSettingsSection(page: Page, label: string) {
-  const dialog = page.getByRole("dialog");
-  const heading = dialog.locator(".section-label").filter({ hasText: label });
+  const target: SettingsPage = ["外观", "Appearance"].includes(label)
+    ? "appearance"
+    : "experiment";
+  const dialog = await settingsPage(page, target);
+  const heading = dialog.getByRole("heading", {
+    name: label,
+    exact: true,
+    level: 2,
+  });
   await expect(heading).toBeVisible();
   const headingBox = (await heading.boundingBox())!;
-  const bodyTop = await dialog
-    .locator(".body")
-    .evaluate(
-      (el) =>
-        el.getBoundingClientRect().top +
-        parseFloat(getComputedStyle(el).paddingTop),
-    );
-  expect(Math.abs(headingBox.y - bodyTop)).toBeLessThanOrEqual(1);
+  const panelBox = (await dialog
+    .getByRole("tabpanel", { name: label, exact: true })
+    .boundingBox())!;
+  expect(Math.abs(headingBox.y - panelBox.y)).toBeLessThanOrEqual(1);
 }
 test("workspace search, navigation and locale persistence", async ({
   page,
@@ -70,7 +74,9 @@ test("theme transition, settings dialog and focus restoration", async ({
   const settings = page.getByRole("button", { name: "设置", exact: true });
   await settings.click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.getByRole("dialog")).toContainText("PHY Lab v0.1.0");
+  await settingsPage(page, "about");
+  await expect(page.getByRole("dialog")).toContainText("PHY Lab v0.2.0");
+  await settingsPage(page, "appearance");
   await expect(page.locator("phy-app footer")).toHaveCount(0);
   await expect(
     page.getByRole("region", { name: "实验设置", exact: true }),
@@ -183,7 +189,7 @@ test("first home visit preloads an unopened experiment for offline refresh", asy
   context,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await settingsPage(page, "cache");
   await expect(page.getByText("✓ 可离线使用", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "关闭", exact: true }).click();
   await context.setOffline(true);
@@ -246,8 +252,13 @@ test("console content aligns with toolbar and experiment navigation is minimal",
     await page.setViewportSize({ width, height: 1000 });
     const toolbar = await page.locator(".toolbar").boundingBox();
     const grid = await page.locator(".grid").boundingBox();
-    expect(grid!.x).toBe(toolbar!.x + 30);
-    expect(grid!.width).toBe(toolbar!.width - 60 - 4);
+    const sidebar = (await page
+      .locator(".category-tabs")
+      .getByRole("tablist")
+      .boundingBox())!;
+    expect(sidebar.x).toBe(toolbar!.x + 30);
+    expect(grid!.x).toBe(sidebar.x + sidebar.width + 24);
+    expect(grid!.x + grid!.width).toBe(toolbar!.x + toolbar!.width - 30 - 4);
   }
   await page.getByRole("searchbox").fill("energy");
   await page.getByRole("link", { name: /弹簧振子/ }).click();
@@ -662,13 +673,13 @@ test.describe("experiment settings API", () => {
     await expect(
       page.getByRole("heading", { name: "Settings fixture" }),
     ).toBeVisible();
-    const openSettings = () =>
-      page
-        .getByRole("button", { name: /^(设置|Settings)$/, exact: true })
-        .click();
+    const openSettings = (target: SettingsPage = "experiment") =>
+      settingsPage(page, target);
     await openSettings();
     const region = page.getByRole("region", { name: "实验设置", exact: true });
-    await expect(region.locator(".section-label")).toHaveText("实验设置");
+    await expect(region.getByRole("heading", { level: 2 })).toHaveText(
+      "实验设置",
+    );
     await expect(region).not.toContainText("弹簧振子");
     await expectFirstSettingsSection(page, "实验设置");
     await region.getByRole("checkbox", { name: "显示轨迹" }).check();
@@ -680,10 +691,12 @@ test.describe("experiment settings API", () => {
     await expect(
       region.getByRole("checkbox", { name: "显示轨迹" }),
     ).toBeChecked();
+    await settingsPage(page, "appearance");
     await page
       .getByRole("dialog")
       .getByRole("combobox", { name: "切换语言" })
       .selectOption("en");
+    await settingsPage(page, "experiment");
     await expect(
       page
         .getByRole("region", { name: "Experiment settings", exact: true })
@@ -692,7 +705,7 @@ test.describe("experiment settings API", () => {
     await expect(
       page
         .getByRole("region", { name: "Experiment settings", exact: true })
-        .locator(".section-label"),
+        .getByRole("heading", { level: 2 }),
     ).toHaveText("Experiment settings");
     await page.evaluate(() =>
       (window as any).settingsFixture.context.settings.setControls(null),
@@ -705,6 +718,7 @@ test.describe("experiment settings API", () => {
       const fixture = (window as any).settingsFixture;
       fixture.context.settings.setControls(fixture.panel);
     });
+    await settingsPage(page, "experiment");
     await expect(
       page.getByRole("checkbox", { name: "Show trail" }),
     ).toBeChecked();
@@ -717,7 +731,7 @@ test.describe("experiment settings API", () => {
       const fixture = (window as any).settingsFixture;
       fixture.context.settings.setControls(fixture.panel);
     });
-    await openSettings();
+    await openSettings("appearance");
     await expect(
       page.getByRole("region", { name: "Experiment settings", exact: true }),
     ).toHaveCount(0);
@@ -726,7 +740,7 @@ test.describe("experiment settings API", () => {
     await expect(
       page.getByText("Fixture mount failed", { exact: true }),
     ).toBeVisible();
-    await openSettings();
+    await openSettings("appearance");
     await expect(
       page.getByRole("region", { name: "Experiment settings", exact: true }),
     ).toHaveCount(0);

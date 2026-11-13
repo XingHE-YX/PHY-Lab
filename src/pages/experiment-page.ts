@@ -1,12 +1,9 @@
+import type { ExperimentSettingsStore } from "../services/experiment-settings";
 import { dialogs } from "../services/dialog";
 import type { MountedExperiment } from "../infra/platform/types";
 import { requireProtocol } from "../infra/platform/compatibility";
 import { LitElement, html, css } from "lit";
-import type {
-  Catalog,
-  Locale,
-  ExperimentControls,
-} from "../infra/platform/contract";
+import type { Catalog, Locale } from "../infra/platform/contract";
 import { loadManifest } from "../infra/platform/registry";
 import { experimentStorage } from "../services/storage";
 import { messages } from "../infra/locales/messages";
@@ -30,7 +27,7 @@ export class ExperimentPage extends LitElement {
   declare status: string;
   declare error: string;
   declare toolbar: HTMLElement | null;
-  declare settingsApi: ExperimentControls | undefined;
+  declare settingsApi: ExperimentSettingsStore | undefined;
   instance?: MountedExperiment;
   private controller?: AbortController;
   private currentStorage?: ReturnType<typeof experimentStorage>;
@@ -94,6 +91,7 @@ export class ExperimentPage extends LitElement {
       if (controller.signal.aborted) return;
       const module: unknown = await import(/* @vite-ignore */ manifest.entry);
       if (controller.signal.aborted) return;
+      this.settingsApi?.setExperiment(manifest);
       const storage = experimentStorage(entry.id, manifest.stateVersion);
       const instance = await requireProtocol(manifest).mount(module, {
         manifest,
@@ -104,9 +102,9 @@ export class ExperimentPage extends LitElement {
         signal: controller.signal,
         storage,
         settings: {
-          setControls: (element) => {
+          setControls: (element, tabId) => {
             if (controller.signal.aborted) return;
-            this.settingsApi?.setControls(element);
+            this.settingsApi?.setControls(element, tabId);
           },
         },
         toolbar: {
@@ -131,7 +129,7 @@ export class ExperimentPage extends LitElement {
         this.error = error instanceof Error ? error.message : String(error);
         this.controller?.abort();
         this.toolbar?.replaceChildren();
-        this.settingsApi?.setControls(null);
+        this.settingsApi?.setExperiment(null);
         this.status = "error";
       }
     }
@@ -142,7 +140,7 @@ export class ExperimentPage extends LitElement {
   cleanup() {
     this.controller?.abort();
     this.toolbar?.replaceChildren();
-    this.settingsApi?.setControls(null);
+    this.settingsApi?.setExperiment(null);
     this.instance?.pause();
     this.save();
     this.instance?.dispose();

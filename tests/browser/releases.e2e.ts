@@ -1,3 +1,4 @@
+import { settingsPage } from "./helpers/settings";
 import { test, expect, type Page } from "@playwright/test";
 import { readFile, writeFile, mkdir, cp } from "node:fs/promises";
 import { join } from "node:path";
@@ -12,12 +13,12 @@ import type { Snapshot } from "../../experiments/spring-oscillator/experiment";
 const dist = join(import.meta.dirname, "../../dist");
 async function ready(page: Page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await settingsPage(page, "cache");
   await expect(page.getByText("✓ 可离线使用", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "关闭", exact: true }).click();
 }
 async function check(page: Page) {
-  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await settingsPage(page, "about");
   await page.getByRole("button", { name: "检查更新", exact: true }).click();
 }
 const sha = (bytes: Uint8Array) =>
@@ -100,7 +101,7 @@ test("experiment release changes without rebuilding platform and preserves the a
     await expect(
       page.getByRole("heading", { name: "弹簧振子 · 新版", exact: true }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "设置", exact: true }).click();
+    await settingsPage(page, "cache");
     await page.getByRole("button", { name: "清理历史缓存" }).click();
     await expect(page.getByText(/已清理历史缓存/)).toBeVisible();
   } finally {

@@ -8,6 +8,8 @@ class ResourceCache extends EventTarget {
   error = "";
   removed: number | null = null;
   private operation = 0;
+  private measuring?: Promise<void>;
+  private refreshAgain = false;
   private emit() {
     this.dispatchEvent(new Event("change"));
   }
@@ -17,17 +19,31 @@ class ResourceCache extends EventTarget {
       ? askWorker<CacheUsage>(worker, "CACHE_USAGE")
       : cacheUsage(caches, base);
   }
-  async refresh() {
+  async refresh(): Promise<void> {
     if (this.busy) return;
+    if (this.measuring) {
+      this.refreshAgain = true;
+      return this.measuring;
+    }
     const operation = ++this.operation;
     this.error = "";
+    this.measuring = (async () => {
+      try {
+        const usage = await this.usage();
+        if (operation === this.operation) this.bytes = usage.bytes;
+      } catch (error) {
+        if (operation === this.operation) this.error = String(error);
+      }
+    })();
     try {
-      const usage = await this.usage();
-      if (operation === this.operation) this.bytes = usage.bytes;
-    } catch (error) {
-      if (operation === this.operation) this.error = String(error);
+      await this.measuring;
+    } finally {
+      this.measuring = undefined;
+      if (operation === this.operation) this.emit();
+      const again = this.refreshAgain;
+      this.refreshAgain = false;
+      if (again && !this.busy) void this.refresh();
     }
-    if (operation === this.operation) this.emit();
   }
   async clear() {
     if (this.busy) return;
