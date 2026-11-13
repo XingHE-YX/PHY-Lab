@@ -1,8 +1,16 @@
+import type { DialogHandle } from "../../src/infra/platform/protocols/v2/api/dialog";
+import type {
+  TabsElement,
+  RadioGroupElement,
+  SliderElement,
+  SelectElement,
+  CheckboxElement,
+} from "../../src/infra/platform/protocols/v2/components";
 import { LitElement, html, render } from "lit";
 import type {
   ExperimentContext,
   Locale,
-} from "../../src/infra/platform/contract";
+} from "../../src/infra/platform/protocols/v2";
 import {
   parameters,
   waveAt,
@@ -22,7 +30,6 @@ import { texts } from "./locales/messages";
 import { styles } from "./styles/desktop";
 import { renderScene, sceneGeometry } from "./components/scene";
 import { waveChart, profileChart } from "./components/chart";
-import { math, mathStyles } from "./components/math";
 export class WaveExperiment extends LitElement {
   static properties = {
     data: { state: true },
@@ -30,12 +37,15 @@ export class WaveExperiment extends LitElement {
     playing: { state: true },
     helpOpen: { state: true },
   };
-  static styles = [mathStyles, styles];
+  static styles = styles;
   declare data: Snapshot;
   declare locale: Locale;
   declare playing: boolean;
   declare helpOpen: boolean;
   context?: ExperimentContext;
+  private helpHandle?: DialogHandle;
+  private helpLocale = "";
+  private readonly helpContent = document.createElement("div");
   private frame = 0;
   private last = 0;
   private toolbar?: HTMLDivElement;
@@ -138,10 +148,7 @@ export class WaveExperiment extends LitElement {
     }
     this.sceneNode = scene ?? undefined;
     this.chartNode = chart ?? undefined;
-    if (this.helpOpen) {
-      const dialog = this.renderRoot.querySelector<HTMLDialogElement>("dialog");
-      if (dialog && !dialog.open) dialog.showModal();
-    }
+    if (this.helpOpen) this.syncHelp();
     if (this.context?.toolbar) {
       if (!this.toolbar) {
         this.toolbar = document.createElement("div");
@@ -260,19 +267,19 @@ export class WaveExperiment extends LitElement {
         @click=${() => this.seek(this.data.time + (harmonic(this.p) ? 1 / this.p.frequency : this.p.duration) / 40)}
         >▹</phy-button
       >
-      <select
-        aria-label=${t.rate}
+      <phy-select
+        label=${t.rate}
         .value=${String(this.data.rate)}
-        style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:7px;font-size:12px"
+        .options=${[
+          { value: "1", label: "1×" },
+          { value: "0.5", label: "0.5×" },
+          { value: "0.25", label: "0.25×" },
+        ]}
         @change=${(e: Event) => {
           this.last = 0;
-          this.set({ rate: Number((e.target as HTMLSelectElement).value) });
+          this.set({ rate: Number((e.target as SelectElement).value) });
         }}
-      >
-        <option value="1">1×</option>
-        <option value="0.5">0.5×</option>
-        <option value="0.25">0.25×</option>
-      </select>`;
+      ></phy-select>`;
   }
   private parameter(
     name: "amplitude" | "speed" | "frequency" | "length" | "duration",
@@ -288,17 +295,16 @@ export class WaveExperiment extends LitElement {
         ><span>${t[name]} <span class="muted">${symbol}</span></span
         ><span class="val">${format(this.p[name])} ${unit}</span></label
       >
-      <input
+      <phy-slider
         id=${name}
-        type="range"
-        aria-label=${t[name]}
-        aria-valuetext=${format(this.p[name]) + " " + unit}
+        label=${t[name]}
+        value-text=${format(this.p[name]) + " " + unit}
         min=${min}
         max=${max}
         step=${step}
-        .value=${String(this.p[name])}
-        @input=${(e: Event) => this.changeParameter(name, Number((e.target as HTMLInputElement).value))}
-      />
+        .value=${this.p[name]}
+        @input=${(e: Event) => this.changeParameter(name, Number((e.target as SliderElement).value))}
+      ></phy-slider>
       <div class="limits">
         <span>${min} ${unit}</span><span>${max} ${unit}</span>
       </div>
@@ -312,13 +318,14 @@ export class WaveExperiment extends LitElement {
         this.data.parameterTab === "source"
           ? html` ${
                 p.mode !== "standing"
-                  ? html`<div
+                  ? html`<phy-radio-group
                       class="source-tabs"
-                      role="group"
-                      aria-label=${t.sourceType}
-                    >
-                      ${(["pulse", "sine"] as const).map((source) => html`<button class=${p.source === source ? "selected" : ""} aria-pressed=${p.source === source} @click=${() => this.changeParameter("source", source)}>${t[source]}</button>`)}
-                    </div> `
+                      variant="segmented"
+                      label=${t.sourceType}
+                      .value=${p.source}
+                      .options=${(["pulse", "sine"] as const).map((value) => ({ value, label: t[value] }))}
+                      @change=${(e: Event) => this.changeParameter("source", (e.currentTarget as RadioGroupElement).value as WaveParameters["source"])}
+                    ></phy-radio-group>`
                   : ""
               }
               ${this.parameter("amplitude", "A", 0, 0.4, 0.01, "m")}
@@ -348,13 +355,14 @@ export class WaveExperiment extends LitElement {
             ${
               p.mode !== "travel"
                 ? html`<div class="boundary-label">${t.boundary}</div>
-                    <div
+                    <phy-radio-group
                       class="boundary-tabs"
-                      role="group"
-                      aria-label=${t.boundary}
-                    >
-                      ${(["fixed", "free"] as const).map((boundary) => html`<button class=${p.boundary === boundary ? "selected" : ""} aria-pressed=${p.boundary === boundary} @click=${() => this.changeParameter("boundary", boundary)}>${t[boundary]}</button>`)}
-                    </div>
+                      variant="segmented"
+                      label=${t.boundary}
+                      .value=${p.boundary}
+                      .options=${(["fixed", "free"] as const).map((value) => ({ value, label: t[value] }))}
+                      @change=${(e: Event) => this.changeParameter("boundary", (e.currentTarget as RadioGroupElement).value as WaveParameters["boundary"])}
+                    ></phy-radio-group>
                     <p class="parameter-note">${t.boundaryHint}</p>`
                 : ""
             }`
@@ -406,22 +414,21 @@ export class WaveExperiment extends LitElement {
         <label for="probe-position"
           ><span>${t.probe} xₚ</span
           ><span class="val">${format(s.x)} m</span></label
-        ><input
+        ><phy-slider
           id="probe-position"
-          type="range"
           min="0"
           max="1"
           step=".001"
-          .value=${String(this.data.probe)}
-          aria-label=${t.probe + " xₚ"}
-          aria-valuetext=${format(s.x) + " m"}
-          @input=${(e: Event) => this.setProbe(Number((e.target as HTMLInputElement).value))}
-        />
+          .value=${this.data.probe}
+          label=${t.probe + " xₚ"}
+          value-text=${format(s.x) + " m"}
+          @input=${(e: Event) => this.setProbe(Number((e.target as SliderElement).value))}
+        ></phy-slider>
       </div>
       <p class="view-note">
         ${this.data.observation === "record" ? t.recordHint : t.spaceHint}
       </p>
-      ${this.data.observation === "record" ? html`<div class="metric-tabs" role="group" aria-label=${t.record}>${(["y", "v"] as const).map((metric) => html`<button class=${this.data.metric === metric ? "selected" : ""} aria-pressed=${this.data.metric === metric} @click=${() => this.set({ metric })}>${metric === "y" ? t.displacement + " y" : t.velocity + " vᵧ"}</button>`)}</div>` : ""}
+      ${this.data.observation === "record" ? html`<phy-radio-group class="metric-tabs" variant="segmented" label=${t.record} .value=${this.data.metric} .options=${(["y", "v"] as const).map((value) => ({ value, label: value === "y" ? t.displacement + " y" : t.velocity + " vᵧ" }))} @change=${(e: Event) => this.set({ metric: (e.currentTarget as RadioGroupElement).value as Snapshot["metric"] })}></phy-radio-group>` : ""}
       <div class="chart-stack">
         ${this.data.observation === "record" ? waveChart(this.p, this.data.time, this.data.probe, this.data.metric, this.chartHeight, this.seek) : profileChart(this.p, this.data.time, this.data.probe, this.chartHeight, this.setProbe, this.data.layers)}
       </div>
@@ -464,30 +471,11 @@ export class WaveExperiment extends LitElement {
         ? t.reflectionExplain
         : t.travelExplain;
   }
-  private observationKeys = async (e: KeyboardEvent) => {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
-    e.preventDefault();
-    const observation =
-      e.key === "Home"
-        ? "record"
-        : e.key === "End"
-          ? "profile"
-          : this.data.observation === "record"
-            ? "profile"
-            : "record";
-    this.set({ observation, support: "formula" });
-    await this.updateComplete;
-    this.renderRoot
-      .querySelector<HTMLButtonElement>(
-        ".observation-tabs [aria-selected=true]",
-      )
-      ?.focus();
-  };
   private layerControls() {
     const t = texts(this.locale);
     return html`<div class="layer-controls" role="group" aria-label=${t.layers}>
-      ${(["total", "incident", "reflected"] as const).map((layer) => html`<label><input type="checkbox" ?disabled=${layer === "reflected" && this.p.mode === "travel"} .checked=${this.data.layers[layer]} @change=${(e: Event) => this.set({ layers: { ...this.data.layers, [layer]: (e.target as HTMLInputElement).checked } })} /><span aria-hidden="true" class=${"swatch " + layer}></span>${t[layer]}</label>`)}
-      ${this.p.mode === "standing" ? html`<label><input type="checkbox" .checked=${this.data.layers.sites} @change=${(e: Event) => this.set({ layers: { ...this.data.layers, sites: (e.target as HTMLInputElement).checked } })} />${t.markers}</label>` : ""}
+      ${(["total", "incident", "reflected"] as const).map((layer) => html`<phy-checkbox ?disabled=${layer === "reflected" && this.p.mode === "travel"} .checked=${this.data.layers[layer]} @change=${(e: Event) => this.set({ layers: { ...this.data.layers, [layer]: (e.target as CheckboxElement).checked } })}><span aria-hidden="true" class=${"swatch " + layer}></span>${t[layer]}</phy-checkbox>`)}
+      ${this.p.mode === "standing" ? html`<phy-checkbox .checked=${this.data.layers.sites} @change=${(e: Event) => this.set({ layers: { ...this.data.layers, sites: (e.target as CheckboxElement).checked } })}>${t.markers}</phy-checkbox>` : ""}
     </div>`;
   }
   private equations() {
@@ -501,8 +489,10 @@ export class WaveExperiment extends LitElement {
           : p.boundary === "fixed"
             ? String.raw`y=2A\sin[q(L-x)]\cos(\omega t)`
             : String.raw`y=2A\cos[q(L-x)]\sin(\omega t)`;
-    return html` <div class="equation">${math(formula)}</div>
-      ${p.mode === "reflection" ? html`<div class="equation">${math(String.raw`y_{\mathrm{r}}=R\,s\!\left(t-\frac{2L-x}{c}\right)`)}</div>` : p.mode === "standing" ? html`<div class="equation">${math(String.raw`q=\frac{2\pi}{\lambda},\quad \lambda=\frac{c}{f}`)}</div>` : ""}
+    return html` <div class="equation">
+        <phy-math .source=${formula}></phy-math>
+      </div>
+      ${p.mode === "reflection" ? html`<div class="equation"><phy-math .source=${String.raw`y_{\mathrm{r}}=R\,s\!\left(t-\frac{2L-x}{c}\right)`}></phy-math></div>` : p.mode === "standing" ? html`<div class="equation"><phy-math .source=${String.raw`q=\frac{2\pi}{\lambda},\quad \lambda=\frac{c}{f}`}></phy-math></div>` : ""}
       <p class="explanation">
         ${p.mode === "travel" ? t.travelExplain : p.mode === "reflection" ? t.reflectionExplain : t.standingExplain}
       </p>`;
@@ -548,51 +538,27 @@ export class WaveExperiment extends LitElement {
       },
     });
     await this.updateComplete;
-    this.renderRoot
-      .querySelector<HTMLButtonElement>(
-        ".observation-tabs [aria-selected=true]",
-      )
-      ?.focus();
+    this.renderRoot.querySelector<TabsElement>(".observation-tabs")?.focus();
   }
   private supportPanel() {
     const t = texts(this.locale);
-    return html`<section
-      class=${"support" + (this.data.support === "tasks" ? " exploring" : "")}
+    return html`<phy-tabs
+      class=${"support support-tabs" + (this.data.support === "tasks" ? " exploring" : "")}
+      label=${t.support}
+      .value=${this.data.support}
+      .items=${[
+        { value: "formula", label: t.equations },
+        { value: "tasks", label: t.tasks },
+      ]}
+      @change=${(e: Event) => {
+        if (e.target !== e.currentTarget) return;
+        this.set({
+          support: (e.currentTarget as TabsElement)
+            .value as Snapshot["support"],
+        });
+      }}
     >
-      <div
-        class="support-tabs"
-        role="tablist"
-        aria-label=${t.support}
-        @keydown=${async (e: KeyboardEvent) => {
-          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key))
-            return;
-          e.preventDefault();
-          this.set({
-            support:
-              e.key === "Home"
-                ? "formula"
-                : e.key === "End"
-                  ? "tasks"
-                  : this.data.support === "formula"
-                    ? "tasks"
-                    : "formula",
-          });
-          await this.updateComplete;
-          this.renderRoot
-            .querySelector<HTMLButtonElement>(
-              ".support-tabs [aria-selected=true]",
-            )
-            ?.focus();
-        }}
-      >
-        ${(["formula", "tasks"] as const).map((support) => html`<button role="tab" aria-selected=${this.data.support === support} tabindex=${this.data.support === support ? 0 : -1} aria-controls="wave-support" class=${this.data.support === support ? "selected" : ""} @click=${() => this.set({ support })}>${support === "formula" ? t.equations : t.tasks}</button>`)}
-      </div>
-      <div
-        id="wave-support"
-        class="support-body"
-        role="tabpanel"
-        aria-label=${this.data.support === "formula" ? t.equations : t.tasks}
-      >
+      <div class="support-body" slot=${this.data.support}>
         ${
           this.data.support === "formula"
             ? this.equations()
@@ -614,38 +580,67 @@ export class WaveExperiment extends LitElement {
                   )}
                 </div>`
         }
-      </div>
-    </section>`;
+      </div></phy-tabs
+    >`;
   }
-  private helpDialog() {
+  private syncHelp() {
+    if (!this.context || (this.helpHandle && this.helpLocale === this.locale))
+      return;
     const t = texts(this.locale);
-    return html`<dialog
-      class="help-dialog"
-      @close=${() => {
-        this.helpOpen = false;
-        this.renderRoot
-          .querySelector<HTMLButtonElement>(".parameter-footer button")
-          ?.focus();
-      }}
-    >
-      <div class="dialog-heading">
-        <h2>${t.help}</h2>
-        <button
-          aria-label=${t.close}
-          @click=${() => this.renderRoot.querySelector<HTMLDialogElement>("dialog")?.close()}
-        >
-          ×
-        </button>
-      </div>
-      <p>${t.helpIntro}</p>
-      <p>${t.helpPulse}</p>
-      <p>${t.helpBoundary}</p>
-      <p>${t.helpStanding}</p>
-      <p>${t.probeHelp}</p>
-      <div class="help-formulas">
-        ${math(String.raw`y_{\mathrm{i}}(x,t)=s(t-x/c)`)}${math(String.raw`\lambda=c/f,\qquad T=1/f`)}${math(String.raw`v_y=\frac{\partial y}{\partial t},\qquad a_y=\frac{\partial^2y}{\partial t^2}`)}
-      </div>
-    </dialog>`;
+    const root =
+      this.helpContent.shadowRoot ??
+      this.helpContent.attachShadow({ mode: "open" });
+    render(
+      html`<style>
+          :host {
+            color: var(--muted);
+          }
+          p {
+            margin: 0 0 16px;
+          }
+          .help-formulas {
+            display: grid;
+            gap: 18px;
+            margin-top: 20px;
+            font-size: 15px;
+          }
+        </style>
+        <p>${t.helpIntro}</p>
+        <p>${t.helpPulse}</p>
+        <p>${t.helpBoundary}</p>
+        <p>${t.helpStanding}</p>
+        <p>${t.probeHelp}</p>
+        <div class="help-formulas">
+          <phy-math
+            .source=${String.raw`y_{\mathrm{i}}(x,t)=s(t-x/c)`}
+          ></phy-math
+          ><phy-math .source=${String.raw`\lambda=c/f,\qquad T=1/f`}></phy-math
+          ><phy-math
+            .source=${String.raw`v_y=\frac{\partial y}{\partial t},\qquad a_y=\frac{\partial^2y}{\partial t^2}`}
+          ></phy-math>
+        </div> `,
+      root,
+    );
+    this.helpLocale = this.locale;
+    if (this.helpHandle) this.helpHandle.update({ title: t.help });
+    else {
+      const handle = this.context.dialog.open({
+        title: t.help,
+        content: this.helpContent,
+        width: "md",
+        returnFocus:
+          this.renderRoot.querySelector<HTMLElement>(
+            ".parameter-footer button",
+          ) ?? undefined,
+      });
+      this.helpHandle = handle;
+      void handle.closed.then(() => {
+        if (this.helpHandle === handle) {
+          this.helpHandle = undefined;
+          this.helpOpen = false;
+        }
+      });
+    }
   }
   render() {
     const t = texts(this.locale),
@@ -659,32 +654,47 @@ export class WaveExperiment extends LitElement {
             ${p.mode === "standing" ? t.prepared : t.assumptions}
           </p>
         </div>
-        <div class="mode-switch" role="group" aria-label=${t.model}>
-          ${(["travel", "reflection", "standing"] as const).map((mode) => html`<button class=${p.mode === mode ? "selected" : ""} aria-pressed=${p.mode === mode} @click=${() => this.changeMode(mode)}>${t[mode]}</button>`)}
-        </div>
+        <phy-radio-group
+          class="mode-switch"
+          variant="segmented"
+          label=${t.model}
+          .value=${p.mode}
+          .options=${(["travel", "reflection", "standing"] as const).map((value) => ({ value, label: t[value] }))}
+          @change=${(e: Event) => this.changeMode((e.currentTarget as RadioGroupElement).value as WaveMode)}
+        ></phy-radio-group>
       </div>
       <div class="lab">
-        <aside class="panel parameter-panel">
+        <phy-box role="complementary" class="panel parameter-panel">
           <div class="panel-heading">
             ${t.parameters}<span
               class=${"status" + (this.playing ? " running" : "")}
               >${this.playing ? t.playing : t.pause}</span
             >
           </div>
-          <div
+          <phy-tabs
             class="parameter-tabs"
-            role="group"
-            aria-label=${t.parameterGroup}
+            variant="segmented"
+            label=${t.parameterGroup}
+            .value=${this.data.parameterTab}
+            .items=${(["source", "medium"] as const).map((value) => ({ value, label: t[value] }))}
+            @change=${(e: Event) => {
+              if (e.target !== e.currentTarget) return;
+              this.set({
+                parameterTab: (e.currentTarget as TabsElement)
+                  .value as Snapshot["parameterTab"],
+              });
+            }}
           >
-            ${(["source", "medium"] as const).map((parameterTab) => html`<button class=${this.data.parameterTab === parameterTab ? "selected" : ""} aria-pressed=${this.data.parameterTab === parameterTab} @click=${() => this.set({ parameterTab })}>${t[parameterTab]}</button>`)}
-          </div>
-          <div class="parameter-body">${this.parameterPanel()}</div>
+            <div class="parameter-body" slot=${this.data.parameterTab}>
+              ${this.parameterPanel()}
+            </div>
+          </phy-tabs>
           <div class="parameter-footer">
             <button @click=${() => (this.helpOpen = true)}>${t.help}</button
             ><small>${t.restartHint}</small>
           </div>
-        </aside>
-        <section class="panel stage">
+        </phy-box>
+        <phy-box class="panel stage">
           <div class="scene-heading">
             <span>${t.spaceTitle} <span class="mono">y(x,t)</span></span
             ><small
@@ -698,12 +708,10 @@ export class WaveExperiment extends LitElement {
           <div class="scene-foot">
             <span
               >${p.mode === "standing" ? `${t.pointAmplitude} ${format(standingAmplitude(p, s.x), 3)} m · ${t.nodeSpacing} ${format(derived(p).wavelength / 2)} m` : t.scale}</span
-            ><label
-              ><input
-                type="checkbox"
-                .checked=${this.data.layers.velocity}
-                @change=${(e: Event) => this.set({ layers: { ...this.data.layers, velocity: (e.target as HTMLInputElement).checked } })}
-              />${t.velocityArrow}</label
+            ><phy-checkbox
+              .checked=${this.data.layers.velocity}
+              @change=${(e: Event) => this.set({ layers: { ...this.data.layers, velocity: (e.target as CheckboxElement).checked } })}
+              >${t.velocityArrow}</phy-checkbox
             >
           </div>
           <div class="readouts">
@@ -725,43 +733,42 @@ export class WaveExperiment extends LitElement {
           </div>
           <div class="timeline">
             <span>${format(start, 1)}s</span
-            ><input
-              type="range"
+            ><phy-slider
               min=${start}
               max=${end}
               step=".001"
-              .value=${String(this.data.time)}
-              aria-label=${t.timeline}
-              aria-valuetext=${format(this.data.time) + " s"}
-              @input=${(e: Event) => this.seek(Number((e.target as HTMLInputElement).value))}
-            /><span>${format(end, 1)}s</span
+              .value=${this.data.time}
+              label=${t.timeline}
+              value-text=${format(this.data.time) + " s"}
+              @input=${(e: Event) => this.seek(Number((e.target as SliderElement).value))}
+            ></phy-slider
+            ><span>${format(end, 1)}s</span
             ><span class="time-label">t = ${format(this.data.time)} s</span>
           </div>
           ${this.moments()}
-        </section>
-        <aside class="panel observation-panel">
-          <div
+        </phy-box>
+        <phy-box
+          role="complementary"
+          class=${"panel observation-panel" + (this.data.support === "tasks" ? " exploring" : "")}
+        >
+          <phy-tabs
             class="observation-tabs"
-            role="tablist"
-            aria-label=${t.observation}
-            @keydown=${this.observationKeys}
+            label=${t.observation}
+            .value=${this.data.observation}
+            .items=${(["record", "profile"] as const).map((value) => ({ value, label: t[value] }))}
+            @change=${(e: Event) => {
+              if (e.target !== e.currentTarget) return;
+              this.set({
+                observation: (e.currentTarget as TabsElement)
+                  .value as Snapshot["observation"],
+                support: "formula",
+              });
+            }}
           >
-            ${(["record", "profile"] as const).map((observation) => html`<button role="tab" aria-selected=${this.data.observation === observation} aria-controls="wave-observation" tabindex=${this.data.observation === observation ? 0 : -1} class=${this.data.observation === observation ? "selected" : ""} @click=${() => this.set({ observation, support: "formula" })}>${t[observation]}</button>`)}
-          </div>
-          ${
-            this.data.support === "formula"
-              ? html`<div
-                  id="wave-observation"
-                  role="tabpanel"
-                  class="observation-content"
-                >
-                  ${this.plotPanel()}
-                </div>`
-              : ""
-          }
+            ${this.data.support === "formula" ? html`<div class="observation-content" slot=${this.data.observation}>${this.plotPanel()}</div>` : ""}
+          </phy-tabs>
           ${this.supportPanel()}
-        </aside>
-      </div>
-      ${this.helpOpen ? this.helpDialog() : ""}`;
+        </phy-box>
+      </div> `;
   }
 }

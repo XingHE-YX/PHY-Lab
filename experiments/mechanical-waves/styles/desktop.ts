@@ -5,11 +5,6 @@ export const styles = css`
     gap: 5px;
     padding: 8px 12px 0;
   }
-  .support-tabs button {
-    min-height: 30px;
-    font-size: 11px;
-    padding: 4px 10px;
-  }
   .support-body {
     padding: 10px 12px;
   }
@@ -184,13 +179,6 @@ export const styles = css`
     gap: 8px;
     min-height: 0;
   }
-  .panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    min-width: 0;
-    min-height: 0;
-  }
   .parameter-panel,
   .stage,
   .observation-panel {
@@ -220,14 +208,34 @@ export const styles = css`
     gap: 5px;
   }
   .parameter-tabs {
-    padding: 10px 12px 0;
-  }
-  .parameter-tabs button,
-  .source-tabs button,
-  .boundary-tabs button,
-  .metric-tabs button {
     flex: 1;
-    padding: 5px;
+    min-height: 0;
+    padding-top: 10px;
+  }
+  .parameter-tabs::part(tabs) {
+    padding: 0 12px;
+  }
+  .parameter-tabs .parameter-body {
+    height: 100%;
+  }
+  .observation-tabs {
+    flex: 1;
+    min-height: 0;
+  }
+  .exploring .observation-tabs {
+    flex: 0;
+  }
+  .support-tabs {
+    --tab-font-size: 11px;
+  }
+  .support-tabs::part(tabs) {
+    padding: 6px 12px 0;
+  }
+  .support.exploring .support-body {
+    height: 100%;
+  }
+  .equation phy-math {
+    font-size: 0.87em;
   }
   .parameter-body {
     flex: 1;
@@ -253,13 +261,6 @@ export const styles = css`
   .val {
     font-size: 11px;
     white-space: nowrap;
-  }
-  input[type="range"] {
-    width: 100%;
-    height: 16px;
-    margin: 0;
-    cursor: pointer;
-    accent-color: var(--primary);
   }
   .limits {
     display: flex;
@@ -360,15 +361,11 @@ export const styles = css`
     gap: 8px;
     flex-shrink: 0;
   }
-  .scene-foot label,
-  .layer-controls label {
+  .scene-foot phy-checkbox,
+  .layer-controls phy-checkbox {
     display: inline-flex;
     gap: 4px;
     align-items: center;
-  }
-  input[type="checkbox"] {
-    accent-color: var(--primary);
-    margin: 0;
   }
   .readouts {
     display: grid;
@@ -407,7 +404,7 @@ export const styles = css`
     font: 10px var(--mono);
     flex-shrink: 0;
   }
-  .timeline input {
+  .timeline phy-slider {
     flex: 1;
     min-width: 0;
   }
@@ -431,26 +428,8 @@ export const styles = css`
     font-size: 11px;
     padding: 5px;
   }
-  .observation-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .observation-tabs button {
-    flex: 1;
-    background: none;
-    border: 0;
-    border-bottom: 2px solid transparent;
-    border-radius: 0;
-    color: var(--muted);
-    padding: 12px 5px;
-  }
-  .observation-tabs button.selected {
-    border-bottom-color: var(--primary);
-    background: var(--primary-soft);
-    color: var(--primary);
-  }
   .observation-content {
+    height: 100%;
     display: flex;
     flex: 1;
     min-height: 0;
@@ -466,11 +445,6 @@ export const styles = css`
   }
   .probe-control {
     flex-shrink: 0;
-  }
-  .metric-tabs button {
-    min-height: 30px;
-    font-size: 11px;
-    padding: 3px;
   }
   .chart-stack {
     display: flex;
@@ -517,43 +491,11 @@ export const styles = css`
     font-size: 13px;
     line-height: 1.8;
   }
-  .equation .katex {
-    font-size: 1.05em;
-  }
   .explanation {
     margin: 7px 0 0;
     font-size: 11px;
     line-height: 1.7;
     color: var(--muted);
-  }
-  .help-dialog {
-    width: 720px;
-    max-width: calc(100vw - 80px);
-    max-height: calc(100dvh - 80px);
-    padding: 24px;
-    color: var(--text);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    overflow: auto;
-  }
-  .help-dialog::backdrop {
-    background: #0008;
-  }
-  .dialog-heading h2 {
-    margin: 0;
-    font-size: 17px;
-  }
-  .help-dialog p {
-    font-size: 13px;
-    line-height: 1.9;
-    color: var(--muted);
-  }
-  .help-formulas {
-    display: grid;
-    gap: 18px;
-    margin-top: 20px;
-    font-size: 15px;
   }
   @media (max-height: 800px) {
     .parameter {

@@ -57,21 +57,21 @@ test("an unvisited wave experiment opens offline and restores all preferences in
   await page.getByRole("button", { name: "Ⅱ 暂停", exact: true }).click();
   await range(page, "拖动时间游标", 2.6);
   await expect(page.locator(".readout").first()).toContainText("-");
-  await page.getByRole("button", { name: "波的反射", exact: true }).click();
-  await page.getByRole("button", { name: "自由端", exact: true }).click();
+  await page.getByRole("radio", { name: "波的反射", exact: true }).click();
+  await page.getByRole("radio", { name: "自由端", exact: true }).click();
   await page.getByRole("button", { name: "波峰到右端", exact: true }).click();
   await expect(page.locator(".boundary-ring")).toHaveAttribute(
     "data-y",
     "-0.44",
   );
-  await page.getByRole("button", { name: "驻波", exact: true }).click();
+  await page.getByRole("radio", { name: "驻波", exact: true }).click();
   await range(page, "传播速度", 1.2);
   await range(page, "观察长度", 10);
-  await page.getByRole("button", { name: "波源", exact: true }).click();
+  await page.getByRole("tab", { name: "波源", exact: true }).click();
   await range(page, "入射振幅", 0.34);
   await range(page, "频率", 1.4);
   await range(page, "跟踪位置 xₚ", 0.723);
-  await page.getByRole("button", { name: "横向速度 vᵧ", exact: true }).click();
+  await page.getByRole("radio", { name: "横向速度 vᵧ", exact: true }).click();
   await page
     .getByRole("combobox", { name: "播放速率", exact: true })
     .selectOption("0.25");
@@ -232,16 +232,16 @@ test("supported parameter extremes keep the physical scene and controls in range
 }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await open(page);
-  await page.getByRole("button", { name: "连续驱动", exact: true }).click();
+  await page.getByRole("radio", { name: "连续驱动", exact: true }).click();
   await range(page, "入射振幅", 0.4);
   await range(page, "频率", 2);
   for (const mode of ["波的传播", "波的反射", "驻波"]) {
-    await page.getByRole("button", { name: mode, exact: true }).click();
-    await page.getByRole("button", { name: "介质", exact: true }).click();
+    await page.getByRole("radio", { name: mode, exact: true }).click();
+    await page.getByRole("tab", { name: "介质", exact: true }).click();
     await range(page, "传播速度", 1);
     await range(page, "观察长度", 12);
     if (mode !== "波的传播")
-      await page.getByRole("button", { name: "自由端", exact: true }).click();
+      await page.getByRole("radio", { name: "自由端", exact: true }).click();
     await range(page, "拖动时间游标", mode === "驻波" ? 0.16 : 12.16);
     const saved = await snapshot(page);
     await expect(page.locator(".tracked-particle")).toHaveAttribute(
@@ -278,7 +278,7 @@ test("supported parameter extremes keep the physical scene and controls in range
   }
   await range(page, "传播速度", 6);
   await range(page, "观察长度", 4);
-  await page.getByRole("button", { name: "波源", exact: true }).click();
+  await page.getByRole("tab", { name: "波源", exact: true }).click();
   await range(page, "频率", 0.2);
   await expect(
     page.getByRole("button", { name: "定位波节", exact: true }),
