@@ -1,4 +1,9 @@
 import {
+  cachePrefix,
+  cacheUsage,
+  clearResourceCaches,
+} from "./infra/cache-storage";
+import {
   parseExperimentManifest,
   supportsProtocol,
 } from "./infra/platform/compatibility";
@@ -12,13 +17,15 @@ export {};
 declare const __APP_RELEASE__: AppRelease;
 const worker = globalThis as unknown as ServiceWorkerGlobalScope;
 const release = __APP_RELEASE__,
-  prefix = "phy-lab:" + release.base + ":v1:";
+  prefix = cachePrefix(release.base);
 const appCache = prefix + "app:" + release.buildId,
   registryCache = prefix + "catalog";
 const marker = release.base + "__offline__/ready.json";
 const tasks = new Map<string, Promise<void>>();
 let lastError = "";
 let syncing: Promise<void> | undefined;
+let preparingApp: Promise<void> | undefined;
+let clearing = false;
 const expCache = (m: ExperimentManifest) =>
   prefix + "experiment:" + m.id + ":" + m.buildId;
 function scoped(url: string) {
@@ -74,6 +81,42 @@ async function cacheResources(cache: Cache, list: Resource[]) {
     }),
   );
 }
+async function ensureAppCache() {
+  if (clearing) throw new Error("Cache is being cleared. Please retry.");
+  if (preparingApp) return preparingApp;
+  preparingApp = (async () => {
+    const cache = await caches.open(appCache);
+    if (await allPresent(cache, release.resources)) return;
+    await cacheResources(cache, release.resources);
+    await cache.put(marker, Response.json({ kind: "app", release }));
+  })();
+  try {
+    await preparingApp;
+  } finally {
+    preparingApp = undefined;
+  }
+}
+async function clearCache() {
+  if (
+    clearing ||
+    syncing ||
+    tasks.size ||
+    preparingApp ||
+    worker.registration.installing
+  )
+    throw new Error(
+      "Resources are downloading. Please try again after completion.",
+    );
+  clearing = true;
+  try {
+    const removed = await clearResourceCaches(caches, release.base);
+    lastError = "";
+    await broadcast("CACHE_CLEARED");
+    return removed;
+  } finally {
+    clearing = false;
+  }
+}
 async function allPresent(cache: Cache, list: Resource[]) {
   if (!(await cache.match(marker))) return false;
   return (await Promise.all(list.map((r) => cache.match(r.url)))).every(
@@ -96,6 +139,7 @@ async function manifestAt(url: string) {
   return { manifest, response };
 }
 async function cacheExperiment(url: string) {
+  if (clearing) throw new Error("Cache is being cleared. Please retry.");
   if (tasks.has(url)) return tasks.get(url)!;
   const task = (async () => {
     const { manifest, response } = await manifestAt(url),
@@ -117,6 +161,7 @@ async function cacheExperiment(url: string) {
   }
 }
 async function syncCatalog() {
+  if (clearing) throw new Error("Cache is being cleared. Please retry.");
   if (syncing) return syncing;
   syncing = (async () => {
     lastError = "";
@@ -172,7 +217,9 @@ async function status() {
         ? "ready"
         : lastError
           ? "error"
-          : "loading",
+          : !appReady && !syncing && !preparingApp && !tasks.size
+            ? "empty"
+            : "loading",
     complete,
     total: entries.length,
     version: release.version,
@@ -214,7 +261,7 @@ async function queryClients(type: string): Promise<string[][]> {
   );
 }
 async function cleanHistory() {
-  if (syncing || tasks.size)
+  if (clearing || syncing || preparingApp || tasks.size)
     throw new Error(
       "Resources are downloading. Please try again after completion.",
     );
@@ -250,13 +297,7 @@ async function cleanHistory() {
   return removed;
 }
 worker.addEventListener("install", (event) =>
-  event.waitUntil(
-    (async () => {
-      const cache = await caches.open(appCache);
-      await cacheResources(cache, release.resources);
-      await cache.put(marker, Response.json({ kind: "app", release }));
-    })(),
-  ),
+  event.waitUntil(ensureAppCache()),
 );
 worker.addEventListener("activate", (event) =>
   event.waitUntil(
@@ -275,7 +316,12 @@ worker.addEventListener("message", (event) => {
   const run = async () => {
     try {
       if (event.data?.type === "STATUS") reply(await status());
+      else if (event.data?.type === "CACHE_USAGE")
+        reply(await cacheUsage(caches, release.base));
+      else if (event.data?.type === "CLEAR_CACHE")
+        reply({ removed: await clearCache() });
       else if (event.data?.type === "SYNC") {
+        await ensureAppCache();
         await syncCatalog();
         reply(await status());
       } else if (event.data?.type === "CACHE_EXPERIMENT") {
@@ -287,6 +333,7 @@ worker.addEventListener("message", (event) => {
       } else if (event.data?.type === "CLEAN_HISTORY") {
         reply({ removed: await cleanHistory() });
       } else if (event.data?.type === "ACTIVATE") {
+        await ensureAppCache();
         await worker.skipWaiting();
         reply({ ok: true });
       }
