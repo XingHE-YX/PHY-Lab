@@ -6,6 +6,10 @@ export interface LCParameters {
   /** Upper plate voltage before closing the switch, V. */
   voltage: number;
 }
+export interface LCSeed {
+  q: number;
+  current: number;
+}
 export const limits = {
   inductance: { min: 0.01, max: 0.2, initial: 0.05 },
   capacitance: { min: 10e-6, max: 200e-6, initial: 100e-6 },
@@ -49,15 +53,26 @@ export function derived(p: LCParameters) {
 export function duration(p: LCParameters) {
   return 4 * derived(p).period;
 }
+export function timeWindow(p: LCParameters, time: number) {
+  const span = duration(p),
+    start = time - (time % span);
+  return { start, end: start + span, span };
+}
 /** Fixed physical time per playback second; L and C still change the visible period. */
 export const playbackScale = 0.004;
-export function at(p: LCParameters, time: number) {
+export function at(
+  p: LCParameters,
+  time: number,
+  seed: LCSeed = { q: p.capacitance * p.voltage, current: 0 },
+) {
   const d = derived(p);
   const t = Number.isFinite(time) ? Math.max(0, time) : 0;
-  const phase = (t * d.omega) % (2 * Math.PI);
-  const q = d.charge * Math.cos(phase);
+  const phase = (t % d.period) * d.omega;
+  const q =
+    seed.q * Math.cos(phase) - (seed.current / d.omega) * Math.sin(phase);
   // Positive conventional current leaves the upper capacitor plate, clockwise.
-  const current = d.charge * d.omega * Math.sin(phase);
+  const current =
+    seed.q * d.omega * Math.sin(phase) + seed.current * Math.cos(phase);
   const voltage = q / p.capacitance;
   const electric = (q * q) / (2 * p.capacitance);
   const magnetic = (p.inductance * current * current) / 2;
