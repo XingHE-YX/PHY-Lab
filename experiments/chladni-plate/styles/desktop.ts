@@ -554,8 +554,8 @@ export const styles = css`
       font-size: 19px;
     }
     .observation-content {
-      gap: 8px;
-      padding: 11px 12px;
+      gap: 6px;
+      padding: 8px 12px;
     }
     .facts {
       gap: 10px;
@@ -563,17 +563,21 @@ export const styles = css`
     .facts b {
       font-size: 12px;
     }
+    .facts small {
+      margin-bottom: 4px;
+    }
     .support {
-      padding: 9px 12px;
+      padding: 6px 12px;
     }
     .support p {
       font-size: 10px;
+      margin-top: 5px;
     }
     .preset-block {
-      padding: 8px 12px;
+      padding: 6px 12px;
     }
     .preset-heading {
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .preset {
       min-height: 36px;
