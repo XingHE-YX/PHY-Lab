@@ -1,3 +1,4 @@
+import { dialogs } from "../services/dialog";
 import type { MountedExperiment } from "../infra/platform/types";
 import { requireProtocol } from "../infra/platform/compatibility";
 import { LitElement, html, css } from "lit";
@@ -32,7 +33,6 @@ export class ExperimentPage extends LitElement {
   declare settingsApi: ExperimentControls | undefined;
   instance?: MountedExperiment;
   private controller?: AbortController;
-  dialogApi?: unknown;
   private currentStorage?: ReturnType<typeof experimentStorage>;
   private pinnedEntry?: string;
   static styles = [
@@ -96,7 +96,7 @@ export class ExperimentPage extends LitElement {
       const storage = experimentStorage(entry.id, manifest.stateVersion);
       const instance = await requireProtocol(manifest).mount(module, {
         manifest,
-        dialog: this.dialogApi,
+        dialog: dialogs.scope(controller.signal),
         locale: this.locale,
         theme: this.theme,
         buildId: manifest.buildId,
