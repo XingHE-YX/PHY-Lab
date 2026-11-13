@@ -57,7 +57,7 @@ test("theme transition, settings dialog and focus restoration", async ({
   await settings.click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page.getByRole("dialog")).toContainText("PHY Lab v0.1.0");
-  await expect(page.locator("footer")).toHaveCount(0);
+  await expect(page.locator("phy-app footer")).toHaveCount(0);
   await page.getByLabel("减少界面动画").check();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -258,7 +258,14 @@ test.describe("toolbar API", () => {
     await page.route("**/manifest.json", async (route) => {
       const response = await route.fetch();
       const manifest = await response.json();
+      const oldEntry = manifest.entry;
       manifest.entry = "/toolbar-fixture.js";
+      manifest.resources = manifest.resources.map(
+        (resource: { url: string }) =>
+          resource.url === oldEntry
+            ? { ...resource, url: manifest.entry }
+            : resource,
+      );
       await route.fulfill({ response, json: manifest });
     });
     await page.route("**/toolbar-fixture.js", (route) =>

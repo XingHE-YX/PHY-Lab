@@ -147,9 +147,11 @@ test("tabs own valid panel associations and radio groups share keyboard selectio
   await page.getByRole("tab", { name: "First view" }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.getByRole("tab", { name: "Last view" })).toBeFocused();
-  await expect(page.getByRole("tabpanel", { name: "Last view" })).toContainText(
-    "Last content",
-  );
+  await expect(page.getByRole("tabpanel", { name: "Last view" }))
+    .toMatchAriaSnapshot(`
+    - tabpanel "Last view":
+      - paragraph: Last content
+  `);
   await expect(page.getByText("First content")).not.toBeVisible();
   expect(
     await page
