@@ -30,7 +30,9 @@
 
 ## 交互
 
-使用统一 phy-button、phy-icon-button 等公开控件。按钮至少 36px 高，焦点清晰可见。滑块有名称、单位、当前值和键盘支持。弹窗可用 Escape 关闭，关闭后恢复焦点。弹簧小球提供拖动与键盘等价操作。
+使用统一 phy-button、phy-input、phy-select、phy-switch、phy-slider、phy-tabs 等公开控件，完整接口见 [公共组件](docs/ui-components.md)。按钮至少 36px 高，焦点清晰可见。滑块有名称、单位、当前值和键盘支持。弹窗可用 Escape 关闭，关闭后恢复焦点。弹簧小球提供拖动与键盘等价操作。
+
+开关使用滑动滑块，轨道沿用 3px 控件圆角、滑块使用小圆角。普通面板使用 phy-box；进度条只表达确定的单个进度值。模型说明和平台设置通过同一个 dialog 系统打开，宽度支持预设与自定义 CSS px，并限制在视口内。
 
 主题以 CSS custom properties 穿过 Shadow DOM。View Transition API 从点击位置做圆形展开；不支持或 prefers-reduced-motion 时直接切换。
 

@@ -2,7 +2,7 @@
 
 ## 版本与地址
 
-根 package.json 是平台业务版本的唯一来源，当前为 0.1.0。experiment.json 是各实验版本的唯一来源。apiVersion 是插件协议，stateVersion 是实验数据格式；它们不随业务版本自动变化。buildId 为内容指纹。
+根 package.json 是平台业务版本的唯一来源，当前为 0.1.0。experiment.json 是各实验版本的唯一来源。apiVersion 同时选择实验配置解析和运行协议，apiRevision 是实验要求的最低修订号（省略为 0），stateVersion 是实验数据格式；它们不随业务版本自动变化。buildId 为内容指纹。
 
 静态入口为 index.html、sw.js、release.json、catalog.json。平台 HTML 快照保存在 app/version/buildId/index.html，JS/CSS 为带 hash 的 assets。实验在 experiments/id/version/buildId 下独立发布，manifest 包含完整资源列表、字节数和 SHA-256。发布后不可覆盖这些地址。
 
@@ -36,7 +36,7 @@
 
 平台：新 Worker 先安装并校验资源，保持 waiting。用户点击保存并更新时，旧 Worker 通过 MessageChannel 请求所有页面暂停并保存状态；所有页面确认后才 skipWaiting。controllerchange 后各页面刷新。任何页面未响应时取消启用，用户可关闭该标签页后重试。
 
-实验：运行时读取 catalog；后台完整缓存新构建。当前实例及其 entry 始终固定旧构建；退出后再进入才使用新构建。新版本失败不会覆盖原缓存，离线目录继续指向完整版本。没有兼容协议的实验不会加载。
+实验：运行时读取 catalog；后台完整缓存新构建。当前实例及其 entry 始终固定旧构建；退出后再进入才使用新构建。新版本失败不会覆盖原缓存，离线目录继续指向完整版本。没有兼容协议或要求更高修订号的实验不会加载。当前平台保留 v1 revision 0，同时提供 v2 revision 0；迁移后的实验使用 v2。先发布支持该协议的平台，再更新实验目录。旧平台会拒绝 v2，已发布旧实验资源仍需保留供回滚。
 
 检查更新入口同时检查平台 Worker 和实验目录；页面重新进入前台时最多每分钟检查一次。更新不会重置主题、语言或实验状态。
 
@@ -47,3 +47,9 @@
 实验回滚：将 catalog 指向保留的旧 manifest。平台回滚：以一个新的发布版本重新构建已验证的源代码，发布新 Worker；避免客户端一直使用同字节 Worker 而无法感知回滚。
 
 数据格式变化增加 stateVersion，在实验初始化时通过 storage.readVersion 读取旧数据并校验迁移，成功后写入新命名空间。旧版本数据不删除。迁移失败保持旧数据可恢复，不将无效值传入模拟器。
+
+## 元信息与共享资源
+
+v2 experiment.json 支持可选 author、repository、license；校验后完整保留到 manifest，并参与 buildId。catalog 保留 apiVersion 和最低 apiRevision，详情由 manifest 提供。修改元信息同样生成新构建地址。
+
+公共控件、dialog、公式及字体属于平台资源清单；实验不重复打包这些平台能力。旧 v1 实验的自带资源继续按原 manifest 缓存。升级协议不会自动改变保存状态的命名空间，三个现有实验分别继续使用状态格式 2、1、1。

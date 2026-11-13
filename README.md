@@ -105,7 +105,9 @@ just catalog
 - [实施计划](docs/plan.md)
 - [设计规范](DESIGN.md)
 - [贡献指南](CONTRIBUTING.md)
-- [插件协议](docs/plugin-contract.md)
+- [插件协议](docs/plugin-contract.md)：v1/v2、修订号与生命周期。
+- [公共组件](docs/ui-components.md)：统一控件、公式与表单接入。
+- [协议 v2](docs/protocols/v2.md)：API、实验元信息及 dialog 用法。
 - [发布与更新](docs/release-and-update.md)
 - [弹簧模型与操作规则](docs/spring-model.md)
 - [机械波模型与操作规则](docs/mechanical-waves-model.md)
