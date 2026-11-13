@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <title>LC electromagnetic oscillations</title>
+  <style>:root{--bg:#f3f4f6;--wire:#737985;--blue:#245edb;--green:#25805d;--ink:#626d7b;--border:#d6dce5}@media(prefers-color-scheme:dark){:root{--bg:#14171d;--wire:#989fac;--blue:#7ca4ff;--green:#62ba94;--ink:#9ba5b5;--border:#303743}}</style>
+  <rect width="640" height="360" fill="var(--bg)"/>
+  <text x="24" y="30" fill="var(--ink)" font-family="monospace" font-size="11" letter-spacing="3">LC / ENERGY IN EXCHANGE</text>
+  <path d="M135 166V87H288V132M288 232V285H135V208" fill="none" stroke="var(--wire)" stroke-width="3"/>
+  <g fill="none" stroke="var(--wire)" stroke-width="3"><path d="M288 132c-40 -20 -40 36 0 20c40 -16 40 -36 0 -20M288 152c-40 -20 -40 36 0 20c40 -16 40 -36 0 -20M288 172c-40 -20 -40 36 0 20c40 -16 40 -36 0 -20M288 192c-40 -20 -40 36 0 20c40 -16 40 -36 0 -20M288 212c-40 -20 -40 36 0 20c40 -16 40 -36 0 -20"/></g>
+  <path d="M99 166H171M99 208H171" stroke="var(--blue)" stroke-width="6"/>
+  <text x="107" y="153" fill="var(--blue)" font-family="monospace" font-size="18">+ + +</text><text x="107" y="231" fill="var(--blue)" font-family="monospace" font-size="18">− − −</text>
+  <path d="M119 179V197m-4-5 4 5 4-5M135 179V197m-4-5 4 5 4-5M151 179V197m-4-5 4 5 4-5" fill="none" stroke="var(--blue)"/>
+  <path d="M207 72H246m-7-4 7 4-7 4" fill="none" stroke="var(--green)" stroke-width="2"/>
+  <path d="M365 150H604M365 245H604" stroke="var(--border)" stroke-dasharray="3 6"/>
+  <path d="M365 111C385 111 385 189 405 189S425 111 445 111S465 189 485 189S505 111 525 111S545 189 565 189S585 111 605 111" fill="none" stroke="var(--blue)" stroke-width="2.5"/>
+  <path d="M365 245C385 245 385 284 405 284S425 206 445 206S465 284 485 284S505 206 525 206S545 284 565 284S585 206 605 206" fill="none" stroke="var(--green)" stroke-width="2.5"/>
+  <text x="365" y="91" fill="var(--blue)" font-family="monospace" font-size="13">q</text><text x="365" y="202" fill="var(--green)" font-family="monospace" font-size="13">I</text>
+</svg>
