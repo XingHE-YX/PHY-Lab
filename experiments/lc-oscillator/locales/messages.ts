@@ -69,6 +69,7 @@ const zh = {
   support: "辅助内容",
   taskBaseline: "基准：50 mH · 100 μF · 6 V",
   taskCompare: "当前值与基准的比值",
+  loadPreset: "载入预设",
   help: "模型说明",
   helpTitle: "理想 LC 回路",
   formulaHint: "q 为上极板电荷；正电流使 q 减少，因此 I = −dq/dt。",
@@ -182,6 +183,7 @@ const en: Texts = {
   support: "Supporting content",
   taskBaseline: "Ref.: 50 mH · 100 μF · 6 V",
   taskCompare: "Current values relative to the reference",
+  loadPreset: "Load preset",
   help: "Model notes",
   helpTitle: "The ideal LC circuit",
   formulaHint:

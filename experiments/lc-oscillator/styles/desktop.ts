@@ -55,7 +55,9 @@ export const styles = css`
   }
   h1 {
     font-size: 20px;
-    font-weight: 600;
+    font-weight: 550;
+    white-space: nowrap;
+    letter-spacing: -0.5px;
   }
   h2 {
     font-size: 12px;
@@ -87,15 +89,8 @@ export const styles = css`
   }
   .lab {
     display: grid;
-    grid-template-columns: 218px minmax(0, 1fr) 338px;
-    gap: 10px;
-    min-height: 0;
-  }
-  .panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    min-width: 0;
+    grid-template-columns: 224px minmax(420px, 1fr) 350px;
+    gap: 8px;
     min-height: 0;
   }
   .parameter-panel,
@@ -106,7 +101,8 @@ export const styles = css`
   }
   .panel-heading {
     min-height: 40px;
-    padding: 10px 13px;
+    padding: 12px 14px;
+    line-height: 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -116,6 +112,7 @@ export const styles = css`
   }
   .panel-heading small {
     font-size: 10px;
+    line-height: 14px;
   }
   .parameters {
     padding: 4px 13px 0;
@@ -378,12 +375,14 @@ export const styles = css`
   }
   .observation-tabs {
     flex: 1;
-    --tab-height: 40px;
-    --tab-font-size: 11px;
+    --tab-height: 42px;
   }
   .observation-tabs::part(panel) {
     display: flex;
     flex-direction: column;
+  }
+  .exploring .observation-tabs {
+    flex: 0 0 auto;
   }
   .observation-content {
     display: flex;
@@ -460,18 +459,32 @@ export const styles = css`
   .formula-content phy-math {
     font-size: 0.83em;
   }
-  .support-area {
+  .support {
     border-top: 1px solid var(--border);
     flex-shrink: 0;
+  }
+  .exploring .support {
+    flex: 1;
+    min-height: 0;
+  }
+  .exploring .support::part(panel) {
+    display: flex;
+    flex-direction: column;
+  }
+  .exploring .support-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
   }
   .support-tabs {
     --tab-height: 30px;
     --tab-font-size: 11px;
     --tab-flex: 0 0 auto;
+    --tab-gap: 5px;
     --tab-padding: 4px 10px;
   }
   .support-tabs::part(tabs) {
-    padding: 4px 12px 0;
+    padding: 8px 12px 0;
   }
   .support-note {
     display: block;
@@ -482,29 +495,45 @@ export const styles = css`
   .task-content {
     padding: 10px 12px;
   }
-  .task-choices {
+  .task-grid {
     display: grid;
-    gap: 6px;
+    gap: 12px;
   }
-  .task-choices button {
-    text-align: left;
-    padding: 7px 8px;
+  .task {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+  }
+  .task h3 {
+    font-size: 13px;
+    font-weight: 550;
+    line-height: 1.6;
+    margin: 0 0 8px;
+  }
+  .task p {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.8;
+    margin: 0 0 10px;
+  }
+  .task button {
     font-size: 11px;
   }
   .task-reference,
   .task-comparison {
     display: block;
-    margin-top: 8px;
     font-size: 10px;
+    line-height: 1.5;
     color: var(--muted);
+  }
+  .comparison-summary {
+    margin: 12px 13px 0;
   }
   .task-comparison {
     font-family: var(--mono);
+    margin-top: 4px;
   }
   @media (max-width: 1350px) {
-    .lab {
-      grid-template-columns: 200px minmax(0, 1fr) 300px;
-    }
     .subtitle {
       display: none;
     }
@@ -516,6 +545,9 @@ export const styles = css`
     }
   }
   @media (max-height: 780px) {
+    .support-tabs::part(tabs) {
+      padding-top: 6px;
+    }
     .parameter {
       margin-top: 12px;
     }

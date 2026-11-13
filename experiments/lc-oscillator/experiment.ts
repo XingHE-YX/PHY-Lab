@@ -215,7 +215,7 @@ export class LCExperiment extends LitElement {
       time: 0,
     });
   }
-  private loadTask(task: Snapshot["task"]) {
+  private async loadTask(task: Snapshot["task"]) {
     this.pause();
     const params = parameters(null);
     if (task === "voltage") params.voltage *= 2;
@@ -223,32 +223,66 @@ export class LCExperiment extends LitElement {
     this.set({
       task,
       params,
-      support: "tasks",
+      support: "formula",
       closed: task === "current",
       time: task === "current" ? momentTime(params, 1) : 0,
       observation: task === "inductance" ? "oscillation" : "energy",
     });
+    await this.updateComplete;
+    this.renderRoot.querySelector<TabsElement>(".observation-tabs")?.focus();
   }
-  private taskHint() {
-    const t = texts(this.locale);
-    return this.data.task === "voltage"
-      ? t.taskVoltageHint
-      : this.data.task === "inductance"
-        ? t.taskInductanceHint
-        : t.taskZeroChargeHint;
-  }
-  private tasks() {
+  private taskComparison() {
     const t = texts(this.locale),
       d = derived(this.p),
       reference = derived(parameters(null));
-    return html`<div class="task-choices">
-        ${(["voltage", "inductance", "current"] as const).map((task, i) => html`<button class=${this.data.task === task ? "selected" : ""} aria-pressed=${this.data.task === task} @click=${() => this.loadTask(task)}>${i + 1}. ${task === "voltage" ? t.taskVoltage : task === "inductance" ? t.taskInductance : t.taskZeroCharge}</button>`)}
-      </div>
-      <small class="task-reference">${t.taskBaseline}</small>
+    return html`<small class="task-reference">${t.taskBaseline}</small>
       <output class="task-comparison" aria-label=${t.taskCompare}>
         T/Tref = ${format(d.period / reference.period)} ·
         ${this.data.task === "inductance" ? `Iₘ/Iref = ${format(d.current / reference.current)}` : `E/Eref = ${format(d.energy / reference.energy)}`}
       </output>`;
+  }
+  private tasks() {
+    const t = texts(this.locale);
+    return html`<div class="task-grid">
+      ${(
+        [
+          ["voltage", t.taskVoltage, t.taskVoltageHint],
+          ["inductance", t.taskInductance, t.taskInductanceHint],
+          ["current", t.taskZeroCharge, t.taskZeroChargeHint],
+        ] as const
+      ).map(
+        ([task, title, hint], index) =>
+          html`<article class="task" aria-labelledby=${`task-${task}`}>
+            <h3 id=${`task-${task}`}>${index + 1}. ${title}</h3>
+            <p>${hint}</p>
+            <button @click=${() => this.loadTask(task)}>${t.loadPreset}</button>
+          </article>`,
+      )}
+    </div>`;
+  }
+  private supportPanel() {
+    const t = texts(this.locale);
+    return html`<phy-tabs
+      class="support support-tabs"
+      variant="segmented"
+      label=${t.support}
+      .value=${this.data.support}
+      .items=${(["formula", "tasks"] as const).map((value) => ({ value, label: t[value] }))}
+      @change=${(e: Event) => {
+        if (e.target !== e.currentTarget) return;
+        this.set({
+          support: (e.currentTarget as TabsElement)
+            .value as Snapshot["support"],
+        });
+      }}
+    >
+      <div
+        class=${"support-body " + (this.data.support === "formula" ? "formula-content" : "task-content")}
+        slot=${this.data.support}
+      >
+        ${this.data.support === "formula" ? html`${this.formulas()}<small class="support-note">${this.data.observation === "analogy" ? t.normalized : t.fieldHint}</small>` : this.tasks()}
+      </div>
+    </phy-tabs>`;
   }
   private energyBar() {
     const t = texts(this.locale),
@@ -528,7 +562,11 @@ export class LCExperiment extends LitElement {
         <span class="model-note">${t.model}</span>
       </header>
       <div class="lab">
-        <section class="panel parameter-panel" aria-label=${t.parameters}>
+        <phy-box
+          role="complementary"
+          class="panel parameter-panel"
+          aria-label=${t.parameters}
+        >
           <div class="panel-heading">
             <h2>${t.parameters}</h2>
             <small>${this.data.closed ? t.closed : t.prepared}</small>
@@ -556,14 +594,15 @@ export class LCExperiment extends LitElement {
               ><output>${format(d.energy * 1e3, 3)} mJ</output>
             </div>
           </div>
+          <div class="comparison-summary">${this.taskComparison()}</div>
           <div class="parameter-footer">
             <phy-button @click=${this.data.closed ? this.prepare : this.connect}
               >${this.data.closed ? t.charge : t.close}</phy-button
             ><phy-button @click=${this.openHelp}>${t.help}</phy-button
             ><small>${t.resetHint}</small>
           </div>
-        </section>
-        <section class="panel main-panel" aria-label=${t.circuit}>
+        </phy-box>
+        <phy-box role="region" class="panel main-panel" aria-label=${t.circuit}>
           <div class="panel-heading">
             <h2>${t.circuit}</h2>
             <small
@@ -622,52 +661,40 @@ export class LCExperiment extends LitElement {
           <div class="moments" role="group" aria-label=${t.moment}>
             ${[t.electricMaximum, t.magneticMaximum, t.reverseCharge, t.reverseCurrent, t.equalEnergy].map((label, i) => html`<button ?disabled=${d.energy === 0} @click=${() => this.seek(momentTime(this.p, i))}>${label}<small>${["0", "T/4", "T/2", "3T/4", "T/8"][i]}</small></button>`)}
           </div>
-        </section>
-        <section class="panel observation-panel" aria-label=${t.observe}>
+        </phy-box>
+        <phy-box
+          role="complementary"
+          class=${"panel observation-panel" + (this.data.support === "tasks" ? " exploring" : "")}
+          aria-label=${t.observe}
+        >
           <phy-tabs
             class="observation-tabs"
             label=${t.observe}
             .value=${this.data.observation}
             .items=${observations.map((value) => ({ value, label: t[value] }))}
-            @change=${(e: Event) => {
+            @activate=${(e: Event) => {
               if (e.target !== e.currentTarget) return;
               this.set({
                 observation: (e.currentTarget as TabsElement)
                   .value as Snapshot["observation"],
+                support: "formula",
               });
             }}
           >
-            <div class="observation-content" slot=${this.data.observation}>
-              <p class="observation-summary">
-                ${this.data.support === "tasks" ? this.taskHint() : this.hint()}
-              </p>
-              ${this.plots()}
-              <div class="support-area">
-                <phy-tabs
-                  class="support-tabs"
-                  variant="segmented"
-                  label=${t.support}
-                  .value=${this.data.support}
-                  .items=${(["formula", "tasks"] as const).map((value) => ({ value, label: t[value] }))}
-                  @change=${(e: Event) => {
-                    if (e.target !== e.currentTarget) return;
-                    this.set({
-                      support: (e.currentTarget as TabsElement)
-                        .value as Snapshot["support"],
-                    });
-                  }}
-                >
-                  <div
-                    class=${this.data.support === "formula" ? "formula-content" : "task-content"}
-                    slot=${this.data.support}
+            ${
+              this.data.support === "formula"
+                ? html`<div
+                    class="observation-content"
+                    slot=${this.data.observation}
                   >
-                    ${this.data.support === "formula" ? html`${this.formulas()}<small class="support-note">${this.data.observation === "analogy" ? t.normalized : t.fieldHint}</small>` : this.tasks()}
-                  </div>
-                </phy-tabs>
-              </div>
-            </div>
+                    <p class="observation-summary">${this.hint()}</p>
+                    ${this.plots()}
+                  </div>`
+                : ""
+            }
           </phy-tabs>
-        </section>
+          ${this.supportPanel()}
+        </phy-box>
       </div>`;
   }
 }

@@ -14,7 +14,7 @@ async function layoutViolations(page: Page) {
   return page.locator("phy-experiment-page").evaluate((el) => {
     const root = (el as ExperimentPage).instance!.element.shadowRoot!;
     const nodes = root.querySelectorAll<HTMLElement>(
-      ".heading,.panel,.scene-wrap,.readouts,.energy-strip,.timeline,.moments,.chart-stack,.lc-chart,.support-area,.task-content,.formula-content,button,phy-slider,phy-tabs,phy-checkbox",
+      ".heading,.panel,.scene-wrap,.readouts,.energy-strip,.timeline,.moments,.chart-stack,.lc-chart,.support,.task-content,.formula-content,.comparison-summary,button,phy-slider,phy-tabs,phy-checkbox",
     );
     return Array.from(nodes).flatMap((node) => {
       const rect = node.getBoundingClientRect();
@@ -229,15 +229,26 @@ test("LC exploration presets use an explicit common reference and actual measure
 }) => {
   await open(page);
   await page.getByRole("tab", { name: "探索", exact: true }).click();
-  await page.getByRole("button", { name: /把初始电压加倍/ }).click();
+  await page
+    .getByRole("article", { name: /把初始电压加倍/ })
+    .getByRole("button", { name: "载入预设", exact: true })
+    .click();
   const voltage = await saved(page),
     base = { ...voltage.params, voltage: 6 };
   expect(voltage.params.voltage).toBe(12);
   expect(voltage.closed).toBe(false);
   expect(derived(voltage.params).period).toBe(derived(base).period);
   expect(derived(voltage.params).energy).toBe(derived(base).energy * 4);
+  expect(voltage.support).toBe("formula");
+  await expect(
+    page.getByRole("tab", { name: "看能量", exact: true }),
+  ).toBeFocused();
   await expect(page.locator(".task-comparison")).toContainText("E/Eref = 4.00");
-  await page.getByRole("button", { name: /把电感变为四倍/ }).click();
+  await page.getByRole("tab", { name: "探索", exact: true }).click();
+  await page
+    .getByRole("article", { name: /把电感变为四倍/ })
+    .getByRole("button", { name: "载入预设", exact: true })
+    .click();
   const inductance = await saved(page);
   expect(inductance.params.voltage).toBe(6);
   expect(derived(inductance.params).period).toBeCloseTo(
@@ -247,7 +258,14 @@ test("LC exploration presets use an explicit common reference and actual measure
   await expect(page.locator(".task-comparison")).toContainText(
     "Iₘ/Iref = 0.50",
   );
-  await page.getByRole("button", { name: /电荷为零，电流也为零吗/ }).click();
+  await expect(
+    page.getByRole("tab", { name: "看振荡", exact: true }),
+  ).toBeFocused();
+  await page.getByRole("tab", { name: "探索", exact: true }).click();
+  await page
+    .getByRole("article", { name: /电荷为零，电流也为零吗/ })
+    .getByRole("button", { name: "载入预设", exact: true })
+    .click();
   const current = await saved(page),
     s = at(current.params, current.time);
   expect(current.time).toBe(momentTime(base, 1));
@@ -266,6 +284,46 @@ test("LC exploration presets use an explicit common reference and actual measure
     page.getByRole("tab", { name: "探索", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
   expect((await saved(page)).task).toBe("current");
+});
+test("LC exploration replaces the plots and every observation tab returns without resetting the circuit", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("button", { name: /能量相等/ }).click();
+  const before = await saved(page);
+  const scene = await page.locator(".scene-wrap").boundingBox();
+  for (const [observation, name] of [
+    ["oscillation", "看振荡"],
+    ["energy", "看能量"],
+    ["analogy", "类比弹簧"],
+  ] as const) {
+    const tab = page.getByRole("tab", { name, exact: true });
+    await tab.click();
+    await page.getByRole("tab", { name: "探索", exact: true }).click();
+    await expect(page.locator(".task")).toHaveCount(3);
+    await expect(page.locator(".lc-chart, .spring-analogy")).toHaveCount(0);
+    const tasks = await page.locator(".support").boundingBox();
+    const right = await page.locator(".observation-panel").boundingBox();
+    expect(tasks!.height).toBeGreaterThan(right!.height - 50);
+    expect(await saved(page)).toEqual({
+      ...before,
+      observation,
+      support: "tasks",
+    });
+    await tab.click();
+    await expect(page.locator(".lc-chart").first()).toBeVisible();
+    await expect(page.locator(".task")).toHaveCount(0);
+    expect(await saved(page)).toEqual({ ...before, observation });
+    expect(await page.locator(".scene-wrap").boundingBox()).toEqual(scene);
+  }
+  await page.getByRole("button", { name: /▷ 继续/ }).click();
+  await page.getByRole("tab", { name: "探索", exact: true }).click();
+  const exploring = (await saved(page)).time;
+  await expect
+    .poll(async () => (await saved(page)).time)
+    .toBeGreaterThan(exploring);
+  await page.getByRole("tab", { name: "类比弹簧", exact: true }).click();
+  await expect(page.getByRole("button", { name: /Ⅱ 暂停/ })).toBeVisible();
 });
 test("LC main controls, all observations and tasks fit both desktop sizes in both themes and languages", async ({
   page,
@@ -289,50 +347,53 @@ test("LC main controls, all observations and tasks fit both desktop sizes in bot
           await page
             .getByRole("button", { name: /^(切换语言|Switch language)$/ })
             .click();
-        for (const support of [0, 1]) {
+        for (const view of [0, 1, 2]) {
           await page
-            .locator(".support-tabs")
+            .getByRole("tablist", { name: /^(观察方式|Observation)$/ })
             .getByRole("tab")
-            .nth(support)
+            .nth(view)
             .click();
-          for (const view of [0, 1, 2]) {
-            await page
-              .getByRole("tablist", { name: /^(观察方式|Observation)$/ })
-              .getByRole("tab")
-              .nth(view)
-              .click();
-            if (support === 1) {
-              for (const task of [0, 1, 2]) {
-                await page.locator(".task-choices button").nth(task).click();
-                await page
-                  .getByRole("tablist", { name: /^(观察方式|Observation)$/ })
-                  .getByRole("tab")
-                  .nth(view)
-                  .click();
-                await expect
-                  .poll(() => layoutViolations(page), {
-                    message: `${size.width} ${theme} ${locale} ${support} ${view} ${task}`,
-                  })
-                  .toEqual([]);
-              }
-            } else
-              await expect
-                .poll(() => layoutViolations(page), {
-                  message: `${size.width} ${theme} ${locale} ${support} ${view}`,
-                })
-                .toEqual([]);
-            const chart = page.locator(".lc-chart").first();
-            const box = await chart.boundingBox();
-            expect(box!.height).toBeGreaterThan(95);
-            await expect(page.locator(".katex-error, .math-error")).toHaveCount(
-              0,
-            );
-          }
+          await expect
+            .poll(() => layoutViolations(page), {
+              message: `${size.width} ${theme} ${locale} ${view}`,
+            })
+            .toEqual([]);
+          const chart = page.locator(".lc-chart").first();
+          const box = await chart.boundingBox();
+          expect(box!.height).toBeGreaterThan(95);
+          await expect(page.locator(".katex-error, .math-error")).toHaveCount(
+            0,
+          );
         }
         await page.screenshot({
           path: info.outputPath(`lc-${size.width}-${theme}-${locale}.png`),
           animations: "disabled",
         });
+        for (const task of [0, 1, 2]) {
+          await page.locator(".support-tabs").getByRole("tab").nth(1).click();
+          await expect(page.locator(".lc-chart, .spring-analogy")).toHaveCount(
+            0,
+          );
+          await expect
+            .poll(() => layoutViolations(page), {
+              message: `${size.width} ${theme} ${locale} tasks`,
+            })
+            .toEqual([]);
+          if (task === 0)
+            await page.screenshot({
+              path: info.outputPath(
+                `lc-explore-${size.width}-${theme}-${locale}.png`,
+              ),
+              animations: "disabled",
+            });
+          await page.locator(".task").nth(task).getByRole("button").click();
+          await expect(page.locator(".lc-chart").first()).toBeVisible();
+          await expect
+            .poll(() => layoutViolations(page), {
+              message: `${size.width} ${theme} ${locale} preset ${task}`,
+            })
+            .toEqual([]);
+        }
       }
     }
   }
@@ -359,7 +420,12 @@ test("LC time charts scrub with pointer capture and keyboard, and playback stops
   });
   await page.mouse.move(point.x, point.y);
   await page.mouse.down();
-  expect((await saved(page)).time).toBeCloseTo(derived(params).period, 8);
+  // Pointer coordinates are quantized to screen pixels.
+  const secondsPerPixel =
+    (duration(params) * 332) / ((await plot.boundingBox())!.width * 269);
+  expect(
+    Math.abs((await saved(page)).time - derived(params).period),
+  ).toBeLessThan(secondsPerPixel);
   await page.mouse.move((await plot.boundingBox())!.x - 30, point.y);
   await page.mouse.up();
   expect((await saved(page)).time).toBe(0);
@@ -513,7 +579,7 @@ test("LC corrupt storage recovers finite defaults without touching other experim
   ).toBe('{"sentinel":true}');
   await expect(page.locator(".readouts")).not.toContainText(/NaN|Infinity/);
 });
-test("LC v2 preserves v1 saves and keeps nested support tabs independent", async ({
+test("LC v2 preserves v1 saves and independent observation and support preferences", async ({
   page,
 }) => {
   const legacy: Snapshot = {
@@ -538,7 +604,8 @@ test("LC v2 preserves v1 saves and keeps nested support tabs independent", async
   await page.getByRole("tab", { name: "电磁学", exact: true }).click();
   await expect(page.locator(".card")).toHaveCount(1);
   await page.getByRole("link", { name: /LC 电磁振荡/ }).click();
-  await expect(page.locator(".spring-analogy")).toBeVisible();
+  await expect(page.locator(".task")).toHaveCount(3);
+  await expect(page.locator(".spring-analogy")).toHaveCount(0);
   expect(await saved(page)).toEqual(legacy);
   await expect(
     page.getByRole("combobox", { name: "慢放速度", exact: true }),
