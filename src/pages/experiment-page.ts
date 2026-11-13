@@ -89,6 +89,7 @@ export class ExperimentPage extends LitElement {
           this.locale === "zh-CN" ? "实验不存在" : "Experiment not found",
         );
       const manifest = await loadManifest(entry.manifest, entry.id);
+      if (controller.signal.aborted) return;
       await offline.ensureExperiment(entry.manifest);
       if (controller.signal.aborted) return;
       const module: unknown = await import(/* @vite-ignore */ manifest.entry);
@@ -119,6 +120,7 @@ export class ExperimentPage extends LitElement {
         instance.dispose();
         return;
       }
+      instance.update({ locale: this.locale, theme: this.theme });
       this.instance = instance;
       this.currentStorage = storage;
       this.pinnedEntry = new URL(manifest.entry, location.href).href;

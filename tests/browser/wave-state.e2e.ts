@@ -174,7 +174,7 @@ test("leaving an active wave stops its clock and removes its toolbar", async ({
     ).instance!.element;
   });
   await page.getByRole("link", { name: "返回控制台", exact: true }).click();
-  await expect(page.getByRole("textbox")).toBeVisible();
+  await expect(page.getByRole("searchbox")).toBeVisible();
   const oldState = () =>
     page.evaluate(() => {
       const wave = (

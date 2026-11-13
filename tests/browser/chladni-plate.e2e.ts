@@ -46,7 +46,7 @@ test("Chladni WebGL, probes, overlays and charts share one physical state", asyn
   await page.emulateMedia({ reducedMotion: "reduce" });
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await page.getByRole("textbox").fill("克拉尼");
+  await page.getByRole("searchbox").fill("克拉尼");
   await page.getByRole("link", { name: /克拉尼图形/ }).click();
   await expect(page.locator(".webgl")).toBeVisible();
   await range(page, "振动周期数", 24.183);

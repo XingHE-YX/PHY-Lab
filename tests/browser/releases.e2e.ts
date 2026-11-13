@@ -6,7 +6,7 @@ import type {
   AppRelease,
   Catalog,
   ExperimentManifest,
-} from "../../src/infra/platform/contract";
+} from "../../src/infra/platform/types";
 import type { ExperimentPage } from "../../src/pages/experiment-page";
 import type { Snapshot } from "../../experiments/spring-oscillator/experiment";
 const dist = join(import.meta.dirname, "../../dist");

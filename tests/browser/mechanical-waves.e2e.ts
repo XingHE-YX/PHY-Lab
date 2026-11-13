@@ -27,7 +27,7 @@ test("wave propagation, point readouts and chart markers share one time", async 
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("textbox").fill("机械波");
+  await page.getByRole("searchbox").fill("机械波");
   await page.getByRole("link", { name: /机械波实验台/ }).click();
   await range(page, "拖动时间游标", 2.6);
   const saved = await snapshot(page),
