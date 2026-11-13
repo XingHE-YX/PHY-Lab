@@ -1,4 +1,5 @@
-import { PhyDialog } from "../ui/components/dialog";
+import "../ui/components/dialog";
+import type { PhyDialog } from "../ui/components/dialog";
 import { dialogWidth } from "../ui/components/dialog-width";
 import type {
   DialogApi,
