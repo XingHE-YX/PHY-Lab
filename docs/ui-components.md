@@ -16,7 +16,7 @@
 | `phy-checkbox`    | 同开关，另有 `indeterminate`                                                                                                                                                                 | `input`、`change`    |
 | `phy-progress`    | `value`、`max`（默认 100）、`label`；只展示确定进度                                                                                                                                          | 无                   |
 | `phy-slider`      | 数值 `value/min/max/step`、`valueAsNumber`、`label`、`valueText`（属性名 `value-text`）                                                                                                      | `input`、`change`    |
-| `phy-tabs`        | `value`、`items`、`label`、`variant="line/segmented"`、`focus()`；以选项值命名的内容 slots                                                                                                   | `change`、`activate` |
+| `phy-tabs`        | `value`、`items`、`label`、`variant="line/segmented"`、`orientation="horizontal/vertical"`、`focus()`；以选项值命名的内容 slots                                                              | `change`、`activate` |
 | `phy-radio-group` | `value`、`options`、`label`、`variant="segmented"`；不设置 variant 时为普通单选框                                                                                                            | `input`、`change`    |
 | `phy-math`        | `source` 为 TeX，`display` 为行间公式模式                                                                                                                                                    | 无                   |
 
@@ -163,3 +163,23 @@ dialog 通过系统 API 使用，见 [v2 参考](protocols/v2.md#dialog)。
 ```
 
 `--tab-height` 控制标签项最小高度，默认 `36px`；`--tab-padding` 默认 `6px 8px`；`--tab-flex` 默认 `1`，设为 `0 0 auto` 后按内容宽度排列。`--tab-gap` 默认在下划线外观为 0、分段外观为 4px。42px 观察标签加上 1px 底部分隔线后，整栏为 43px。
+
+### 竖向标签
+
+```ts
+html`<phy-tabs
+  orientation="vertical"
+  label="设置分类"
+  .value=${page}
+  .items=${[
+    { value: "appearance", label: "外观" },
+    { value: "about", label: "关于" },
+  ]}
+  @activate=${onPageActivate}
+>
+  <section slot="appearance">${appearanceContent}</section>
+  <section slot="about">${aboutContent}</section>
+</phy-tabs>`;
+```
+
+竖向布局使用上下方向键、Home / End，保留 tab 与 tabpanel 的内部 ARIA 关联、禁用项跳过和 change / activate 语义。侧栏宽度可用 `--tab-sidebar-width` 指定，默认 180px。首页分类和设置均使用这一组件。

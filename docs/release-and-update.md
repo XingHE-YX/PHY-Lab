@@ -2,7 +2,7 @@
 
 ## 版本与地址
 
-根 package.json 是平台业务版本的唯一来源，当前为 0.1.0。experiment.json 是各实验版本的唯一来源。apiVersion 同时选择实验配置解析和运行协议，apiRevision 是实验要求的最低修订号（省略为 0），stateVersion 是实验数据格式；它们不随业务版本自动变化。buildId 为内容指纹。
+根 package.json 是平台业务版本的唯一来源，当前为 0.2.0。experiment.json 是各实验版本的唯一来源。apiVersion 同时选择实验配置解析和运行协议，apiRevision 是实验要求的最低修订号（省略为 0），stateVersion 是实验数据格式；它们不随业务版本自动变化。buildId 为内容指纹。
 
 静态入口为 index.html、sw.js、release.json、catalog.json。平台 HTML 快照保存在 app/version/buildId/index.html，JS/CSS 为带 hash 的 assets。实验在 experiments/id/version/buildId 下独立发布，manifest 包含完整资源列表、字节数和 SHA-256。发布后不可覆盖这些地址。
 
@@ -53,3 +53,11 @@
 v2 experiment.json 支持可选 author、repository、license；校验后完整保留到 manifest，并参与 buildId。catalog 保留 apiVersion 和最低 apiRevision，详情由 manifest 提供。修改元信息同样生成新构建地址。
 
 公共控件、dialog、公式及字体属于平台资源清单；实验不重复打包这些平台能力。旧 v1 实验的自带资源继续按原 manifest 缓存。升级协议不会自动改变保存状态的命名空间，三个现有实验分别继续使用状态格式 2、1、1。
+
+## 缓存占用与清除
+
+设置 → 缓存设置显示当前部署范围内资源缓存的近似占用，按 Cache Storage 响应内容字节数统计，不包括浏览器存储开销。只统计和清理当前 PHY Lab base 对应的缓存前缀，其他项目及子路径部署不受影响。
+
+一键清除会移除当前部署的平台、实验与历史资源缓存，保留 LocalStorage 中的设置和实验进度。清理期间不会并行提交新的缓存任务；正在下载时清理请求会被拒绝。清除后显示尚未准备离线资源，联网点击重新准备离线资源，或从关于检查更新，可以重新校验并缓存平台和实验。候选平台在启用前也会重新确认自己的资源完整。
+
+当前页面内存中的实例可以继续运行；离线导航和刷新需要重新准备完整资源。清理历史缓存仍保留当前资源和其他页面正在使用的构建。

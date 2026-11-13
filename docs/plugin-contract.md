@@ -69,7 +69,7 @@ context.toolbar?.setControls(null);
 context.settings?.setControls(null);
 ```
 
-两者接收实验拥有的 HTMLElement，不接收 Lit 模板。顶栏居中布局；设置内容位于平台设置 dialog 的“实验设置”区域。实验负责配置项事件、校验和保存，语言变化时在 `update` 中更新内容。
+两者接收实验拥有的 HTMLElement，不接收 Lit 模板。顶栏居中布局；设置内容位于平台设置 dialog 的实验标签页。v2 可以通过 metadata 的 settings.tabs 和 `setControls(element, tabId)` 注册命名标签，v1 与原来的单参数调用继续使用默认“实验设置”页。实验负责配置项事件、校验和保存，语言变化时在 `update` 中更新内容。
 
 关闭再打开设置会使用同一个 HTMLElement，保留节点身份及监听器。退出、切换实验或加载失败时平台清空区域，旧 context 无法再次挂载。较长的设置内容在 dialog 正文中滚动。
 
@@ -90,3 +90,9 @@ LocalStorage 键为 `phy-lab:experiment:<id>:state:<stateVersion>`。这是命�
 `just build-exp <id>` 编译独立 ESM，复制实验 assets，生成资源大小及 SHA-256；`just catalog` 更新目录。发布地址为 `experiments/id/version/buildId`，不可覆盖。缩略图使用 `assets/thumbnail.svg`。
 
 平台资源和实验资源分别进入发布、离线清单。公共公式组件及其字体归平台所有，v2 实验无需重复打包 KaTeX。原有 v1 实验携带的资源仍按原清单缓存。运行中的实验固定当前构建，离开再进入才启用更新。
+
+## 未发布分支的草案约定
+
+当前 feat/protocol-v2 分支尚未发布，后续草案修改保持协议版本、修订号、实验发布版本和状态版本不变；平台业务版本为 0.2.0。构建指纹仍随实际内容变化。
+
+分类使用一个可选 catagory 对象，细分使用 tags。作者支持单个对象或数组，每个作者当前仅有 name 与可选 url。实验设置标签在 v2 metadata 内声明，不能与系统设置页冲突。
