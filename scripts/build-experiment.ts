@@ -1,7 +1,8 @@
+import { parseExperimentMetadata } from "../src/infra/platform/compatibility";
 import { build } from "vite";
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { ExperimentManifest } from "../src/infra/platform/contract";
+import type { ExperimentManifest } from "../src/infra/platform/types";
 import {
   root,
   dist,
@@ -16,15 +17,10 @@ import {
 export async function buildExperiment(id: string) {
   assertId(id);
   const source = join(root, "experiments", id);
-  const metadata = await json<
-    Omit<ExperimentManifest, "buildId" | "entry" | "thumbnail" | "resources">
-  >(join(source, "experiment.json"));
-  if (
-    metadata.id !== id ||
-    !/^\d+\.\d+\.\d+$/.test(metadata.version) ||
-    metadata.apiVersion !== 1
-  )
-    throw new Error("Invalid experiment metadata");
+  const metadata = parseExperimentMetadata(
+    await json<unknown>(join(source, "experiment.json")),
+  );
+  if (metadata.id !== id) throw new Error("Experiment identity mismatch");
   const stage = join(root, ".build", id);
   await rm(stage, { recursive: true, force: true });
   const previousNodeEnv = process.env.NODE_ENV;

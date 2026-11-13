@@ -1,9 +1,13 @@
+import {
+  parseExperimentManifest,
+  supportsProtocol,
+} from "./infra/platform/compatibility";
 import type {
   AppRelease,
   Catalog,
   ExperimentManifest,
   Resource,
-} from "./infra/platform/contract";
+} from "./infra/platform/types";
 export {};
 declare const __APP_RELEASE__: AppRelease;
 const worker = globalThis as unknown as ServiceWorkerGlobalScope;
@@ -87,15 +91,7 @@ async function cached(url: string) {
 }
 async function manifestAt(url: string) {
   const response = (await cached(scoped(url))) ?? (await request(url)),
-    manifest = (await response.clone().json()) as ExperimentManifest;
-  if (
-    manifest.apiVersion !== 1 ||
-    !manifest.id ||
-    !manifest.buildId ||
-    !Array.isArray(manifest.resources) ||
-    !manifest.resources.some((r) => r.url === manifest.entry)
-  )
-    throw new Error("Incompatible manifest");
+    manifest = parseExperimentManifest(await response.clone().json());
   scoped(manifest.entry);
   return { manifest, response };
 }
@@ -130,7 +126,7 @@ async function syncCatalog() {
       throw new Error("Unsupported catalog");
     const results = await Promise.allSettled(
       catalog.experiments
-        .filter((e) => e.apiVersion === 1)
+        .filter((e) => supportsProtocol(e))
         .map((e) => cacheExperiment(e.manifest)),
     );
     const failed = results.find((result) => result.status === "rejected");
@@ -154,7 +150,7 @@ async function status() {
   const cache = await caches.open(registryCache),
     response = await cache.match(release.base + "catalog.json");
   const catalog = response ? ((await response.json()) as Catalog) : null;
-  const entries = catalog?.experiments.filter((e) => e.apiVersion === 1) ?? [];
+  const entries = catalog?.experiments.filter((e) => supportsProtocol(e)) ?? [];
   const ready = await Promise.all(
     entries.map(async (e) => {
       try {
@@ -229,7 +225,7 @@ async function cleanHistory() {
   ).match(release.base + "catalog.json");
   if (catalogResponse) {
     const catalog = (await catalogResponse.json()) as Catalog;
-    for (const e of catalog.experiments.filter((e) => e.apiVersion === 1)) {
+    for (const e of catalog.experiments.filter((e) => supportsProtocol(e))) {
       const { manifest } = await manifestAt(e.manifest);
       keep.add(expCache(manifest));
     }

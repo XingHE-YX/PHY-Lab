@@ -1,3 +1,4 @@
+import { supportsProtocol } from "../infra/platform/compatibility";
 import { LitElement, html, css } from "lit";
 import type { Catalog, Locale } from "../infra/platform/contract";
 import { messages } from "../infra/locales/messages";
@@ -121,7 +122,7 @@ export class Workbench extends LitElement {
     const t = messages(this.locale),
       query = this.query.trim().toLocaleLowerCase();
     const entries = (this.catalog?.experiments ?? [])
-      .filter((e) => e.apiVersion === 1)
+      .filter((e) => supportsProtocol(e))
       .filter((e) =>
         [
           ...Object.values(e.title),

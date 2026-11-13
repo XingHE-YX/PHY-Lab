@@ -1,9 +1,9 @@
+import type { MountedExperiment } from "../infra/platform/types";
+import { requireProtocol } from "../infra/platform/compatibility";
 import { LitElement, html, css } from "lit";
 import type {
   Catalog,
   Locale,
-  ExperimentInstance,
-  ExperimentModule,
   ExperimentControls,
 } from "../infra/platform/contract";
 import { loadManifest } from "../infra/platform/registry";
@@ -30,8 +30,9 @@ export class ExperimentPage extends LitElement {
   declare error: string;
   declare toolbar: HTMLElement | null;
   declare settingsApi: ExperimentControls | undefined;
-  instance?: ExperimentInstance;
+  instance?: MountedExperiment;
   private controller?: AbortController;
+  dialogApi?: unknown;
   private currentStorage?: ReturnType<typeof experimentStorage>;
   private pinnedEntry?: string;
   static styles = [
@@ -89,12 +90,13 @@ export class ExperimentPage extends LitElement {
         );
       const manifest = await loadManifest(entry.manifest, entry.id);
       await offline.ensureExperiment(entry.manifest);
-      const module = (await import(
-        /* @vite-ignore */ manifest.entry
-      )) as ExperimentModule;
+      if (controller.signal.aborted) return;
+      const module: unknown = await import(/* @vite-ignore */ manifest.entry);
       if (controller.signal.aborted) return;
       const storage = experimentStorage(entry.id, manifest.stateVersion);
-      const instance = await module.mount({
+      const instance = await requireProtocol(manifest).mount(module, {
+        manifest,
+        dialog: this.dialogApi,
         locale: this.locale,
         theme: this.theme,
         buildId: manifest.buildId,
