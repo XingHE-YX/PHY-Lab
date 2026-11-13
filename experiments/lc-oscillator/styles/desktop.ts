@@ -420,7 +420,6 @@ export const styles = css`
     cursor: ew-resize;
   }
   .formula-content {
-    border-top: 1px solid var(--border);
     padding: 12px 13px;
     flex-shrink: 0;
     font-size: 12px;
@@ -437,13 +436,41 @@ export const styles = css`
   .formula-content .katex {
     font-size: 1em;
   }
-  .observation-footer {
-    padding: 8px 13px;
+  .support-area {
     border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .support-tabs button {
+    min-height: 30px;
+    padding: 5px;
+  }
+  .support-note {
+    display: block;
+    margin-top: 8px;
+    line-height: 1.5;
+    font-size: 10px;
+  }
+  .task-content {
+    padding: 10px 12px;
+  }
+  .task-choices {
+    display: grid;
+    gap: 6px;
+  }
+  .task-choices button {
+    text-align: left;
+    padding: 7px 8px;
+    font-size: 11px;
+  }
+  .task-reference,
+  .task-comparison {
+    display: block;
+    margin-top: 8px;
     font-size: 10px;
     color: var(--muted);
-    line-height: 1.5;
-    flex-shrink: 0;
+  }
+  .task-comparison {
+    font-family: var(--mono);
   }
   dialog {
     background: var(--surface);

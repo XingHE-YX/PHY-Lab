@@ -229,6 +229,55 @@ export class LCExperiment extends LitElement {
       .querySelector<HTMLElement>(`#observe-${observation}`)
       ?.focus();
   }
+  private supportKey(e: KeyboardEvent) {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+    e.preventDefault();
+    const support =
+      e.key === "Home"
+        ? "formula"
+        : e.key === "End"
+          ? "tasks"
+          : this.data.support === "formula"
+            ? "tasks"
+            : "formula";
+    this.set({ support });
+    this.renderRoot.querySelector<HTMLElement>(`#support-${support}`)?.focus();
+  }
+  private loadTask(task: Snapshot["task"]) {
+    this.pause();
+    const params = parameters(null);
+    if (task === "voltage") params.voltage *= 2;
+    if (task === "inductance") params.inductance *= 4;
+    this.set({
+      task,
+      params,
+      support: "tasks",
+      closed: task === "current",
+      time: task === "current" ? momentTime(params, 1) : 0,
+      observation: task === "inductance" ? "oscillation" : "energy",
+    });
+  }
+  private taskHint() {
+    const t = texts(this.locale);
+    return this.data.task === "voltage"
+      ? t.taskVoltageHint
+      : this.data.task === "inductance"
+        ? t.taskInductanceHint
+        : t.taskZeroChargeHint;
+  }
+  private tasks() {
+    const t = texts(this.locale),
+      d = derived(this.p),
+      reference = derived(parameters(null));
+    return html`<div class="task-choices">
+        ${(["voltage", "inductance", "current"] as const).map((task, i) => html`<button class=${this.data.task === task ? "selected" : ""} aria-pressed=${this.data.task === task} @click=${() => this.loadTask(task)}>${i + 1}. ${task === "voltage" ? t.taskVoltage : task === "inductance" ? t.taskInductance : t.taskZeroCharge}</button>`)}
+      </div>
+      <small class="task-reference">${t.taskBaseline}</small>
+      <output class="task-comparison" aria-label=${t.taskCompare}>
+        T/Tref = ${format(d.period / reference.period)} ·
+        ${this.data.task === "inductance" ? `Iₘ/Iref = ${format(d.current / reference.current)}` : `E/Eref = ${format(d.energy / reference.energy)}`}
+      </output>`;
+  }
   private energyBar() {
     const t = texts(this.locale),
       s = this.state,
@@ -574,11 +623,26 @@ export class LCExperiment extends LitElement {
             role="tabpanel"
             aria-labelledby=${`observe-${this.data.observation}`}
           >
-            <p class="observation-summary">${this.hint()}</p>
+            <p class="observation-summary">
+              ${this.data.support === "tasks" ? this.taskHint() : this.hint()}
+            </p>
             ${this.plots()}
-            <div class="formula-content">${this.formulas()}</div>
-            <div class="observation-footer">
-              ${this.data.observation === "analogy" ? t.normalized : t.fieldHint}
+            <div class="support-area">
+              <div
+                class="tabs support-tabs"
+                role="tablist"
+                aria-label=${t.support}
+              >
+                ${(["formula", "tasks"] as const).map((support) => html`<button id=${`support-${support}`} role="tab" aria-selected=${support === this.data.support} aria-controls="support-content" tabindex=${support === this.data.support ? 0 : -1} @click=${() => this.set({ support })} @keydown=${this.supportKey}>${t[support]}</button>`)}
+              </div>
+              <div
+                class=${this.data.support === "formula" ? "formula-content" : "task-content"}
+                id="support-content"
+                role="tabpanel"
+                aria-labelledby=${`support-${this.data.support}`}
+              >
+                ${this.data.support === "formula" ? html`${this.formulas()}<small class="support-note">${this.data.observation === "analogy" ? t.normalized : t.fieldHint}</small>` : this.tasks()}
+              </div>
             </div>
           </div>
         </section>

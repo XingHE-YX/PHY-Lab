@@ -196,6 +196,49 @@ test("LC energy ratios and shared-unit curves conserve energy while views preser
     ))
     expect(value).toBe(0);
 });
+test("LC exploration presets use an explicit common reference and actual measured ratios", async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByRole("tab", { name: "探索", exact: true }).click();
+  await page.getByRole("button", { name: /把初始电压加倍/ }).click();
+  const voltage = await saved(page),
+    base = { ...voltage.params, voltage: 6 };
+  expect(voltage.params.voltage).toBe(12);
+  expect(voltage.closed).toBe(false);
+  expect(derived(voltage.params).period).toBe(derived(base).period);
+  expect(derived(voltage.params).energy).toBe(derived(base).energy * 4);
+  await expect(page.locator(".task-comparison")).toContainText("E/Eref = 4.00");
+  await page.getByRole("button", { name: /把电感变为四倍/ }).click();
+  const inductance = await saved(page);
+  expect(inductance.params.voltage).toBe(6);
+  expect(derived(inductance.params).period).toBeCloseTo(
+    derived(base).period * 2,
+    12,
+  );
+  await expect(page.locator(".task-comparison")).toContainText(
+    "Iₘ/Iref = 0.50",
+  );
+  await page.getByRole("button", { name: /电荷为零，电流也为零吗/ }).click();
+  const current = await saved(page),
+    s = at(current.params, current.time);
+  expect(current.time).toBe(momentTime(base, 1));
+  expect(current.closed).toBe(true);
+  expect(s.q).toBeCloseTo(0, 12);
+  expect(s.magnetic).toBeCloseTo(derived(base).energy, 12);
+  await expect(page.locator(".task-reference")).toContainText(
+    "50 mH · 100 μF · 6 V",
+  );
+  await page.getByRole("tab", { name: "探索", exact: true }).focus();
+  await page.keyboard.press("Home");
+  expect((await saved(page)).time).toBe(current.time);
+  await page.keyboard.press("End");
+  await page.reload();
+  await expect(
+    page.getByRole("tab", { name: "探索", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  expect((await saved(page)).task).toBe("current");
+});
 test("LC spring analogy uses normalized charge and opposite current, including reversed polarity and zero energy", async ({
   page,
 }) => {

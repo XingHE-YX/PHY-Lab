@@ -13,6 +13,7 @@ export interface Snapshot {
   rate: number;
   observation: "oscillation" | "energy" | "analogy";
   support: "formula" | "tasks";
+  task: "voltage" | "inductance" | "current";
   layers: { fields: boolean; current: boolean };
 }
 export function normalizeSnapshot(value: unknown): Snapshot {
@@ -37,6 +38,10 @@ export function normalizeSnapshot(value: unknown): Snapshot {
         ? input.observation
         : "oscillation",
     support: input.support === "tasks" ? "tasks" : "formula",
+    task:
+      input.task === "inductance" || input.task === "current"
+        ? input.task
+        : "voltage",
     layers: {
       fields: typeof layers.fields === "boolean" ? layers.fields : true,
       current: typeof layers.current === "boolean" ? layers.current : true,
