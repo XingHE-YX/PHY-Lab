@@ -165,3 +165,58 @@ test("v1 and v2 receive their own contexts without changing storage namespaces",
     storage,
   });
 });
+
+test("v2 supports one category, multiple authors and declared experiment settings", () => {
+  const additions = {
+    catagory: { id: "mechanics", title: { "zh-CN": "力学", en: "Mechanics" } },
+    author: [
+      { name: "yuanzui-cf" },
+      { name: "XingHE-YX", url: "https://example.com" },
+    ],
+    settings: {
+      tabs: [
+        {
+          id: "experiment",
+          title: { "zh-CN": "实验设置", en: "Experiment settings" },
+        },
+      ],
+    },
+  };
+  expect(
+    parseExperimentMetadata({ ...metadata(2), ...additions }),
+  ).toMatchObject(additions);
+  expect(
+    parseExperimentManifest({ ...manifest(2), ...additions }),
+  ).toMatchObject(additions);
+  const legacy = parseExperimentMetadata({ ...metadata(1), ...additions });
+  expect(legacy).not.toHaveProperty("settings");
+  expect(legacy).not.toHaveProperty("catagory");
+  for (const patch of [
+    { author: [] },
+    { author: [{ url: "https://example.com" }] },
+    { catagory: [] },
+    { catagory: "Mechanics" },
+    { catagory: { id: "bad/id", title: { "zh-CN": "力学", en: "Mechanics" } } },
+    {
+      settings: {
+        tabs: [{ id: "appearance", title: { "zh-CN": "其他", en: "Other" } }],
+      },
+    },
+    {
+      settings: {
+        tabs: [{ id: "other", title: { "zh-CN": "关于", en: "Other" } }],
+      },
+    },
+    {
+      settings: {
+        tabs: [
+          { id: "one", title: { "zh-CN": "一", en: "One" } },
+          { id: "one", title: { "zh-CN": "二", en: "Two" } },
+        ],
+      },
+    },
+  ])
+    expect(() =>
+      parseExperimentMetadata({ ...metadata(2), ...patch }),
+    ).toThrow();
+});

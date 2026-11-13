@@ -5,7 +5,7 @@ import type {
 import { baseMetadata, manifestWith } from "../../metadata";
 export interface ExperimentMetadata extends Omit<
   Base,
-  "apiVersion" | "author" | "repository" | "license"
+  "apiVersion" | "author" | "repository" | "license" | "catagory" | "settings"
 > {
   apiVersion: 1;
 }

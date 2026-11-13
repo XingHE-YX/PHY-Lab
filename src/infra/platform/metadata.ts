@@ -30,7 +30,7 @@ export function revision(value: unknown): number {
     throw new Error("Invalid apiRevision");
   return value;
 }
-function localized(value: unknown, field: string): Localized {
+export function localized(value: unknown, field: string): Localized {
   const raw = record(value);
   return { "zh-CN": text(raw["zh-CN"], field), en: text(raw.en, field) };
 }

@@ -15,5 +15,17 @@
     "zh-CN": ["力学", "机械波", "反射", "驻波"],
     "en": ["Mechanics", "Waves", "Reflection", "Standing waves"]
   },
-  "apiRevision": 0
+  "apiRevision": 0,
+  "author": [
+    {
+      "name": "XingHE-YX"
+    }
+  ],
+  "catagory": {
+    "id": "mechanics",
+    "title": {
+      "zh-CN": "力学",
+      "en": "Mechanics"
+    }
+  }
 }

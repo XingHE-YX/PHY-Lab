@@ -15,5 +15,28 @@
     "zh-CN": ["驻波", "薄板", "共振", "克拉尼图形"],
     "en": ["Standing waves", "Plates", "Resonance", "Chladni"]
   },
-  "apiRevision": 0
+  "apiRevision": 0,
+  "author": [
+    {
+      "name": "yuanzui-cf"
+    }
+  ],
+  "catagory": {
+    "id": "mechanics",
+    "title": {
+      "zh-CN": "力学",
+      "en": "Mechanics"
+    }
+  },
+  "settings": {
+    "tabs": [
+      {
+        "id": "experiment",
+        "title": {
+          "zh-CN": "实验设置",
+          "en": "Experiment settings"
+        }
+      }
+    ]
+  }
 }

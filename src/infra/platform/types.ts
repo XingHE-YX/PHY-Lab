@@ -10,6 +10,17 @@ export interface ExperimentAuthor {
   name: string;
   url?: string;
 }
+export interface ExperimentCategory {
+  id: string;
+  title: Localized;
+}
+export interface ExperimentSettingsTab {
+  id: string;
+  title: Localized;
+}
+export interface ExperimentSettingsDefinition {
+  tabs: ExperimentSettingsTab[];
+}
 /** Transport fields shared by the registry, build tools and offline worker. */
 export interface ExperimentMetadata {
   id: string;
@@ -21,7 +32,9 @@ export interface ExperimentMetadata {
   title: Localized;
   description: Localized;
   tags: Record<Locale, string[]>;
-  author?: ExperimentAuthor;
+  author?: ExperimentAuthor | ExperimentAuthor[];
+  catagory?: ExperimentCategory;
+  settings?: ExperimentSettingsDefinition;
   repository?: string;
   license?: string;
 }
@@ -43,6 +56,7 @@ export interface Catalog {
     | "title"
     | "description"
     | "tags"
+    | "catagory"
   > & { thumbnail: string; manifest: string })[];
 }
 export interface AppRelease {

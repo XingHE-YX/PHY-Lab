@@ -27,7 +27,7 @@ export interface ProtocolHost {
     write(value: unknown): void;
   };
   toolbar?: { setControls(element: HTMLElement | null): void };
-  settings?: { setControls(element: HTMLElement | null): void };
+  settings?: { setControls(element: HTMLElement | null, tabId?: string): void };
   dialog?: unknown;
 }
 export interface ProtocolDefinition {

@@ -1,3 +1,4 @@
+import { collectCategories } from "./categories";
 import { parseExperimentManifest } from "./compatibility";
 import type { Catalog, ExperimentManifest } from "./types";
 export const base = import.meta.env.BASE_URL;
@@ -27,6 +28,7 @@ export async function loadCatalog(): Promise<Catalog> {
     ids.add(e.id);
     scopedUrl(e.manifest);
   }
+  collectCategories(catalog.experiments);
   return catalog;
 }
 export async function loadManifest(

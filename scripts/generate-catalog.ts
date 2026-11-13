@@ -1,3 +1,4 @@
+import { collectCategories } from "../src/infra/platform/categories";
 import { parseExperimentManifest } from "../src/infra/platform/compatibility";
 import { join } from "node:path";
 import type { Catalog } from "../src/infra/platform/types";
@@ -19,6 +20,7 @@ export async function generateCatalog() {
       description,
       tags,
       thumbnail,
+      catagory,
     } = manifest;
     experiments.push({
       id,
@@ -29,9 +31,11 @@ export async function generateCatalog() {
       description,
       tags,
       thumbnail,
+      ...(catagory ? { catagory } : {}),
       manifest: pointer.manifest,
     });
   }
+  collectCategories(experiments);
   const catalog: Catalog = {
     schemaVersion: 1,
     revision: hash(JSON.stringify(experiments)).slice(0, 16),
