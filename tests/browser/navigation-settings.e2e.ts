@@ -44,7 +44,7 @@ test.describe("home category navigation", () => {
     await page
       .getByRole("tab", { name: "All experiments", exact: true })
       .click();
-    await expect(page.locator(".card")).toHaveCount(3);
+    await expect(page.locator(".card")).toHaveCount(4);
   });
 });
 
