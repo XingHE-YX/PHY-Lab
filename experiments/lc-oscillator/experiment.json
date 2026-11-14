@@ -9,6 +9,14 @@
     "zh-CN": "闭合回路，让电荷往复，探索电场能与磁场能的转换。",
     "en": "Close the circuit, follow the charge and explore electric–magnetic energy exchange."
   },
+  "author": [
+    {
+      "name": "yuanzui-cf"
+    },
+    {
+      "name": "XingHE-YX"
+    }
+  ],
   "catagory": {
     "id": "electromagnetism",
     "title": { "zh-CN": "电磁学", "en": "Electromagnetism" }
