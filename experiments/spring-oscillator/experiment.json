@@ -5,15 +5,18 @@
   "stateVersion": 2,
   "title": {
     "zh-CN": "弹簧振子",
-    "en": "Spring oscillator"
+    "en": "Spring oscillator",
+    "ja": "ばね振り子"
   },
   "description": {
     "zh-CN": "拉动小球，探索理想振动、阻尼衰减与受迫共振。",
-    "en": "Pull, release, and explore harmonic motion, damping and resonance."
+    "en": "Pull, release, and explore harmonic motion, damping and resonance.",
+    "ja": "おもりを引いて放し、単振動・減衰・強制振動による共振を探究しよう。"
   },
   "tags": {
     "zh-CN": ["力学", "阻尼", "共振", "能量"],
-    "en": ["Mechanics", "Damping", "Resonance", "Energy"]
+    "en": ["Mechanics", "Damping", "Resonance", "Energy"],
+    "ja": ["力学", "減衰", "共振", "エネルギー"]
   },
   "apiRevision": 0,
   "author": [
@@ -28,7 +31,8 @@
     "id": "mechanics",
     "title": {
       "zh-CN": "力学",
-      "en": "Mechanics"
+      "en": "Mechanics",
+      "ja": "力学"
     }
   }
 }

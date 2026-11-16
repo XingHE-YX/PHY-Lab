@@ -47,7 +47,10 @@ import type {
 ```ts
 interface ExperimentInstance {
   element: HTMLElement;
-  update(context: { locale: "zh-CN" | "en"; theme: "light" | "dark" }): void;
+  update(context: {
+    locale: "zh-CN" | "en" | "ja";
+    theme: "light" | "dark";
+  }): void;
   pause(): void;
   snapshot(): unknown;
   dispose(): void;

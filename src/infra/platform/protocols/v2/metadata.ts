@@ -63,6 +63,9 @@ export function parseMetadata(value: unknown): ExperimentMetadata {
       "appearance",
       "cache settings",
       "about",
+      "外観",
+      "キャッシュ設定",
+      "このアプリについて",
     ];
     result.settings = {
       tabs: settings.tabs.map((value) => {

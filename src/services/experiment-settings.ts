@@ -34,7 +34,11 @@ export class ExperimentSettingsStore extends EventTarget {
     if (fallback)
       tabs.push({
         value: "experiment:default",
-        title: { "zh-CN": "实验设置", en: "Experiment settings" },
+        title: {
+          "zh-CN": "实验设置",
+          en: "Experiment settings",
+          ja: "実験設定",
+        },
         element: fallback,
       });
     for (const tab of this.manifest?.settings?.tabs ?? []) {

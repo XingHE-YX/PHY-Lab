@@ -1,3 +1,5 @@
+import { messages } from "../infra/locales/messages";
+import { isLocale } from "../infra/locales/locale";
 import "../ui/components/dialog";
 import type { PhyDialog } from "../ui/components/dialog";
 import { dialogWidth } from "../ui/components/dialog-width";
@@ -36,8 +38,8 @@ function open(options: DialogOptions, signal?: AbortSignal): DialogHandle {
     resolve = done;
   });
   const localize = () => {
-    element.closeLabel =
-      document.documentElement.lang === "zh-CN" ? "关闭" : "Close";
+    const locale = document.documentElement.lang;
+    element.closeLabel = messages(isLocale(locale) ? locale : "en").close;
   };
   const observer = new MutationObserver(localize);
   const finish = (reason: DialogResult["reason"], value?: string) => {

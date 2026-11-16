@@ -33,7 +33,11 @@ export function revision(value: unknown): number {
 }
 export function localized(value: unknown, field: string): Localized {
   const raw = record(value);
-  return { "zh-CN": text(raw["zh-CN"], field), en: text(raw.en, field) };
+  return {
+    "zh-CN": text(raw["zh-CN"], field),
+    en: text(raw.en, field),
+    ...(raw.ja === undefined ? {} : { ja: text(raw.ja, field) }),
+  };
 }
 export function baseMetadata(value: unknown): ExperimentMetadata {
   const raw = record(value);
@@ -68,7 +72,11 @@ export function baseMetadata(value: unknown): ExperimentMetadata {
     stateVersion: raw.stateVersion as number,
     title: localized(raw.title, "title"),
     description: localized(raw.description, "description"),
-    tags: { "zh-CN": list("zh-CN"), en: list("en") },
+    tags: {
+      "zh-CN": list("zh-CN"),
+      en: list("en"),
+      ...(tags.ja === undefined ? {} : { ja: list("ja") }),
+    },
   };
 }
 export function parseThumbnail(value: unknown): ExperimentThumbnail {

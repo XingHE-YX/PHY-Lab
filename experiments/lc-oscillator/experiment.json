@@ -4,10 +4,15 @@
   "apiVersion": 2,
   "apiRevision": 0,
   "stateVersion": 1,
-  "title": { "zh-CN": "LC 电磁振荡", "en": "LC oscillations" },
+  "title": {
+    "zh-CN": "LC 电磁振荡",
+    "en": "LC oscillations",
+    "ja": "LC 電気振動"
+  },
   "description": {
     "zh-CN": "闭合回路，让电荷往复，探索电场能与磁场能的转换。",
-    "en": "Close the circuit, follow the charge and explore electric–magnetic energy exchange."
+    "en": "Close the circuit, follow the charge and explore electric–magnetic energy exchange.",
+    "ja": "回路を閉じて電荷の動きを追い、電場と磁場のエネルギー交換を探究しよう。"
   },
   "author": [
     {
@@ -19,10 +24,15 @@
   ],
   "catagory": {
     "id": "electromagnetism",
-    "title": { "zh-CN": "电磁学", "en": "Electromagnetism" }
+    "title": {
+      "zh-CN": "电磁学",
+      "en": "Electromagnetism",
+      "ja": "電磁気学"
+    }
   },
   "tags": {
     "zh-CN": ["电磁学", "LC 回路", "振荡", "能量"],
-    "en": ["Electromagnetism", "LC circuit", "Oscillations", "Energy"]
+    "en": ["Electromagnetism", "LC circuit", "Oscillations", "Energy"],
+    "ja": ["電磁気学", "LC 回路", "振動", "エネルギー"]
   }
 }

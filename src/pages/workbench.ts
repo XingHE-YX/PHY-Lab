@@ -1,3 +1,4 @@
+import { localize } from "../infra/locales/locale";
 import { thumbnailForTheme } from "../infra/platform/thumbnails";
 import type { Theme } from "../infra/platform/types";
 import { collectCategories } from "../infra/platform/categories";
@@ -156,7 +157,7 @@ export class Workbench extends LitElement {
       { value: "all", label: t.all },
       ...categories.map((category) => ({
         value: "category:" + category.id,
-        label: category.title[this.locale],
+        label: localize(category.title, this.locale),
       })),
       ...(supported.some((e) => !e.catagory)
         ? [{ value: "uncategorized", label: t.uncategorized }]
@@ -222,10 +223,12 @@ export class Workbench extends LitElement {
                     alt=""
                   />
                   <div class="body">
-                    <h3>${e.title[this.locale]}</h3>
-                    <p class="description">${e.description[this.locale]}</p>
+                    <h3>${localize(e.title, this.locale)}</h3>
+                    <p class="description">
+                      ${localize(e.description, this.locale)}
+                    </p>
                     <div class="tags">
-                      ${e.tags[this.locale].map((tag) => html`<span class="tag">${tag}</span>`)}
+                      ${localize(e.tags, this.locale).map((tag) => html`<span class="tag">${tag}</span>`)}
                     </div>
                     <div class="open">${t.start}${icon("arrow")}</div>
                   </div></phy-box

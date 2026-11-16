@@ -1,3 +1,4 @@
+import { locales } from "../../infra/locales/locale";
 import { ExperimentSettingsStore } from "../../services/experiment-settings";
 import { SettingsPanel } from "./settings-panel";
 import { brand, brandStyles } from "../components/brand";
@@ -330,12 +331,8 @@ export class App extends LitElement {
       id = this.route.match(/^#\/experiments\/([a-z][a-z0-9-]*)$/)?.[1];
     return html`<div class="viewport-warning">
         ${brand()}
-        <h1>
-          ${s.locale === "zh-CN" ? "请使用桌面大小的窗口" : "A desktop-sized window is required"}
-        </h1>
-        <p>
-          ${s.locale === "zh-CN" ? "PHY Lab 的实验台需要至少 1280 px 的窗口宽度。" : "PHY Lab requires a window width of at least 1280 px."}
-        </p>
+        <h1>${t.desktopRequired}</h1>
+        <p>${t.desktopHint}</p>
       </div>
       <header class="toolbar">
         <div class="left">
@@ -403,9 +400,9 @@ export class App extends LitElement {
             class="icon language"
             aria-label=${t.language}
             title=${t.language}
-            @click=${() => settings.set({ locale: s.locale === "zh-CN" ? "en" : "zh-CN" })}
+            @click=${() => settings.set({ locale: locales[(locales.indexOf(s.locale) + 1) % locales.length] })}
           >
-            ${s.locale === "zh-CN" ? "EN" : "中"}</button
+            ${s.locale === "zh-CN" ? "EN" : s.locale === "en" ? "日" : "中"}</button
           ><button
             class="icon"
             aria-label=${t.theme}

@@ -191,4 +191,104 @@ const en: typeof zh = {
   zeroSignal: "The current signal is zero",
   driveZero: "No driving force; response phase is undefined.",
 };
-export const labTexts = (locale: Locale) => (locale === "zh-CN" ? zh : en);
+const ja: typeof zh = {
+  physicalModel: "物理モデル",
+  ideal: "単振動",
+  damped: "減衰振動",
+  driven: "強制振動",
+  structure: "構造",
+  initial: "初期条件",
+  drive: "駆動",
+  parameterGroup: "パラメーターの分類",
+  zeta: "減衰比",
+  damping: "減衰係数",
+  x0: "初期変位",
+  v0: "初期速度",
+  force: "駆動力の振幅",
+  ratio: "振動数比",
+  natural: "固有角振動数",
+  naturalPeriod: "固有周期",
+  drivingFrequency: "駆動角振動数",
+  shortUnder: "不足減衰",
+  shortOver: "過減衰",
+  under: "不足減衰",
+  critical: "臨界減衰",
+  over: "過減衰",
+  undamped: "無減衰",
+  preset: "減衰プリセット",
+  resonance: "共振",
+  amplitudeResponse: "振幅",
+  phaseResponse: "位相",
+  responseType: "応答グラフ",
+  sweepFrequency: "応答の振動数比",
+  steadyAmplitude: "定常振幅",
+  phaseLag: "変位の位相遅れ",
+  peakFrequency: "振幅最大の振動数比",
+  noPeak: "非ゼロ振動数のピークなし",
+  noSteady: "有限の定常状態なし",
+  noPhase: "位相は未定義",
+  responseHint:
+    "曲線上の点をドラッグすると駆動振動数が変わり、初期状態から再開します。",
+  transient:
+    "現在の運動は過渡成分を含みます。応答グラフは定常状態のみを示します。",
+  resonanceHint:
+    "無減衰で厳密に共振すると振幅は増大し続け、有限の定常状態はありません。",
+  undampedResponse:
+    "無減衰では自由振動が残ります。応答グラフは周期的な特解を示し、運動全体ではありません。",
+  dampingModel: "水平な線形ばね · 粘性減衰 · 外力なし",
+  drivenModel: "水平な線形ばね · 粘性減衰 · 正弦波外力",
+  phasorOnly: "回転ベクトルは理想的な単振動でのみ利用できます",
+  displacementRange: "変位の範囲",
+  arrows: "ベクトル表示",
+  mechanical: "力学的エネルギー",
+  dissipated: "累積散逸",
+  work: "外力の仕事",
+  balance: "エネルギー収支",
+  split: "現在の力学的エネルギーの内訳",
+  dampingExplain:
+    "力学的エネルギーは散逸します。減衰が大きいほど早く戻るとは限らず、臨界減衰が境界になります。",
+  drivenExplain:
+    "外力がエネルギーを供給し、減衰が散逸させます。加速度はばね力・減衰力・駆動力の合力で決まります。",
+  motionExplain:
+    "変位は共通の時刻に対応します。破線の包絡線は不足減衰の自由振動の減衰範囲のみを示します。",
+  changesExplain:
+    "端点では速度がゼロです。減衰や駆動がある場合、加速度は合力で判断します。",
+  energyExplain:
+    "力学的エネルギー + 累積散逸 = 初期力学的エネルギー + 外力の仕事。",
+  noMoment:
+    "この先 12 固有周期以内に該当する瞬間がありません。現在のモデルではその状態を通らない可能性があります。",
+  momentHint: "端点・ゼロ交差・等エネルギーの瞬間は実際の運動から求めます。",
+  springForce: "ばね力",
+  dampingForce: "減衰力",
+  drivingForce: "駆動力",
+  forces: "力",
+  velocityValue: "速度",
+  accelerationValue: "加速度",
+  equations: "数式",
+  explore: "探究課題",
+  help: "モデルと導出",
+  close: "説明を閉じる",
+  helpIntro:
+    "初期条件と駆動位相の時刻は t = 0 から始まります。おもりは引いて静止状態から放します。パラメーターの変更で実験が再開し、破線に前回の曲線が残ります。",
+  helpDamping:
+    "ζ < 1 は不足減衰、ζ = 1 は臨界減衰、ζ > 1 は過減衰です。臨界減衰・過減衰は通常、繰り返す周期を持ちません。固有周期は時間の基準です。",
+  helpDriven:
+    "応答グラフは長時間後の定常状態を表し、開始直後の過渡成分を含みません。0 < ζ < 1/√2 では変位振幅のピークは固有振動数より低くなります。無減衰の厳密な共振には有限の定常状態がありません。",
+  dampingTasks:
+    "三つの減衰プリセットを比較し、振動せず最も早く戻る条件を探そう。おもりを左へ引き、減衰力が常に速度と逆向きか確認しよう。",
+  drivenTasks:
+    "力の振幅を固定して振動数比を変え、振幅のピークを探そう。減衰を増やして振幅と位相遅れを比較しよう。減衰ゼロ・振動数比 1 で共振による成長を観察しよう。",
+  selectModel: "減衰振動または強制振動を選ぶと、減衰と共振を探究できます。",
+  window: "2 固有周期 · 基準時間範囲",
+  zeroDrive: "振動数ゼロでは駆動力は一定",
+  crossZero: "x=0 を通過",
+  naturalLength: "ばねの自然長 x=0",
+  equilibriumForce:
+    "x = 0 ではばね力だけがゼロになり、合力はゼロとは限りません。",
+  finiteScene: "縮尺は表示範囲に対応し、値は切り捨てません",
+  previous: "前回の曲線",
+  zeroSignal: "現在の信号はゼロです",
+  driveZero: "駆動力がゼロのため、応答位相は未定義です。",
+};
+export const labTexts = (locale: Locale) =>
+  locale === "ja" ? ja : locale === "zh-CN" ? zh : en;

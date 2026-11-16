@@ -81,10 +81,7 @@ export class ExperimentPage extends LitElement {
       const entry = this.catalog?.experiments.find(
         (e) => e.id === this.experimentId,
       );
-      if (!entry)
-        throw new Error(
-          this.locale === "zh-CN" ? "实验不存在" : "Experiment not found",
-        );
+      if (!entry) throw new Error(messages(this.locale).experimentNotFound);
       const manifest = await loadManifest(entry.manifest, entry.id);
       if (controller.signal.aborted) return;
       await offline.ensureExperiment(entry.manifest);

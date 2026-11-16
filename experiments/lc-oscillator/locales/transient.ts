@@ -79,4 +79,46 @@ export const transientMessages = {
     helpTransient:
       "Opening the switch immediately preserves its initial charge and current, then calculates contact capacitance charging, a breakdown clamp and effective damping loss. The clamp branch has a fixed 20 Ω dynamic resistance. This is not an air or plasma simulation; peaks depend on the model parameters. Records play over about four seconds with a variable slowdown; axes always show physical microseconds. Reclosing finishes the replay and starts from the remaining capacitor state; the contact-capacitance closing impulse is outside this model.",
   },
+  ja: {
+    openSwitch: "スイッチを開く",
+    disconnected: "開放中",
+    transientTitle: "開放時の過渡現象",
+    transientTab: "過渡現象",
+    transientApprox: "非理想スイッチ · 近似",
+    transientPlot: "開放時の過渡応答",
+    voltage: "電圧",
+    current: "電流",
+    transientEnergy: "エネルギー",
+    switchVoltage: "スイッチ電圧 Uₛ",
+    peakSwitch: "スイッチの最大電圧",
+    settlingTime: "整定時間",
+    dissipatedEnergy: "累積散逸エネルギー",
+    energyBalance: "エネルギー誤差",
+    lossShort: "散逸",
+    transientReplay: "過渡現象を再生",
+    pauseReplay: "再生を一時停止",
+    resumeReplay: "再生を再開",
+    impulseZoom: "衝撃を拡大",
+    fullTransient: "全過程",
+    transientZoomLabel: "過渡現象の表示範囲",
+    transientSlow: "過渡現象のスロー再生 · 可変速度",
+    transientParameters: "モデルパラメーター",
+    switchCapacitance: "接点容量 Cₚ",
+    breakdownVoltage: "絶縁破壊電圧 Uᵦ",
+    transientResistance: "過渡減衰 Rₜ",
+    parameterGroup: "パラメーターの分類",
+    circuitGroup: "回路",
+    switchGroup: "スイッチ",
+    switchParameterNote: "次回の開放に適用。既存の記録は変わりません。",
+    residualInitial:
+      "残留電荷と電流を新しい初期状態にします。再充電で設定電圧に戻せます。",
+    transientUnavailable:
+      "回路は開いています。過渡記録を見るか、スイッチを閉じて振動を再開してください。",
+    transientBalanceHint:
+      "コンデンサー・磁場・接点容量・累積散逸を同じエネルギー収支に含めます。",
+    transientTimeHint:
+      "残留振動エネルギーが初期値の 10⁻¹⁰ 未満になる時刻を整定時間とします。",
+    helpTransient:
+      "スイッチを開くと、その瞬間の電荷と電流を初期値として接点容量の充電、絶縁破壊による電圧制限、等価減衰による散逸を計算します。制限分岐の動的抵抗は 20 Ω です。空気やプラズマのシミュレーションではなく、ピーク値はモデルパラメーターに依存します。記録は約 4 秒の可変速度スロー再生で示し、横軸は常に実際の μs です。再び閉じると再生が終了し、残留状態から始まります。閉じる際の接点容量の放電衝撃は扱いません。",
+  },
 };

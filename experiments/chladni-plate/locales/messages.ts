@@ -239,4 +239,129 @@ const en: Texts = {
   helpLimits:
     "Shear deformation, rotary inertia, nonlinearity, large deflection and real clamp contact are omitted. Shapes and frequencies are low-order numerical approximations for the stated support. Bending is exaggerated relative to the current peak; readouts retain physical units. No network or additional rendering framework is required.",
 };
-export const texts = (locale: string): Texts => (locale === "en" ? en : zh);
+const ja: Texts = {
+  title: "クラドニ図形",
+  subtitle: "2 次元の定常波 · 砂で音を描く",
+  assumptions: "アルミ薄板 · 自由端 · 中央固定の近似",
+  parameters: "実験パラメーター",
+  drive: "駆動",
+  plate: "薄板・砂",
+  parameterGroup: "パラメーターの分類",
+  frequency: "駆動振動数",
+  force: "駆動力の振幅",
+  damping: "減衰比",
+  length: "板の一辺",
+  thickness: "板の厚さ",
+  count: "砂粒の数",
+  position: "加振点 S",
+  probe: "測定点 P",
+  moveDrive: "加振点を移動",
+  moveProbe: "測定点を移動",
+  target: "板面の操作対象",
+  coupling: "S をドラッグして加振位置を変更。矢印キーで微調整できます。",
+  restartHint: "物理パラメーターの変更で砂をまき直し、最初から始めます。",
+  sprinkle: "砂をまき直す",
+  clear: "砂を取り除く",
+  help: "モデルの説明",
+  close: "説明を閉じる",
+  play: "開始",
+  pause: "一時停止",
+  restart: "始点に戻る",
+  mute: "ミュート",
+  audioHint:
+    "再生中に発音します。音高は駆動振動数、音量は板の振動の強さに対応します。スロー再生でも音高は変わりません。",
+  audioUnavailable:
+    "このブラウザーでは音を再生できません。他の実験操作は利用できます。",
+  speed: "観察速度",
+  playing: "実行中",
+  paused: "一時停止中",
+  sand: "砂の模様",
+  mode: "振動モード",
+  resonance: "共振",
+  observation: "観察モード",
+  presets: "共振モードのプリセット",
+  preset: "モード",
+  surface: "振動板",
+  top: "真上",
+  tilted: "斜め",
+  camera: "視点",
+  heat: "振幅分布",
+  nodes: "低振幅の線",
+  layers: "補助レイヤー",
+  sceneHint:
+    "板面をクリック、またはマーカーをドラッグ。P / S は矢印キーでも操作できます。",
+  canvas: "振動する薄板と砂粒。加振点・測定点のボタンで操作します",
+  driveHandle: "加振点 S を移動",
+  probeHandle: "測定点 P を移動",
+  clamp: "中央の支持部",
+  xAxis: "x",
+  yAxis: "y",
+  phaseSlow: "位相のスロー表示",
+  sandApprox: "砂粒の移動は学習用の近似",
+  flatFallback: "基本の平面描画",
+  gpu: "WebGL2",
+  displacement: "測定点の変位",
+  velocity: "測定点の速度",
+  acceleration: "測定点の加速度",
+  timeline: "振動の周期数",
+  cycles: "周期",
+  physicalTime: "物理時間",
+  probeHistory: "測定点の 2 周期",
+  metric: "グラフの物理量",
+  probeX: "測定点の x 座標",
+  probeY: "測定点の y 座標",
+  amplitude: "測定点の振幅",
+  peak: "板面の最大振幅",
+  settled: "低振幅領域の砂粒",
+  remaining: "板上の砂粒",
+  dominant: "支配的なモード",
+  period: "駆動周期",
+  sandHint:
+    "砂は振動の強い場所から離れ、低振幅の領域に集まります。再生し、一時停止や巻き戻しで観察しよう。",
+  modeHint:
+    "青は定常振幅を示します。斜めの表示では瞬間の曲げ変形を拡大します。膜の振動モードではありません。",
+  resonanceHint:
+    "グラフの振動数カーソルを動かすか、モードを選ぼう。加振点が節に近いと、そのモードは励起しにくくなります。",
+  responseAxis: "駆動振動数 / Hz",
+  responseValue: "空間 RMS 振幅 / μm",
+  chooseFrequency: "駆動振動数を選択",
+  zero: "駆動力ゼロ：板と砂粒は静止します。",
+  formulaSand:
+    "砂が描くのは低振幅領域であり、一瞬だけ変位がゼロになる場所ではありません。",
+  formulaMode:
+    "外縁は自由端。中央固定を 9 点で近似し、最初の 24 の曲げモードを使います。",
+  formulaResonance:
+    "励起可能な固有振動数に近づくと定常応答が強まり、減衰が大きいほどピークは低下します。",
+  energy: "モードのエネルギー",
+  kinetic: "運動",
+  potential: "曲げ弾性",
+  power: "平均入力・散逸パワー",
+  steady: "定常駆動",
+  shapeScale: "変形は拡大表示",
+  noDeform: "変形なし",
+  warning:
+    "振幅が微小たわみ近似の推奨範囲を超えています。駆動力を小さくしてください。",
+  truncated:
+    "曲線は計算対象の帯域のみです。高次モードはすべて含まれていません。",
+  task1: "加振点を変えると、共振ピークの高さは？",
+  task2: "減衰を増やすと、ピークと砂模様は？",
+  task3: "板厚を変えると、固有振動数は？",
+  helpIntro:
+    "金属薄板の曲げ定常波を扱います。実際のクラドニ実験では砂粒が振動の強い領域を離れ、節付近の線を描きます。元の写真の材質・寸法・固定条件は特定できないため、本モデルは現象を再現し、元の装置への校正は行いません。",
+  helpModel:
+    "Kirchhoff–Love の薄板理論を用い、外縁を自由端とします。中央は一辺の 10% の範囲に置いた 3×3 の固定点で近似します。18 次の Legendre 試行関数による Rayleigh–Ritz 法で最初の 24 モードを求めます。次数を 16 から 18 に上げた際の振動数変化は 3% 未満ですが、実装置に対する誤差の上限ではありません。",
+  helpSteady:
+    "周期的な点加振力とモードごとの粘性減衰による定常応答を示し、始動時の過渡現象は含みません。プリセットは駆動振動数のみを設定し、形状は保持した全モードの振幅と位相の重ね合わせです。異なる位相の複数モードでは厳密な節線が存在しない場合があるため、補助表示は低振幅領域を示します。",
+  helpTime:
+    "数値・曲線・変形・砂粒は共通の周期数 N を使い、物理時間は t=N/f です。通常再生は 1 秒で 4 周期進み、0.5× / 0.25× ではさらにゆっくり位相を観察できます。砂の移動は無次元の学習用規則によるため、動画の長さから実際の砂の集積時間は推定できません。",
+  helpSand:
+    "砂粒は振幅の二乗が減る向きに移動し、振動に応じたシード付きの微小な乱れを受けます。厳密な接触・跳躍・粒子間衝突・音響放射は計算しません。板の縁を越えた砂は離脱し、まき直しで補充できます。固定時間刻みと保存したシードにより、時刻の巻き戻しと状態復元を再現できます。",
+  helpAudio:
+    "再生中は駆動振動数と同じ正弦波の音を生成し、音量で板面の RMS 速度の強さを表します。スロー再生でも音高は変わりません。装置の録音や厳密な音響放射計算ではありません。右上の設定のミュートは音のみを変更し、保存されます。一時停止・巻き戻し・物理条件の変更・ページ離脱で発音が止まります。",
+  helpInteraction:
+    "S または P をドラッグするか、マーカーにフォーカスして矢印キーで移動します。Shift で移動幅が大きくなり、Home で中央に戻ります。左側で振動数・力・減衰・辺長・板厚を変更できます。物理条件や加振位置の変更では一時停止して砂をまき直します。レイヤー・言語・観察表示の変更は時刻と条件を保ちます。実験を離れるかページを非表示にすると一時停止して保存します。",
+  helpLimits:
+    "せん断変形・回転慣性・非線形性・大たわみ・実際の固定具の接触を無視します。振動数と形状は指定の支持条件での低次の数値近似です。変形は現在の最大値に応じて拡大表示し、数値は物理単位を保ちます。実行時にネット接続や追加の描画フレームワークは不要です。",
+};
+export const texts = (locale: string): Texts =>
+  locale === "ja" ? ja : locale === "en" ? en : zh;

@@ -5,15 +5,18 @@
   "stateVersion": 1,
   "title": {
     "zh-CN": "机械波实验台",
-    "en": "Mechanical waves"
+    "en": "Mechanical waves",
+    "ja": "波動実験台"
   },
   "description": {
     "zh-CN": "发出波包，跟踪质点，探索反射、叠加与驻波。",
-    "en": "Send a pulse, track a particle, and explore reflection and standing waves."
+    "en": "Send a pulse, track a particle, and explore reflection and standing waves.",
+    "ja": "パルスを送り、媒質の点を追跡して、反射・重ね合わせ・定常波を探究しよう。"
   },
   "tags": {
     "zh-CN": ["力学", "机械波", "反射", "驻波"],
-    "en": ["Mechanics", "Waves", "Reflection", "Standing waves"]
+    "en": ["Mechanics", "Waves", "Reflection", "Standing waves"],
+    "ja": ["力学", "波動", "反射", "定常波"]
   },
   "apiRevision": 0,
   "author": [
@@ -25,7 +28,8 @@
     "id": "mechanics",
     "title": {
       "zh-CN": "力学",
-      "en": "Mechanics"
+      "en": "Mechanics",
+      "ja": "力学"
     }
   }
 }

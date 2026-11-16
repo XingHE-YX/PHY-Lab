@@ -1,3 +1,4 @@
+import { localize } from "../../infra/locales/locale";
 import { LitElement, css, html } from "lit";
 import { baseStyles, buttonStyles } from "../styles/shared";
 import { brand, brandStyles } from "../components/brand";
@@ -210,6 +211,7 @@ export class SettingsPanel extends LitElement {
           .options=${[
             { value: "zh-CN", label: "简体中文" },
             { value: "en", label: "English" },
+            { value: "ja", label: "日本語" },
           ]}
           @change=${(e: Event) => settings.set({ locale: (e.currentTarget as SelectElement).value as typeof s.locale })}
         ></phy-select>
@@ -340,21 +342,21 @@ export class SettingsPanel extends LitElement {
               <h3>${t.currentExperiment}</h3>
               <dl>
                 <dt>${t.experimentName}</dt>
-                <dd>${experiment.title[locale]}</dd>
+                <dd>${localize(experiment.title, locale)}</dd>
                 <dt>${t.experimentVersion}</dt>
                 <dd>${experiment.version}</dd>
                 ${
                   authors.length
                     ? html`<dt>${t.authors}</dt>
                         <dd>
-                          ${authors.map((author, index) => html`${index ? (locale === "zh-CN" ? "、" : ", ") : ""}${author.url ? html`<a href=${author.url} target="_blank" rel="noopener noreferrer">${author.name}</a>` : author.name}`)}
+                          ${authors.map((author, index) => html`${index ? (locale === "en" ? ", " : "、") : ""}${author.url ? html`<a href=${author.url} target="_blank" rel="noopener noreferrer">${author.name}</a>` : author.name}`)}
                         </dd>`
                     : ""
                 }
                 ${
                   experiment.catagory
                     ? html`<dt>${t.category}</dt>
-                        <dd>${experiment.catagory.title[locale]}</dd>`
+                        <dd>${localize(experiment.catagory.title, locale)}</dd>`
                     : ""
                 }
                 ${
@@ -409,7 +411,10 @@ export class SettingsPanel extends LitElement {
     const items = [
       { value: "appearance", label: t.appearance },
       { value: "cache", label: t.cacheSettings },
-      ...tabs.map((tab) => ({ value: tab.value, label: tab.title[locale] })),
+      ...tabs.map((tab) => ({
+        value: tab.value,
+        label: localize(tab.title, locale),
+      })),
       { value: "about", label: t.about },
     ];
     return html`<phy-tabs
@@ -430,9 +435,9 @@ export class SettingsPanel extends LitElement {
             class="custom-panel"
             slot=${tab.value}
             role="region"
-            aria-label=${tab.title[locale]}
+            aria-label=${localize(tab.title, locale)}
           >
-            <h2>${tab.title[locale]}</h2>
+            <h2>${localize(tab.title, locale)}</h2>
             ${tab.element}
           </section>`,
       )}${this.about()}

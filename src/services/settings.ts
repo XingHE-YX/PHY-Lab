@@ -1,4 +1,5 @@
 import type { Locale } from "../infra/platform/contract";
+import { isLocale } from "../infra/locales/locale";
 import { readStored, writeStored } from "./storage";
 export interface Settings {
   schemaVersion: 1;
@@ -17,12 +18,7 @@ function validate(value: unknown): Settings {
   const raw = value as Partial<Settings>;
   return {
     ...defaults,
-    locale:
-      raw.locale === "en"
-        ? "en"
-        : raw.locale === "zh-CN"
-          ? "zh-CN"
-          : defaults.locale,
+    locale: isLocale(raw.locale) ? raw.locale : defaults.locale,
     theme: ["light", "dark", "system"].includes(raw.theme ?? "")
       ? raw.theme!
       : defaults.theme,

@@ -1,6 +1,8 @@
-export type Locale = "zh-CN" | "en";
+export type Locale = "zh-CN" | "en" | "ja";
 export type Theme = "light" | "dark";
-export type Localized = Record<Locale, string>;
+/** Japanese is optional for compatibility with existing experiment releases. */
+export type LocalizedValue<T> = Record<"zh-CN" | "en", T> & { ja?: T };
+export type Localized = LocalizedValue<string>;
 export type ExperimentThumbnail = string | { light: string; dark: string };
 export interface Resource {
   url: string;
@@ -32,7 +34,7 @@ export interface ExperimentMetadata {
   stateVersion: number;
   title: Localized;
   description: Localized;
-  tags: Record<Locale, string[]>;
+  tags: LocalizedValue<string[]>;
   thumbnail?: ExperimentThumbnail;
   author?: ExperimentAuthor | ExperimentAuthor[];
   catagory?: ExperimentCategory;

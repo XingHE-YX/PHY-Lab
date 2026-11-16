@@ -953,7 +953,6 @@ export class SpringExperiment extends LitElement {
   }
   equations() {
     const t = texts(this.locale),
-      zh = this.locale === "zh-CN",
       p = this.effectiveParameters,
       s = this.state;
     if (p.model !== "ideal") return this.dynamicEquations();
@@ -1064,8 +1063,7 @@ export class SpringExperiment extends LitElement {
     this.persist();
   }
   tasks() {
-    const t = texts(this.locale),
-      zh = this.locale === "zh-CN";
+    const t = texts(this.locale);
     const state = this.state;
     return html`<div class="task-grid">
       ${([0, 1, 2] as const).map((index) => {
@@ -1078,27 +1076,15 @@ export class SpringExperiment extends LitElement {
           (index === 0 && this.params.m > 1.25);
         const status = active
           ? index === 0
-            ? zh
-              ? `目标 T = ${format(target)} s · 当前 ${format(state.period)} s`
-              : `Target T = ${format(target)} s · Current ${format(state.period)} s`
+            ? `${t.targetPeriod} = ${format(target)} s · ${t.currentPeriod} ${format(state.period)} s`
             : index === 1
-              ? zh
-                ? `目标各占 50% · 当前动能 ${state.total > 0 ? format((state.kinetic / state.total) * 100, 0) : "0"}%`
-                : `Target 50% each · Current kinetic ${state.total > 0 ? format((state.kinetic / state.total) * 100, 0) : "0"}%`
-              : zh
-                ? `初始位移 ${format(stateAt(this.params, 0).x, 3)} m · 请在 t = 0 调整初相位`
-                : `Initial position ${format(stateAt(this.params, 0).x, 3)} m · Adjust phase at t = 0`
+              ? `${t.targetHalf} ${state.total > 0 ? format((state.kinetic / state.total) * 100, 0) : "0"}%`
+              : `${t.initialPosition} ${format(stateAt(this.params, 0).x, 3)} m · ${t.adjustInitialPhase}`
           : this.params.A === 0
-            ? zh
-              ? "先设置非零振幅"
-              : "Set a nonzero amplitude first"
+            ? t.nonzeroFirst
             : index === 0 && this.params.m > 1.25
-              ? zh
-                ? "先将质量调至不超过 1.25 kg，再记录基准"
-                : "Set mass to at most 1.25 kg before recording the baseline"
-              : zh
-                ? "开始后记录当前参数作为基准"
-                : "Starting records the current parameters as a baseline";
+              ? t.massFirst
+              : t.baselineHint;
         const requirements = [
           t.challenge1Hint,
           t.challenge2Hint,
@@ -1110,13 +1096,13 @@ export class SpringExperiment extends LitElement {
           class=${"task" + (this.completedTasks[index] ? " completed" : active ? " active-task" : "")}
         >
           <h3 class="task-title">
-            ${this.completedTasks[index] ? html`<span class="task-check">✓</span> ${zh ? "探索完成" : "Completed"}` : titles[index]}
+            ${this.completedTasks[index] ? html`<span class="task-check">✓</span> ${t.completed}` : titles[index]}
           </h3>
           <p class="task-description">
             ${this.completedTasks[index] ? answers[index] : requirements[index]}
           </p>
           <div class="task-status">
-            ${this.completedTasks[index] ? (zh ? "已达到目标并验证" : "Target reached and verified") : status}
+            ${this.completedTasks[index] ? t.verified : status}
           </div>
           <div class="task-actions">
             <button
@@ -1132,23 +1118,23 @@ export class SpringExperiment extends LitElement {
                 } else this.startChallenge(index);
               }}
             >
-              ${this.completedTasks[index] ? (zh ? "重新探索" : "Try again") : active ? (zh ? "重设基准" : "Reset baseline") : zh ? "开始探索" : "Start challenge"}
+              ${this.completedTasks[index] ? t.tryAgain : active ? t.resetBaseline : t.startChallenge}
             </button>
-            ${active ? html`<span>${zh ? "进行中" : "In progress"}</span>` : ""}
+            ${active ? html`<span>${t.inProgress}</span>` : ""}
           </div>
         </article>`;
       })}
     </div>`;
   }
   supportPanel() {
-    const zh = this.locale === "zh-CN";
+    const t = texts(this.locale);
     return html`<phy-tabs
       class="panel support support-tabs"
       variant="segmented"
-      label=${zh ? "公式与探索" : "Equations and exploration"}
+      label=${t.support}
       .value=${this.supportTab}
       .items=${[
-        { value: "formula", label: zh ? "公式" : "Equations" },
+        { value: "formula", label: labTexts(this.locale).equations },
         { value: "tasks", label: texts(this.locale).tasks },
       ]}
       @change=${(event: Event) => {
