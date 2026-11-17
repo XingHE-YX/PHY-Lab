@@ -7,9 +7,11 @@ test.describe("home category navigation", () => {
   test("home categories and search filter together using vertical tabs", async ({
     page,
   }) => {
+    let experimentCount = 0;
     await page.route("**/catalog.json", async (route) => {
       const response = await route.fetch();
       const catalog = await response.json();
+      experimentCount = catalog.experiments.length;
       for (const entry of catalog.experiments)
         entry.catagory =
           entry.id === "mechanical-waves"
@@ -44,7 +46,7 @@ test.describe("home category navigation", () => {
     await page
       .getByRole("tab", { name: "All experiments", exact: true })
       .click();
-    await expect(page.locator(".card")).toHaveCount(4);
+    await expect(page.locator(".card")).toHaveCount(experimentCount);
   });
 });
 

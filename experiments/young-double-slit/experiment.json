@@ -1,0 +1,27 @@
+{
+  "id": "young-double-slit",
+  "version": "0.1.0",
+  "apiVersion": 2,
+  "apiRevision": 0,
+  "stateVersion": 1,
+  "title": {
+    "zh-CN": "杨氏双缝干涉",
+    "en": "Young’s double-slit interference"
+  },
+  "description": {
+    "zh-CN": "移动屏上探针，联动光程差、相位与条纹，探索光的相干叠加。",
+    "en": "Move a screen probe, connect optical paths, phase and fringes, and explore coherent light."
+  },
+  "author": [{ "name": "XingHE-YX" }],
+  "catagory": { "id": "optics", "title": { "zh-CN": "光学", "en": "Optics" } },
+  "tags": {
+    "zh-CN": ["光学", "双缝", "干涉", "相位"],
+    "en": ["Optics", "Double slit", "Interference", "Phase"]
+  },
+  "thumbnail": {
+    "light": "assets/thumbnail-light.svg",
+    "dark": "assets/thumbnail-dark.svg"
+  },
+  "license": "Apache-2.0",
+  "repository": "https://github.com/XingHE-YX/PHY-Lab"
+}
