@@ -181,6 +181,32 @@ test("Young: replay, parameter changes, visual layers and lifecycle preserve con
   expect((await saved(page)).cycles).toBe(0);
   await page.getByRole("button", { name: "▷ Play", exact: true }).click();
   await expect.poll(async () => (await saved(page)).cycles).toBeGreaterThan(0);
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      value: true,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect(
+    page.getByRole("button", { name: "▷ Play", exact: true }),
+  ).toBeVisible();
+  const hidden = await saved(page);
+  await page.evaluate(() => new Promise(requestAnimationFrame));
+  expect(await saved(page)).toEqual(hidden);
+  await page.evaluate(() => {
+    delete (document as unknown as { hidden?: boolean }).hidden;
+  });
+  await range(page, "Phase replay t/T", 3.995);
+  await page.getByRole("button", { name: "▷ Play", exact: true }).click();
+  await expect.poll(async () => (await saved(page)).cycles).toBe(4);
+  await expect(
+    page.getByRole("button", { name: "▷ Play", exact: true }),
+  ).toBeVisible();
+  expect((await saved(page)).cycles).toBe(4);
+  await page.getByRole("button", { name: "▷ Play", exact: true }).click();
+  await expect.poll(async () => (await saved(page)).cycles).toBeGreaterThan(0);
+  expect((await saved(page)).cycles).toBeLessThan(1);
   await page.locator("phy-experiment-page").evaluate((el) => {
     (window as unknown as { oldYoung: HTMLElement }).oldYoung = (
       el as ExperimentPage
