@@ -7,9 +7,11 @@ test.describe("home category navigation", () => {
   test("home categories and search filter together using vertical tabs", async ({
     page,
   }) => {
+    let experimentCount = 0;
     await page.route("**/catalog.json", async (route) => {
       const response = await route.fetch();
       const catalog = await response.json();
+      experimentCount = catalog.experiments.length;
       for (const entry of catalog.experiments)
         entry.catagory =
           entry.id === "mechanical-waves"
@@ -20,10 +22,6 @@ test.describe("home category navigation", () => {
     await page.goto("/");
     const categories = page.getByRole("tablist", { name: "实验分类" });
     await expect(categories).toHaveAttribute("aria-orientation", "vertical");
-    await expect(
-      page.getByRole("link", { name: /带电粒子在磁场中的运动/ }),
-    ).toBeVisible();
-    const allCards = await page.locator(".card").count();
     await categories.getByRole("tab", { name: "光学", exact: true }).click();
     await expect(
       page.getByRole("link", { name: /机械波实验台/ }),
@@ -48,7 +46,7 @@ test.describe("home category navigation", () => {
     await page
       .getByRole("tab", { name: "All experiments", exact: true })
       .click();
-    await expect(page.locator(".card")).toHaveCount(allCards);
+    await expect(page.locator(".card")).toHaveCount(experimentCount);
   });
 });
 

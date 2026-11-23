@@ -163,6 +163,7 @@ test("first visit after caching works offline and reload restores an isolated pa
   context,
 }) => {
   await page.goto("/");
+  await page.getByRole("tab", { name: "电磁学", exact: true }).click();
   const search = page.getByRole("searchbox");
   await search.fill("洛伦兹力");
   const card = page.getByRole("link", { name: new RegExp(title) });
