@@ -33,7 +33,7 @@ async function layoutViolations(page: Page) {
     const root = (el as ExperimentPage).instance!.element.shadowRoot!;
     return Array.from(
       root.querySelectorAll<HTMLElement>(
-        ".heading,.panel,.scene-wrap,.readouts,.probe-control,.fringe-controls,.clock-control,.scene-caption,.plot-wrap,.observation-summary,.formula-content,.task-grid,.task,phy-tabs,phy-slider,phy-button,phy-checkbox",
+        ".heading,.panel,.scene-wrap,.layer-controls,.readouts,.probe-control,.fringe-controls,.clock-control,.scene-caption,.comparison,.plot-wrap,.observation-summary,.formula-content,.task-grid,.task,phy-tabs,phy-slider,phy-button,phy-checkbox",
       ),
     ).flatMap((node) => {
       const r = node.getBoundingClientRect();
@@ -395,5 +395,34 @@ test("Young: corrupt saved data and the densest fringe configuration keep finite
   expect(
     at((await saved(page)).params, (await saved(page)).probe).intensity,
   ).toBeCloseTo(1, 10);
+  await page.getByLabel("明纹级次", { exact: true }).check();
+  await range(page, "探针位置 y", 12);
+  const svgOverlaps = await page.locator(".optical-scene").evaluate((svg) => {
+    const boxes = [
+      ...Array.from(svg.querySelectorAll(".fringe-orders text")).map((n) => ({
+        name: n.textContent ?? "order",
+        r: n.getBoundingClientRect(),
+      })),
+      ...Array.from(svg.querySelectorAll(".probe-badge")).map((n) => ({
+        name: "probe-badge",
+        r: n.getBoundingClientRect(),
+      })),
+    ];
+    const hits: string[] = [];
+    for (let i = 0; i < boxes.length; i++)
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i].r,
+          b = boxes[j].r;
+        if (
+          a.left < b.right &&
+          a.right > b.left &&
+          a.top < b.bottom &&
+          a.bottom > b.top
+        )
+          hits.push(`${boxes[i].name}<->${boxes[j].name}`);
+      }
+    return hits;
+  });
+  expect(svgOverlaps).toEqual([]);
   await expect.poll(() => layoutViolations(page)).toEqual([]);
 });
