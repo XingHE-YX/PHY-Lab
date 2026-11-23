@@ -16,6 +16,7 @@ export async function mount(
     element,
     update(next) {
       element.locale = next.locale;
+      element.theme = next.theme;
     },
     pause,
     snapshot: () => element.snapshot(),

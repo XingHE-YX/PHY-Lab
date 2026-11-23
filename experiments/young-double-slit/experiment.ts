@@ -2,6 +2,7 @@ import { LitElement, html, render } from "lit";
 import type {
   ExperimentContext,
   Locale,
+  Theme,
   SliderElement,
   SelectElement,
   CheckboxElement,
@@ -36,11 +37,13 @@ export class YoungExperiment extends LitElement {
   static properties = {
     data: { state: true },
     locale: { type: String },
+    theme: { type: String },
     playing: { state: true },
   };
   static styles = styles;
   declare data: Snapshot;
   declare locale: Locale;
+  declare theme: Theme;
   declare playing: boolean;
   private context?: ExperimentContext;
   private frame = 0;
@@ -55,11 +58,13 @@ export class YoungExperiment extends LitElement {
     super();
     this.data = normalizeSnapshot(null);
     this.locale = "zh-CN";
+    this.theme = "light";
     this.playing = false;
   }
   initialize(context: ExperimentContext) {
     this.context = context;
     this.locale = context.locale;
+    this.theme = context.theme;
     this.data = normalizeSnapshot(context.storage.read<unknown>(null));
     this.persist();
   }
@@ -459,7 +464,7 @@ export class YoungExperiment extends LitElement {
             <small>${t.coherent}</small>
           </div>
           <div class="scene-wrap">
-            ${opticalScene(this.data, t, this.scenePointer, this.probeKeys)}
+            ${opticalScene(this.data, t, this.scenePointer, this.probeKeys, this.theme === "dark")}
           </div>
           <div class="readouts">
             <div>

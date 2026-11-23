@@ -150,7 +150,16 @@ export const styles = css`
     flex: 1;
     min-height: 190px;
     position: relative;
-    background: var(--bg);
+    background: radial-gradient(
+      circle at 50% 48%,
+      var(--surface) 0%,
+      var(--bg) 78%
+    );
+    --barrier-hi: light-dark(#e9edf3, #353c48);
+    --barrier-mid: light-dark(#d4dbe5, #252a33);
+    --barrier-lo: light-dark(#bec6d3, #1b1f26);
+    --barrier-stroke: light-dark(#98a2b3, #4a5261);
+    --screen-frame: light-dark(#d8dde6, #252a33);
   }
   .optical-scene {
     width: 100%;
@@ -161,13 +170,22 @@ export const styles = css`
     font-family: var(--mono);
     user-select: none;
   }
-  .axis-label {
+  .axis-label,
+  .axis-text {
     fill: var(--muted);
-    font-size: 11px;
+    font: 10px var(--mono);
+    font-variant-numeric: tabular-nums;
   }
   .scene-label {
     fill: var(--text);
-    font-size: 12px;
+    font-size: 11.5px;
+    font-weight: 500;
+  }
+  .halo {
+    paint-order: stroke;
+    stroke: var(--bg);
+    stroke-width: 3px;
+    stroke-linejoin: round;
   }
   .symbol {
     fill: var(--text);
@@ -185,8 +203,19 @@ export const styles = css`
     stroke-width: 1;
   }
   .slit-barrier {
-    fill: var(--subtle);
-    stroke: var(--muted);
+    fill: url(#opt-barrier);
+    stroke: var(--barrier-stroke);
+    stroke-width: 1;
+  }
+  .barrier-shine {
+    stroke: var(--surface);
+    stroke-opacity: 0.45;
+    stroke-width: 1;
+    stroke-linecap: round;
+  }
+  .screen-housing {
+    fill: var(--screen-frame);
+    stroke: var(--barrier-stroke);
     stroke-width: 1;
   }
   .probe-hit {
@@ -201,11 +230,11 @@ export const styles = css`
   }
   .screen-probe:focus-visible .probe-ring {
     stroke: var(--text);
-    stroke-width: 3;
+    stroke-width: 2.5;
   }
   .screen-probe:focus-visible .probe-focus {
     stroke: var(--primary);
-    stroke-width: 2;
+    stroke-width: 1.8;
   }
   .probe-focus {
     fill: none;
@@ -215,6 +244,13 @@ export const styles = css`
     fill: var(--surface);
     stroke: var(--primary);
     stroke-width: 2;
+  }
+  .probe-badge {
+    fill: var(--primary);
+  }
+  .probe-badge-text {
+    fill: var(--bg);
+    font: 600 10px var(--mono);
   }
   .probe-line {
     stroke: var(--primary);
