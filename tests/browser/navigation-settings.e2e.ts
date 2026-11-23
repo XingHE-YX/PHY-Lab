@@ -20,6 +20,10 @@ test.describe("home category navigation", () => {
     await page.goto("/");
     const categories = page.getByRole("tablist", { name: "实验分类" });
     await expect(categories).toHaveAttribute("aria-orientation", "vertical");
+    await expect(
+      page.getByRole("link", { name: /带电粒子在磁场中的运动/ }),
+    ).toBeVisible();
+    const allCards = await page.locator(".card").count();
     await categories.getByRole("tab", { name: "光学", exact: true }).click();
     await expect(
       page.getByRole("link", { name: /机械波实验台/ }),
@@ -44,7 +48,7 @@ test.describe("home category navigation", () => {
     await page
       .getByRole("tab", { name: "All experiments", exact: true })
       .click();
-    await expect(page.locator(".card")).toHaveCount(4);
+    await expect(page.locator(".card")).toHaveCount(allCards);
   });
 });
 
