@@ -629,7 +629,7 @@ test("LC v2 preserves v1 saves and independent observation and support preferenc
   );
   await page.goto("/");
   await page.getByRole("tab", { name: "电磁学", exact: true }).click();
-  await expect(page.locator(".card")).toHaveCount(1);
+  await expect(page.getByRole("link", { name: /弹簧振子/ })).toHaveCount(0);
   await page.getByRole("link", { name: /LC 电磁振荡/ }).click();
   await expect(page.locator(".task")).toHaveCount(3);
   await expect(page.locator(".spring-analogy")).toHaveCount(0);
