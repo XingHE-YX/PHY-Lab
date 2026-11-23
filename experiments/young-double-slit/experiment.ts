@@ -50,6 +50,9 @@ export class YoungExperiment extends LitElement {
   private last = 0;
   private toolbar?: HTMLDivElement;
   private toolbarKey = "";
+  private observer?: ResizeObserver;
+  private plotNode?: Element;
+  private plotHeight = 256;
   private helpHandle?: DialogHandle;
   private helpLocale = "";
   private helpContent = document.createElement("div");
@@ -95,6 +98,9 @@ export class YoungExperiment extends LitElement {
     this.helpHandle?.close();
     this.helpHandle = undefined;
     if (this.helpContent.shadowRoot) render(null, this.helpContent.shadowRoot);
+    this.observer?.disconnect();
+    this.observer = undefined;
+    this.plotNode = undefined;
     document.removeEventListener("visibilitychange", this.visibility);
     window.removeEventListener("pagehide", this.hide);
     if (this.toolbar) render(null, this.toolbar);
@@ -109,6 +115,30 @@ export class YoungExperiment extends LitElement {
   private hide = () => this.pause();
   protected updated() {
     if (!this.isConnected || this.context?.signal.aborted) return;
+    if (!this.observer)
+      this.observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.contentRect.width < 1 || entry.contentRect.height < 1)
+            continue;
+          const height = clamp(
+            Math.round(
+              (entry.contentRect.height * 336) / entry.contentRect.width,
+            ),
+            216,
+            380,
+          );
+          if (Math.abs(height - this.plotHeight) > 1) {
+            this.plotHeight = height;
+            this.requestUpdate();
+          }
+        }
+      });
+    const nextPlot = this.renderRoot.querySelector(".plot-wrap");
+    if (nextPlot !== this.plotNode) {
+      if (this.plotNode) this.observer.unobserve(this.plotNode);
+      if (nextPlot) this.observer.observe(nextPlot);
+      this.plotNode = nextPlot ?? undefined;
+    }
     if (this.helpHandle && this.helpLocale !== this.locale) this.syncHelp();
     if (!this.context?.toolbar) return;
     if (!this.toolbar) {
@@ -158,11 +188,11 @@ export class YoungExperiment extends LitElement {
     this.last = now;
     this.frame = requestAnimationFrame(this.tick);
   };
-  private seek(cycles: number) {
+  private seek = (cycles: number) => {
     if (!Number.isFinite(cycles)) return;
     this.pause();
     this.set({ cycles: clamp(cycles, 0, 4) });
-  }
+  };
   private changeParameter(key: keyof Parameters, value: number) {
     if (!Number.isFinite(value)) return;
     this.pause();
@@ -236,10 +266,11 @@ export class YoungExperiment extends LitElement {
   private playback() {
     const t = texts(this.locale);
     return html`<phy-button
+        variant="primary"
         @click=${() => (this.playing ? this.pause() : this.play())}
         >${this.playing ? "Ⅱ " + t.pause : "▷ " + t.play}</phy-button
       >
-      <phy-button @click=${() => this.seek(0)}>${t.rewind}</phy-button>
+      <phy-button @click=${() => this.seek(0)}>↺ ${t.rewind}</phy-button>
       <phy-select
         label=${t.speed}
         .value=${String(this.data.rate)}
@@ -308,36 +339,42 @@ export class YoungExperiment extends LitElement {
   }
   private tasks() {
     const t = texts(this.locale);
-    return html`<div class="task-grid">
-      ${(
-        [
-          ["wavelength", t.taskWavelength, t.taskWavelengthHint],
-          ["separation", t.taskSeparation, t.taskSeparationHint],
-          ["distance", t.taskDistance, t.taskDistanceHint],
-        ] as const
-      ).map(
-        ([task, title, hint], i) =>
-          html`<article class="task">
-            <h3>${i + 1}. ${title}</h3>
-            <p>${hint}</p>
-            <phy-button
-              label=${t.load + ": " + title}
-              @click=${() => this.loadTask(task)}
-              >${t.load}</phy-button
-            >
-          </article>`,
-      )}
+    return html`<div class="task-content">
+      <div class="task-grid">
+        ${(
+          [
+            ["wavelength", t.taskWavelength, t.taskWavelengthHint],
+            ["separation", t.taskSeparation, t.taskSeparationHint],
+            ["distance", t.taskDistance, t.taskDistanceHint],
+          ] as const
+        ).map(
+          ([task, title, hint], i) =>
+            html`<article class="task">
+              <h3>${i + 1}. ${title}</h3>
+              <p>${hint}</p>
+              <phy-button
+                label=${t.load + ": " + title}
+                @click=${() => this.loadTask(task)}
+                >${t.load}</phy-button
+              >
+            </article>`,
+        )}
+      </div>
     </div>`;
   }
   private formulas() {
     const t = texts(this.locale);
     return html`<div class="formula-content">
-      <phy-math
-        .source=${String.raw`\Delta=r_2-r_1,\quad \Delta\varphi=\frac{2\pi\Delta}{\lambda}`}
-      ></phy-math>
-      <phy-math
-        .source=${String.raw`\frac{I}{I_{\max}}=\cos^2\!\left(\frac{\Delta\varphi}{2}\right)`}
-      ></phy-math>
+      <div class="equation">
+        <phy-math
+          .source=${String.raw`\Delta=r_2-r_1,\quad \Delta\varphi=\frac{2\pi\Delta}{\lambda}`}
+        ></phy-math>
+      </div>
+      <div class="equation">
+        <phy-math
+          .source=${String.raw`\frac{I}{I_{\max}}=\cos^2\!\left(\frac{\Delta\varphi}{2}\right)`}
+        ></phy-math>
+      </div>
       <small>${t.formulaHint}</small><small>${t.normalized}</small>
     </div>`;
   }
@@ -419,87 +456,137 @@ export class YoungExperiment extends LitElement {
         : s.intensity < 1e-8
           ? t.destructive
           : t.intermediate;
-    return html`<div class="heading">
+    return html`<header class="heading">
         <div class="heading-main">
           <h1>${t.title}</h1>
           <span class="subtitle">${t.subtitle}</span>
         </div>
-        ${!this.context?.toolbar ? this.playback() : ""}<phy-button
-          @click=${this.openHelp}
-          >${t.help}</phy-button
-        >
-      </div>
+        ${!this.context?.toolbar ? this.playback() : html`<span class="model-note">${t.coherent}</span>`}
+      </header>
       <div class="lab">
-        <phy-box class="panel parameter-panel"
-          ><div class="panel-heading">
+        <phy-box
+          role="complementary"
+          class="panel parameter-panel"
+          aria-label=${t.parameters}
+        >
+          <div class="panel-heading">
             <h2>${t.parameters}</h2>
-            <small>λ · d · L</small>
+            <span class=${"status" + (this.playing ? " running" : "")}
+              >${this.playing ? t.playing : t.paused}</span
+            >
           </div>
           <div class="parameters">
             ${this.parameter("wavelength", t.wavelength, 1e9, 400, 700, 5, "nm", 0)}${this.parameter("separation", t.separation, 1e3, 0.1, 1, 0.01, "mm", 2)}${this.parameter("distance", t.distance, 1, 0.5, 3, 0.05, "m", 2)}
           </div>
           <div class="derived">
-            <div>
+            <div class="derived-row">
               <span>${t.spacing}</span
               ><output data-readout="spacing"
                 >${format(d.spacing * 1e3)} mm</output
               >
             </div>
-            <div>
+            <div class="derived-row">
               <span>${t.period}</span
               ><output>${format(d.period * 1e15)} fs</output>
             </div>
+            <div class="derived-row">
+              <span>${t.flight}</span
+              ><output>${format(d.flight * 1e9)} ns</output>
+            </div>
           </div>
-          <div class="layers" role="group" aria-label=${t.layers}>
-            ${this.layer("paths", t.paths)}${this.layer("wavefronts", t.wavefronts)}${this.layer("orders", t.orders)}
-          </div>
+          ${
+            this.data.reference
+              ? html`<div class="comparison">
+                  <small class="task-reference"
+                    >${t.reference}:
+                    ${format(this.data.reference.wavelength * 1e9, 0)} nm ·
+                    ${format(this.data.reference.separation * 1e3)} mm ·
+                    ${format(this.data.reference.distance)} m</small
+                  >
+                  <div class="derived-row">
+                    <span>${t.comparison}</span
+                    ><output class="task-comparison" data-readout="comparison"
+                      >${format(
+                        d.spacing / derived(this.data.reference).spacing,
+                        3,
+                      )}</output
+                    >
+                  </div>
+                </div>`
+              : ""
+          }
           <div class="parameter-footer">
             <phy-button @click=${this.reset}>${t.reset}</phy-button
+            ><phy-button @click=${this.openHelp}>${t.help}</phy-button
             ><small>${t.parameterHint}</small>
           </div>
         </phy-box>
-        <phy-box class="panel main-panel"
-          ><div class="panel-heading">
+        <phy-box role="region" class="panel main-panel" aria-label=${t.scene}>
+          <div class="panel-heading">
             <h2>${t.scene}</h2>
-            <small>${t.coherent}</small>
+            <small class="mono"
+              >y = ${format(s.y * 1e3)} mm · Δ/λ = ${format(s.order, 2)}</small
+            >
           </div>
           <div class="scene-wrap">
             ${opticalScene(this.data, t, this.scenePointer, this.probeKeys, this.theme === "dark")}
           </div>
+          <div class="scene-caption">
+            <span>${t.sceneHint}</span>
+            <span class="time-scale"
+              >${t.slow} · ${format(cyclesPerSecond * this.data.rate, 2)}
+              ${t.cyclesPerSecond}</span
+            >
+          </div>
+          <div class="layer-controls" role="group" aria-label=${t.layers}>
+            <div class="layers">
+              ${this.layer("paths", t.paths)}${this.layer("wavefronts", t.wavefronts)}${this.layer("orders", t.orders)}
+            </div>
+            <span class="probe-tip">${t.probeHint}</span>
+          </div>
           <div class="readouts">
-            <div>
-              <span>${t.delta}</span
+            <div class="readout delta">
+              <small>${t.delta}</small
               ><output data-readout="delta"
-                >${format(s.delta * 1e9, 1)} nm</output
+                >${format(s.delta * 1e9, 1)}<span class="unit">
+                  nm</span
+                ></output
               >
             </div>
-            <div>
-              <span>${t.phase}</span
+            <div class="readout phase">
+              <small>${t.phase}</small
               ><output data-readout="phase"
-                >${format(s.phase / Math.PI)} π</output
+                >${format(s.phase / Math.PI)}<span class="unit">
+                  π</span
+                ></output
               >
             </div>
-            <div>
-              <span>${t.intensity}</span
+            <div class="readout intensity">
+              <small>${t.intensity}</small
               ><output data-readout="intensity"
-                >${format(s.intensity * 100, 1)} %</output
+                >${format(s.intensity * 100, 1)}<span class="unit">
+                  %</span
+                ></output
               >
             </div>
           </div>
-          <div class="probe-control">
-            <span>${t.probePosition}</span
+          <div class="clock-control timeline">
+            <span>0 T</span
             ><phy-slider
-              label=${t.probePosition}
-              .min=${-12}
-              .max=${12}
-              .step=${0.05}
-              .value=${this.data.probe * 1e3}
-              value-text=${format(this.data.probe * 1e3) + " mm"}
-              @input=${(e: Event) => this.changeProbe((e.currentTarget as SliderElement).value * 1e-3)}
+              label=${t.clock}
+              .min=${0}
+              .max=${4}
+              .step=${0.005}
+              .value=${this.data.cycles}
+              value-text=${format(this.data.cycles) + " T"}
+              @input=${(e: Event) => this.seek((e.currentTarget as SliderElement).value)}
             ></phy-slider
-            ><output data-readout="probe">${format(s.y * 1e3)} mm</output>
+            ><span>4 T</span
+            ><output class="time-label" data-readout="cycles"
+              >t = ${format(this.data.cycles)} T</output
+            >
           </div>
-          <div class="fringe-controls">
+          <div class="fringe-controls moments">
             <phy-button
               ?disabled=${adjacentFringe(this.p, s.y, -1, false) === null}
               @click=${() => this.navigate(-1)}
@@ -517,34 +604,11 @@ export class YoungExperiment extends LitElement {
               >${t.firstDark}</phy-button
             >
           </div>
-          <div class="clock-control">
-            <span>${t.clock}</span
-            ><phy-slider
-              label=${t.clock}
-              .min=${0}
-              .max=${4}
-              .step=${0.005}
-              .value=${this.data.cycles}
-              value-text=${format(this.data.cycles) + " T"}
-              @input=${(e: Event) => this.seek((e.currentTarget as SliderElement).value)}
-            ></phy-slider
-            ><output data-readout="cycles"
-              >${format(this.data.cycles)} T</output
-            >
-          </div>
-          <div class="scene-caption">
-            <div class="time-scale">
-              <span
-                >${t.slow} · ${format(cyclesPerSecond * this.data.rate, 2)}
-                ${t.cyclesPerSecond}</span
-              ><span>${t.flight} = ${format(d.flight * 1e9)} ns</span>
-            </div>
-            <div>${t.sceneHint}</div>
-            <div>${t.probeHint}</div>
-          </div>
         </phy-box>
         <phy-box
+          role="complementary"
           class=${"panel observation-panel" + (this.data.support === "tasks" ? " tasks-open" : "")}
+          aria-label=${t.observation}
         >
           <phy-tabs
             class="observation-tabs"
@@ -569,16 +633,36 @@ export class YoungExperiment extends LitElement {
                     class="observation-content"
                     slot=${this.data.observation}
                   >
+                    <div class="probe-control">
+                      <label
+                        ><span>${t.probePosition}</span
+                        ><output data-readout="probe"
+                          >${format(s.y * 1e3)} mm</output
+                        ></label
+                      >
+                      <phy-slider
+                        label=${t.probePosition}
+                        .min=${-12}
+                        .max=${12}
+                        .step=${0.05}
+                        .value=${this.data.probe * 1e3}
+                        value-text=${format(this.data.probe * 1e3) + " mm"}
+                        @input=${(e: Event) => this.changeProbe((e.currentTarget as SliderElement).value * 1e-3)}
+                      ></phy-slider>
+                    </div>
                     <div class="plot-wrap">
-                      ${this.data.observation === "intensity" ? intensityChart(this.p, s, t, this.chartPointer, this.probeKeys) : phaseChart(this.p, s, this.data.cycles, t)}
+                      ${this.data.observation === "intensity" ? intensityChart(this.p, s, t, this.chartPointer, this.probeKeys, this.plotHeight) : phaseChart(this.p, s, this.data.cycles, t, this.plotHeight, this.seek)}
                     </div>
                     <div class="observation-summary">
-                      <strong data-readout="condition">${condition}</strong>
-                      <div class="mono">${t.order} = ${format(s.order, 3)}</div>
+                      <div class="summary-head">
+                        <strong data-readout="condition">${condition}</strong>
+                        <span class="mono" title=${t.order}
+                          >Δ/λ = ${format(s.order, 3)}</span
+                        >
+                      </div>
                       <small
                         >${this.data.observation === "phase" ? t.phaseHint : t.intensityHint}</small
                       >
-                      ${this.data.reference && this.data.observation === "intensity" ? html`<div class="comparison"><output data-readout="comparison">${t.comparison} = ${format(d.spacing / derived(this.data.reference).spacing, 3)}</output><small>${t.reference}: λ=${format(this.data.reference.wavelength * 1e9, 0)} nm · d=${format(this.data.reference.separation * 1e3)} mm · L=${format(this.data.reference.distance)} m</small></div>` : ""}
                     </div>
                   </div>`
                 : ""
@@ -600,7 +684,7 @@ export class YoungExperiment extends LitElement {
                     .value as Snapshot["support"],
                 });
             }}
-            ><div slot=${this.data.support}>
+            ><div class="support-body" slot=${this.data.support}>
               ${this.data.support === "formula" ? this.formulas() : this.tasks()}
             </div></phy-tabs
           >

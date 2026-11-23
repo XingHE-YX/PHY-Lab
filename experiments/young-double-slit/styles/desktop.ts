@@ -6,7 +6,6 @@ export const styles = css`
     gap: 10px;
     height: 100%;
     min-height: 0;
-    overflow: auto;
     color: var(--text);
     font-family: var(--font);
   }
@@ -24,6 +23,7 @@ export const styles = css`
   h1 {
     font-size: 20px;
     font-weight: 550;
+    white-space: nowrap;
     letter-spacing: -0.5px;
   }
   h2 {
@@ -43,18 +43,19 @@ export const styles = css`
     font-family: var(--mono);
     font-variant-numeric: tabular-nums;
   }
-  .heading,
-  .heading-main {
+  .heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 16px;
   }
   .heading-main {
-    justify-content: start;
+    display: flex;
     align-items: baseline;
+    gap: 12px;
   }
-  .subtitle {
+  .subtitle,
+  .model-note {
     color: var(--muted);
     font-size: 11px;
   }
@@ -70,8 +71,8 @@ export const styles = css`
     min-height: 0;
   }
   .panel-heading {
-    min-height: 40px;
-    padding: 12px 14px;
+    height: 41px;
+    padding: 0 14px;
     line-height: 16px;
     border-bottom: 1px solid var(--border);
     display: flex;
@@ -79,9 +80,15 @@ export const styles = css`
     align-items: center;
     gap: 8px;
     flex-shrink: 0;
+    white-space: nowrap;
   }
-  .panel-heading small {
+  .panel-heading small,
+  .status {
     font-size: 10px;
+    color: var(--muted);
+  }
+  .status.running {
+    color: var(--primary);
   }
   .parameters {
     padding: 0 13px;
@@ -89,14 +96,16 @@ export const styles = css`
   .parameter {
     margin-top: 16px;
   }
-  .parameter label {
+  .parameter label,
+  .probe-control label {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 6px;
     font-size: 12px;
   }
-  .parameter output {
+  .parameter output,
+  .probe-control output {
     font-size: 11px;
     white-space: nowrap;
   }
@@ -110,29 +119,44 @@ export const styles = css`
     color: var(--muted);
   }
   .derived {
-    margin: 16px 13px 0;
-    padding: 14px 0;
+    margin: 18px 13px 0;
+    padding-top: 14px;
     display: grid;
-    grid-template-columns: 1fr 1fr;
     gap: 10px;
-    border-block: 1px solid var(--border);
+    border-top: 1px solid var(--border);
   }
-  .derived span {
-    display: block;
+  .derived-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .derived-row span {
     color: var(--muted);
-    font-size: 10px;
-    line-height: 16px;
+    white-space: nowrap;
   }
-  .derived output {
-    font-size: 12px;
-    line-height: 20px;
+  .derived-row output {
+    font-size: 11px;
+    white-space: nowrap;
   }
-  .layers {
+  .comparison {
+    margin: 12px 13px 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
     display: grid;
-    gap: 10px;
-    padding: 16px 13px;
+    gap: 4px;
   }
-  .layers phy-checkbox {
+  .task-reference,
+  .task-comparison {
+    display: block;
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+  .task-comparison {
+    color: var(--text);
     font-size: 11px;
   }
   .parameter-footer {
@@ -141,10 +165,14 @@ export const styles = css`
     display: grid;
     gap: 8px;
     border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .parameter-footer phy-button {
+    display: block;
   }
   .parameter-footer small {
-    font-size: 11px;
-    line-height: 1.5;
+    font-size: 10px;
+    line-height: 1.55;
   }
   .scene-wrap {
     flex: 1;
@@ -186,12 +214,6 @@ export const styles = css`
     stroke: var(--bg);
     stroke-width: 3px;
     stroke-linejoin: round;
-  }
-  .symbol {
-    fill: var(--text);
-    font:
-      italic 16px Georgia,
-      serif;
   }
   .grid-line {
     stroke: var(--border);
@@ -257,67 +279,128 @@ export const styles = css`
     stroke-width: 1;
     stroke-dasharray: 3 3;
   }
-  .readouts {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    padding: 9px 12px;
-    border-block: 1px solid var(--border);
-    background: var(--surface);
-    gap: 8px;
+  .scene-caption {
+    height: 24px;
+    padding: 0 14px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--bg);
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 16px;
+    white-space: nowrap;
     flex-shrink: 0;
   }
-  .readouts span {
-    display: block;
+  .scene-caption .time-scale {
+    font-family: var(--mono);
+  }
+  .layer-controls {
+    height: 36px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 0 14px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .layers {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .layers phy-checkbox {
+    font-size: 11px;
+  }
+  .probe-tip {
     font-size: 10px;
     color: var(--muted);
-    line-height: 16px;
   }
-  .readouts output {
-    font-size: 14px;
-    line-height: 20px;
-  }
-  .probe-control,
-  .clock-control {
+  .readouts {
     display: grid;
-    grid-template-columns: auto minmax(80px, 1fr) auto;
-    align-items: center;
-    padding: 7px 12px;
-    gap: 10px;
-    font-size: 11px;
-    min-height: 42px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 1px solid var(--border);
+    background: var(--surface);
     flex-shrink: 0;
   }
-  .probe-control output,
-  .clock-control output {
-    font-size: 11px;
-    min-width: 65px;
+  .readout {
+    padding: 10px 14px;
+    min-width: 0;
+  }
+  .readout + .readout {
+    border-left: 1px solid var(--border);
+  }
+  .readout small {
+    display: block;
+    font-size: 10px;
+    line-height: 14px;
+    color: var(--muted);
+    margin-bottom: 5px;
+    white-space: nowrap;
+  }
+  .readout output {
+    display: block;
+    font-size: 20px;
+    line-height: 24px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .readout.delta output {
+    color: var(--blue);
+  }
+  .readout.phase output {
+    color: var(--green);
+  }
+  .readout.intensity output {
+    color: var(--text);
+  }
+  .readout .unit {
+    font: 11px var(--font);
+    color: var(--muted);
+  }
+  .timeline {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font: 10px var(--mono);
+    flex-shrink: 0;
+  }
+  .timeline phy-slider {
+    flex: 1;
+    min-width: 0;
+  }
+  .timeline span,
+  .timeline output {
+    white-space: nowrap;
+  }
+  .time-label {
+    color: var(--text);
+    padding-left: 10px;
+    border-left: 1px solid var(--border);
+    min-width: 72px;
     text-align: end;
   }
   .fringe-controls {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
-    padding: 0 12px 8px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--border);
     flex-shrink: 0;
   }
   phy-button {
     font-size: 11px;
-  }
-  .clock-control {
-    border-top: 1px solid var(--border);
-  }
-  .scene-caption {
-    padding: 4px 12px 8px;
-    color: var(--muted);
-    font-size: 10px;
-    line-height: 15px;
-    flex-shrink: 0;
-  }
-  .scene-caption .time-scale {
-    display: flex;
-    justify-content: space-between;
-    gap: 8px;
-    font-family: var(--mono);
+    white-space: nowrap;
   }
   .observation-tabs {
     --tab-height: 42px;
@@ -334,10 +417,16 @@ export const styles = css`
     height: 100%;
     min-height: 0;
   }
+  .probe-control {
+    padding: 10px 12px 4px;
+    display: grid;
+    gap: 6px;
+    flex-shrink: 0;
+  }
   .plot-wrap {
     flex: 1;
-    min-height: 200px;
-    padding: 8px;
+    min-height: 204px;
+    padding: 4px 8px 4px;
   }
   .optical-chart {
     display: block;
@@ -348,28 +437,38 @@ export const styles = css`
     outline: 2px solid var(--primary);
     outline-offset: -2px;
   }
+  .phase-chart {
+    touch-action: none;
+  }
   .observation-summary {
-    padding: 0 14px 10px;
-    min-height: 72px;
+    padding: 4px 12px 10px;
     flex-shrink: 0;
     font-size: 11px;
-    line-height: 1.6;
-  }
-  .observation-summary strong {
-    display: block;
-    color: var(--text);
-    font-weight: 500;
-    font-size: 12px;
-  }
-  .comparison {
-    margin-top: 6px;
-    padding-top: 6px;
-    border-top: 1px solid var(--border);
     line-height: 1.5;
   }
-  .comparison small {
-    font-size: 10px;
+  .summary-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 2px 8px;
+    margin-bottom: 2px;
+  }
+  .observation-summary strong {
+    color: var(--text);
+    font-weight: 500;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+  .summary-head .mono {
+    font-size: 10.5px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .observation-summary small {
     display: block;
+    font-size: 10.5px;
+    line-height: 1.45;
   }
   .support-tabs {
     --tab-height: 30px;
@@ -377,33 +476,50 @@ export const styles = css`
     --tab-flex: 0 0 auto;
     --tab-padding: 4px 10px;
     --tab-gap: 5px;
-    padding: 8px 12px 12px;
-    flex-shrink: 0;
     border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .support-tabs::part(tabs) {
+    padding: 8px 12px 0;
   }
   .formula-content {
-    padding: 8px 0 0;
+    padding: 10px 12px 12px;
     font-size: 11px;
     line-height: 1.5;
-    min-height: 112px;
     display: grid;
     align-content: start;
-    gap: 6px;
+    gap: 5px;
   }
   .formula-content phy-math {
-    font-size: 13px;
+    font-size: 12.5px;
+  }
+  .formula-content small {
+    font-size: 10px;
+    line-height: 1.45;
   }
   .tasks-open .observation-tabs {
     flex: 0 0 auto;
   }
   .tasks-open .support-tabs {
     flex: 1;
+    min-height: 0;
     border-top: 0;
   }
+  .tasks-open .support-tabs::part(panel) {
+    display: flex;
+    flex-direction: column;
+  }
+  .tasks-open .support-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+  }
+  .task-content {
+    padding: 10px 12px 12px;
+  }
   .task-grid {
-    padding-top: 12px;
     display: grid;
-    gap: 12px;
+    gap: 10px;
   }
   .task {
     border: 1px solid var(--border);
@@ -419,9 +535,10 @@ export const styles = css`
   .task phy-button {
     display: block;
   }
-  .empty {
-    color: var(--muted);
-    font-size: 11px;
+  @media (max-width: 1380px) {
+    .probe-tip {
+      display: none;
+    }
   }
   @media (max-width: 1350px) {
     .lab {
@@ -433,18 +550,51 @@ export const styles = css`
     .panel-heading {
       padding-inline: 12px;
     }
-  }
-  @media (max-height: 800px) {
-    .parameter {
-      margin-top: 12px;
+    .readout {
+      padding: 9px 12px;
     }
-    .layers {
-      padding-block: 12px;
-      gap: 8px;
+    .readout output {
+      font-size: 18px;
+      line-height: 22px;
+    }
+  }
+  @media (max-height: 780px) {
+    .parameter {
+      margin-top: 11px;
     }
     .derived {
-      padding-block: 10px;
       margin-top: 12px;
+      padding-top: 10px;
+      gap: 7px;
+    }
+    .comparison {
+      margin-top: 10px;
+      padding-top: 10px;
+    }
+    .parameter-footer {
+      padding: 10px 12px;
+      gap: 6px;
+    }
+    .readout {
+      padding: 8px 12px;
+    }
+    .readout output {
+      font-size: 18px;
+      line-height: 22px;
+    }
+    .probe-control {
+      padding: 8px 12px 2px;
+      gap: 4px;
+    }
+    .observation-summary {
+      padding: 2px 12px 8px;
+    }
+    .support-tabs::part(tabs) {
+      padding-top: 6px;
+    }
+    .formula-content {
+      padding: 8px 12px 10px;
+      gap: 4px;
     }
     .task-grid {
       gap: 8px;
@@ -455,13 +605,11 @@ export const styles = css`
     .task p {
       margin: 4px 0 8px;
     }
-    .plot-wrap {
-      min-height: 190px;
-    }
   }
   @media (max-height: 680px) {
     :host {
-      grid-template-rows: 38px minmax(520px, 1fr);
+      overflow: auto;
+      grid-template-rows: 38px minmax(540px, 1fr);
     }
   }
 `;
