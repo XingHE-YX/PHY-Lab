@@ -1,0 +1,25 @@
+{
+  "id": "vibration-beats",
+  "version": "0.1.0",
+  "apiVersion": 2,
+  "apiRevision": 0,
+  "stateVersion": 1,
+  "title": { "zh-CN": "振动合成与拍", "en": "Superposition and beats" },
+  "description": {
+    "zh-CN": "叠加两个简谐振动，用旋转矢量和振幅包络观察拍。",
+    "en": "Superpose two harmonic oscillations and follow the beats with rotating vectors and an amplitude envelope."
+  },
+  "author": [{ "name": "XingHE-YX" }],
+  "catagory": {
+    "id": "mechanics",
+    "title": { "zh-CN": "力学", "en": "Mechanics" }
+  },
+  "tags": {
+    "zh-CN": ["简谐振动", "振动合成", "拍频", "旋转矢量"],
+    "en": ["Harmonic motion", "Superposition", "Beat frequency", "Phasors"]
+  },
+  "thumbnail": {
+    "light": "assets/thumbnail-light.svg",
+    "dark": "assets/thumbnail-dark.svg"
+  }
+}
