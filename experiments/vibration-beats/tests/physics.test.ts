@@ -7,6 +7,7 @@ import {
   nextMoment,
   parameterValue,
   presets,
+  relativePhase,
 } from "../model/physics";
 
 test("the sum is the horizontal projection of the resultant", () => {
@@ -66,12 +67,23 @@ test("phase jumps account for either sign of the frequency gap and wrap within t
     const { duration, beatPeriod, maximum, minimum } = derive(parameters);
     const reinforce = nextMoment(parameters, "reinforce")!;
     const cancel = nextMoment(parameters, "cancel")!;
+    const quadrature = nextMoment(parameters, "quadrature")!;
     expect(reinforce).toBeGreaterThan(0);
     expect(cancel).toBeGreaterThan(0);
+    expect(quadrature).toBeGreaterThan(0);
     expect(envelope(parameters, reinforce)).toBeCloseTo(maximum, 10);
     expect(envelope(parameters, cancel)).toBeCloseTo(minimum, 10);
+    expect(envelope(parameters, quadrature)).toBeCloseTo(
+      Math.hypot(parameters.amplitudeFirst, parameters.amplitudeSecond),
+      10,
+    );
+    expect(Math.abs(relativePhase(parameters, quadrature))).toBeCloseTo(90, 8);
     expect(nextMoment(parameters, "cancel", cancel)).toBeCloseTo(
       cancel + beatPeriod!,
+      10,
+    );
+    expect(nextMoment(parameters, "quadrature", quadrature)).toBeCloseTo(
+      quadrature + beatPeriod! / 2,
       10,
     );
     expect(nextMoment(parameters, "reinforce", duration)).toBe(reinforce);

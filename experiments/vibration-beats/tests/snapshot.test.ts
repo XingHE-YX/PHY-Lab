@@ -8,9 +8,31 @@ test("valid preferences and exact replay time round-trip", () => {
     time: 2.51289,
     rate: 0.25,
     observation: "envelope",
+    support: "tasks",
     vectors: false,
+    envelopeGuide: false,
   };
   expect(normalizeSnapshot(JSON.parse(JSON.stringify(data)))).toEqual(data);
+});
+
+test("legacy snapshots without new layout fields restore with safe defaults", () => {
+  expect(
+    normalizeSnapshot({
+      parameters: presets.unequal,
+      time: 1.5,
+      rate: 0.5,
+      observation: "envelope",
+      vectors: false,
+    }),
+  ).toEqual({
+    parameters: presets.unequal,
+    time: 1.5,
+    rate: 0.5,
+    observation: "envelope",
+    support: "formula",
+    vectors: false,
+    envelopeGuide: true,
+  });
 });
 
 test("invalid and unbounded storage cannot start a run or send the playhead out of range", () => {
@@ -24,7 +46,9 @@ test("invalid and unbounded storage cannot start a run or send the playhead out 
     time: 900,
     rate: -10,
     observation: "unknown",
+    support: "unknown",
     vectors: "false",
+    envelopeGuide: "false",
     playing: true,
   };
   const parameters = { ...defaults, amplitudeFirst: 0, phaseSecond: 180 };
@@ -33,7 +57,9 @@ test("invalid and unbounded storage cannot start a run or send the playhead out 
     time: derive(parameters).duration,
     rate: 1,
     observation: "waves",
+    support: "formula",
     vectors: true,
+    envelopeGuide: true,
   });
   expect(normalizeSnapshot({ time: NaN })).toEqual(normalizeSnapshot(null));
   expect(normalizeSnapshot({ time: -4 }).time).toBe(0);

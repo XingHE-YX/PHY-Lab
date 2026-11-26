@@ -7,6 +7,7 @@ import {
 } from "./physics";
 
 export type Observation = "waves" | "envelope";
+export type Support = "formula" | "tasks";
 export type Rate = 1 | 0.5 | 0.25;
 
 export interface Snapshot {
@@ -14,7 +15,9 @@ export interface Snapshot {
   time: number;
   rate: Rate;
   observation: Observation;
+  support: Support;
   vectors: boolean;
+  envelopeGuide: boolean;
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -37,6 +40,8 @@ export function normalizeSnapshot(value: unknown): Snapshot {
         : 0,
     rate: raw.rate === 0.5 || raw.rate === 0.25 ? raw.rate : 1,
     observation: raw.observation === "envelope" ? "envelope" : "waves",
+    support: raw.support === "tasks" ? "tasks" : "formula",
     vectors: raw.vectors !== false,
+    envelopeGuide: raw.envelopeGuide !== false,
   };
 }

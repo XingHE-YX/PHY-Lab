@@ -8,7 +8,7 @@ export const limits = {
 
 export type Parameter = keyof typeof limits;
 export type Parameters = Record<Parameter, number>;
-export type Moment = "reinforce" | "cancel";
+export type Moment = "reinforce" | "cancel" | "quadrature";
 
 export const defaults: Parameters = {
   amplitudeFirst: 3,
@@ -22,6 +22,7 @@ export const presets = {
   close: defaults,
   unequal: { ...defaults, amplitudeSecond: 1.5 },
   locked: { ...defaults, frequencySecond: 1, phaseSecond: 180 },
+  slow: { ...defaults, frequencyFirst: 2, frequencySecond: 2.1 },
 } as const;
 export type Preset = keyof typeof presets;
 
@@ -58,6 +59,15 @@ export function derive(parameters: Parameters) {
   };
 }
 
+export function relativePhase(parameters: Parameters, time: number): number {
+  const cycles = wrap(
+    (parameters.frequencySecond - parameters.frequencyFirst) * time +
+      parameters.phaseSecond / 360,
+  );
+  const degrees = cycles * 360;
+  return degrees > 180 ? degrees - 360 : degrees;
+}
+
 export function at(parameters: Parameters, time: number) {
   const first = turn * wrap(parameters.frequencyFirst * time);
   const relative =
@@ -73,7 +83,17 @@ export function at(parameters: Parameters, time: number) {
   const secondY = parameters.amplitudeSecond * Math.sin(second);
   const sumX = firstX + secondX;
   const sumY = firstY + secondY;
-  return { firstX, firstY, secondX, secondY, sumX, sumY };
+  return {
+    firstX,
+    firstY,
+    secondX,
+    secondY,
+    sumX,
+    sumY,
+    firstAngle: first,
+    secondAngle: second,
+    relativeAngle: relative,
+  };
 }
 
 export function envelope(parameters: Parameters, time: number) {
@@ -100,8 +120,16 @@ export function nextMoment(
   const { signedGap, beatPeriod, duration } = derive(parameters);
   if (beatPeriod === null) return null;
   const direction = Math.sign(signedGap);
-  const target = moment === "reinforce" ? 0 : 0.5;
   const phase = parameters.phaseSecond / 360;
+  if (moment === "quadrature") {
+    const half = beatPeriod / 2;
+    const offset = wrap(direction * (0.25 - phase) * 2);
+    const cycle = Math.floor(time / half - offset + 1e-12) + 1;
+    const next = (cycle + offset) * half;
+    if (next <= duration + 1e-10) return Math.min(next, duration);
+    return offset * half;
+  }
+  const target = moment === "reinforce" ? 0 : 0.5;
   const offset = wrap(direction * (target - phase));
   const cycle = Math.floor(time / beatPeriod - offset + 1e-12) + 1;
   const next = (cycle + offset) * beatPeriod;
