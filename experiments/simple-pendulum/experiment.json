@@ -23,5 +23,9 @@
       "Period",
       "Energy conservation"
     ]
+  },
+  "thumbnail": {
+    "light": "assets/thumbnail-light.svg",
+    "dark": "assets/thumbnail-dark.svg"
   }
 }
