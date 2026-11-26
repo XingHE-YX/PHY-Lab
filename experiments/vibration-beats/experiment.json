@@ -17,5 +17,9 @@
   "tags": {
     "zh-CN": ["简谐振动", "振动合成", "拍频", "旋转矢量"],
     "en": ["Harmonic motion", "Superposition", "Beat frequency", "Phasors"]
+  },
+  "thumbnail": {
+    "light": "assets/thumbnail-light.svg",
+    "dark": "assets/thumbnail-dark.svg"
   }
 }
