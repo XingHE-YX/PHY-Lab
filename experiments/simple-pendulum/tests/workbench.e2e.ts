@@ -13,18 +13,28 @@ async function open(page: Page) {
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
 }
 
-test("catalog entry compares the small-angle and nonlinear return on the same clock", async ({
+test("catalog shows themed thumbnails and compares small-angle and nonlinear returns", async ({
   page,
 }) => {
   await page.goto("/");
   await page.getByRole("searchbox").fill("小角近似");
-  await page.getByRole("link", { name: /单摆/ }).click();
+  const card = page.getByRole("link", { name: /单摆/ });
+  const thumb = card.locator("img.thumb");
+  await expect(thumb).toHaveAttribute("src", /thumbnail-light\.svg$/);
+  await page.getByRole("button", { name: /切换明暗|Toggle theme/ }).click();
+  await expect(thumb).toHaveAttribute("src", /thumbnail-dark\.svg$/);
+  await page.getByRole("button", { name: /切换明暗|Toggle theme/ }).click();
+  await card.click();
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
-  const preset = page.getByRole("combobox", { name: "选择探索预设" });
+
   const increase = page.locator('[data-period="increase"]');
-  await preset.selectOption("small");
+  await page.getByRole("tab", { name: "探索" }).click();
+  await expect(page.locator(".task-grid")).toBeVisible();
+  await page.locator('button[data-preset="small"]').click();
   await expect(increase).toHaveText("+0.19%");
-  await preset.selectOption("large");
+
+  await page.getByRole("tab", { name: "探索" }).click();
+  await page.locator('button[data-preset="large"]').click();
   const model = makePendulum(presets.large);
   await expect(increase).toHaveText(
     `+${((model.ratio - 1) * 100).toFixed(2)}%`,
@@ -33,8 +43,9 @@ test("catalog entry compares the small-angle and nonlinear return on the same cl
     "data-value",
     String(model.ratio),
   );
+
   await page.getByRole("tab", { name: "摆角", exact: true }).click();
-  await page.getByRole("button", { name: "小角近似回摆" }).click();
+  await page.getByRole("button", { name: /小角回摆/ }).click();
   expect(await time(page)).toBe(model.approximate);
   const { angle, angleLinear } = model.at(model.approximate);
   expect(Math.abs((angleLinear - angle) / radians)).toBeGreaterThan(40);
@@ -47,12 +58,12 @@ test("catalog entry compares the small-angle and nonlinear return on the same cl
     "data-value",
     String(angle / radians),
   );
-  await page.getByRole("button", { name: "非线性回摆" }).click();
+  await page.getByRole("button", { name: /非线性回摆/ }).click();
   expect(await time(page)).toBe(model.period);
   await expect(page.locator('[data-readout="actual"]')).toHaveText("120.00 °");
 });
 
-test("the bob can be dragged or adjusted by keyboard, including the zero-angle limit", async ({
+test("the bob and period curve can be dragged or adjusted by keyboard, including zero limit", async ({
   page,
 }) => {
   await open(page);
@@ -66,6 +77,10 @@ test("the bob can be dragged or adjusted by keyboard, including the zero-angle l
   await expect(page.getByRole("slider", { name: "回看时间" })).toBeDisabled();
   await handle.press("Shift+ArrowLeft");
   await expect(handle).toHaveAttribute("aria-valuenow", "-10");
+  await handle.press("End");
+  await expect(handle).toHaveAttribute("aria-valuenow", "170");
+
+  // Drag the solid bob to 90°
   const reference = await page.locator(".motion-scene").evaluate((node) => {
     const svg = node as SVGSVGElement;
     const matrix = svg.getScreenCTM()!;
@@ -93,6 +108,20 @@ test("the bob can be dragged or adjusted by keyboard, including the zero-angle l
   await expect(
     page.getByRole("button", { name: "播放", exact: true }),
   ).toBeEnabled();
+
+  // Drag on the Period curve to adjust release angle
+  const periodPlot = page.locator(".chart");
+  const pt = await periodPlot.evaluate((element) => {
+    const matrix = (element as SVGSVGElement).getScreenCTM()!;
+    const x = 45 + ((322 - 45) * 120) / 170;
+    const point = new DOMPoint(x, 120).matrixTransform(matrix);
+    return { x: point.x, y: point.y };
+  });
+  await page.mouse.click(pt.x, pt.y);
+  const adjusted = Number(await handle.getAttribute("aria-valuenow"));
+  expect(adjusted).toBeGreaterThanOrEqual(118);
+  expect(adjusted).toBeLessThanOrEqual(122);
+
   const help = page.getByRole("button", { name: "模型与操作" });
   await help.press("Enter");
   await expect(page.getByRole("dialog", { name: "模型与操作" })).toContainText(
@@ -102,7 +131,7 @@ test("the bob can be dragged or adjusted by keyboard, including the zero-angle l
   await expect(help).toBeFocused();
 });
 
-test("replay updates energy, chart and scene and preferences reload paused", async ({
+test("replay updates energy, vectors, chart and scene and preferences reload paused", async ({
   page,
 }) => {
   await open(page);
@@ -113,9 +142,13 @@ test("replay updates energy, chart and scene and preferences reload paused", asy
   await cursor.press("Home");
   await cursor.press("ArrowRight");
   expect(await time(page)).toBeGreaterThan(0);
+
   await page.getByRole("tab", { name: "能量" }).click();
-  await page.getByRole("button", { name: "首次过最低点" }).click();
+  await expect(page.locator(".energy-strip")).toBeVisible();
+  await page.getByRole("button", { name: /过最低点/ }).click();
   expect(await time(page)).toBe(model.period! / 4);
+  await expect(page.locator(".velocity-vector")).toHaveCount(1);
+
   const sample = model.at(model.period! / 4);
   await expect(page.locator('[data-series="kinetic"]')).toHaveAttribute(
     "data-value",
@@ -126,15 +159,19 @@ test("replay updates energy, chart and scene and preferences reload paused", asy
     String(sample.potential),
   );
   await expect(bob(page)).toHaveAttribute("data-angle", String(sample.angle));
+
   const rate = page.getByRole("combobox", { name: "播放速度" });
   await rate.selectOption("0.25");
   await page.getByRole("button", { name: "播放", exact: true }).click();
   await expect.poll(() => time(page)).toBeGreaterThan(model.period! / 4);
-  await page.getByRole("checkbox", { name: "显示小角近似摆球" }).uncheck();
+  await page.getByRole("checkbox", { name: "小角近似" }).uncheck();
+  await page.getByRole("checkbox", { name: "速度 v" }).uncheck();
   await expect(
     page.getByRole("button", { name: "暂停", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".linear-model")).toHaveCount(0);
+  await expect(page.locator(".velocity-vector")).toHaveCount(0);
+
   await page.evaluate(() => {
     Object.defineProperty(document, "hidden", {
       configurable: true,
@@ -154,7 +191,10 @@ test("replay updates energy, chart and scene and preferences reload paused", asy
     "true",
   );
   await expect(
-    page.getByRole("checkbox", { name: "显示小角近似摆球" }),
+    page.getByRole("checkbox", { name: "小角近似" }),
+  ).not.toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: "速度 v" }),
   ).not.toBeChecked();
   await expect(rate).toHaveValue("0.25");
   expect(await time(page)).toBe(paused);
@@ -173,7 +213,7 @@ for (const viewport of [
     const scene = page.locator(".scene-wrap");
     const bounds = await scene.boundingBox();
     const keys = page.locator(
-      '.heading, .panel, .parameters, .periods, .source-footer, .scene-wrap, .timeline, .chart-wrap, .model-formula, phy-math [part="formula"], .readouts, .moments',
+      '.heading, .panel, .parameters, .periods, .parameter-footer, .layer-controls, .scene-wrap, .timeline, .chart-wrap, .model-formula, phy-math [part="formula"], .readouts, .moments',
     );
     for (const language of ["zh", "en"]) {
       if (language === "en")
@@ -229,10 +269,9 @@ test("opens offline before its first visit and retains the selected release", as
   await page.getByRole("button", { name: "关闭", exact: true }).click();
   await context.setOffline(true);
   await open(page);
-  await page
-    .getByRole("combobox", { name: "选择探索预设" })
-    .selectOption("extreme");
-  await page.getByRole("button", { name: "非线性回摆" }).click();
+  await page.getByRole("tab", { name: "探索" }).click();
+  await page.locator('button[data-preset="extreme"]').click();
+  await page.getByRole("button", { name: /非线性回摆/ }).click();
   const paused = await time(page);
   await page.reload();
   await expect(bob(page)).toHaveAttribute("aria-valuenow", "165");

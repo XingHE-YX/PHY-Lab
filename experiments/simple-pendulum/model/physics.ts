@@ -12,6 +12,7 @@ export const presets = {
   small: { ...defaults, angle: 10 },
   large: { ...defaults, angle: 120 },
   extreme: { ...defaults, angle: 165 },
+  lunar: { ...defaults, angle: 60, gravity: 1.62 },
 } as const;
 export type Preset = keyof typeof presets;
 

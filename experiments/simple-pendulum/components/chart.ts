@@ -9,8 +9,14 @@ import {
 } from "../model/physics";
 import type { Observation } from "../model/snapshot";
 
-const plot = { left: 45, right: 322, top: 21, bottom: 191 };
+export const viewWidth = 344;
+export const defaultChartHeight = 220;
 const amplitudeLimit = limits.angle.max;
+
+export function plotBox(height: number) {
+  return { left: 45, right: 322, top: 20, bottom: Math.max(110, height - 34) };
+}
+
 type Axis = {
   min: number;
   max: number;
@@ -19,14 +25,18 @@ type Axis = {
   digits: number;
 };
 
-function horizontal(value: number, axis: Axis) {
+function horizontal(
+  plot: ReturnType<typeof plotBox>,
+  value: number,
+  axis: Axis,
+) {
   return (
     plot.left +
     ((plot.right - plot.left) * (value - axis.min)) / (axis.max - axis.min)
   );
 }
 
-function vertical(value: number, axis: Axis) {
+function vertical(plot: ReturnType<typeof plotBox>, value: number, axis: Axis) {
   return (
     plot.bottom -
     ((plot.bottom - plot.top) * (value - axis.min)) / (axis.max - axis.min)
@@ -64,7 +74,9 @@ export function chartData(
   model: Pendulum,
   observation: Observation,
   amplitude: number,
+  height = defaultChartHeight,
 ) {
+  const plot = plotBox(height);
   if (observation === "period") {
     return {
       x: periodX,
@@ -75,7 +87,7 @@ export function chartData(
         svg`<polyline class="trace actual" points=${Array.from(
           { length: amplitudeLimit + 1 },
           (_, angle) =>
-            `${horizontal(angle, periodX).toFixed(2)},${vertical(periodRatio(angle), periodY).toFixed(2)}`,
+            `${horizontal(plot, angle, periodX).toFixed(2)},${vertical(plot, periodRatio(angle), periodY).toFixed(2)}`,
         ).join(" ")} />`,
       ],
     };
@@ -117,9 +129,11 @@ export function chartData(
   for (let index = 0; index <= 360; index++) {
     const time = (model.duration * index) / 360;
     const sample = model.at(time);
-    const left = horizontal(time, x).toFixed(2);
+    const left = horizontal(plot, time, x).toFixed(2);
     series.forEach(({ value }, row) =>
-      points[row].push(`${left},${vertical(value(sample), y).toFixed(2)}`),
+      points[row].push(
+        `${left},${vertical(plot, value(sample), y).toFixed(2)}`,
+      ),
     );
   }
   return {
@@ -133,6 +147,22 @@ export function chartData(
   };
 }
 
+interface Interactions {
+  start(event: PointerEvent): void;
+  move(event: PointerEvent): void;
+  end(event: PointerEvent): void;
+}
+
+export function chartFraction(event: PointerEvent) {
+  const matrix = (event.currentTarget as SVGSVGElement).getScreenCTM();
+  if (!matrix) return null;
+  const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(
+    matrix.inverse(),
+  );
+  const { left, right } = plotBox(defaultChartHeight);
+  return (point.x - left) / (right - left);
+}
+
 export function chart(
   data: ReturnType<typeof chartData>,
   model: Pendulum,
@@ -140,11 +170,17 @@ export function chart(
   amplitude: number,
   time: number,
   sample: Sample,
-  seek: (time: number) => void,
+  interactions: Interactions,
   t: Messages,
+  height = defaultChartHeight,
 ) {
+  const plot = plotBox(height);
   const { x, y, traces, series } = data;
-  const cursor = horizontal(observation === "period" ? amplitude : time, x);
+  const cursor = horizontal(
+    plot,
+    observation === "period" ? amplitude : time,
+    x,
+  );
   const points =
     observation === "period"
       ? [
@@ -155,42 +191,34 @@ export function chart(
         ]
       : series.map(({ kind, value }) => ({ kind, value: value(sample) }));
 
-  return svg`<svg class=${observation === "period" ? "chart" : "chart seekable"} viewBox="0 0 344 230"
-    role="img" aria-label=${t[observation]}
-    @click=${(event: MouseEvent) => {
-      if (observation === "period" || model.period === null) return;
-      const matrix = (event.currentTarget as SVGSVGElement).getScreenCTM();
-      if (!matrix) return;
-      const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(
-        matrix.inverse(),
-      );
-      if (
-        point.x >= plot.left &&
-        point.x <= plot.right &&
-        point.y >= plot.top &&
-        point.y <= plot.bottom
-      )
-        seek(
-          ((point.x - plot.left) / (plot.right - plot.left)) * model.duration,
-        );
-    }}>
+  return svg`<svg
+    class="chart seekable"
+    viewBox=${`0 0 ${viewWidth} ${height}`}
+    role="img"
+    aria-label=${t[observation]}
+    @pointerdown=${interactions.start}
+    @pointermove=${interactions.move}
+    @pointerup=${interactions.end}
+    @pointercancel=${interactions.end}
+    @lostpointercapture=${interactions.end}
+  >
     <text class="svg-label" x=${plot.left} y="13">${y.label}</text>
     ${y.ticks.map((value) => {
-      const level = vertical(value, y);
+      const level = vertical(plot, value, y);
       return svg`<line class=${value === 0 ? "axis" : "grid-line"} x1=${plot.left} x2=${plot.right} y1=${level} y2=${level} />
-        <text class="svg-label" x="37" y=${level + 4} text-anchor="end">${value.toFixed(y.digits)}</text>`;
+        <text class="svg-label" x="38" y=${level + 3.5} text-anchor="end">${value.toFixed(y.digits)}</text>`;
     })}
     ${x.ticks.map((value) => {
-      const offset = horizontal(value, x);
+      const offset = horizontal(plot, value, x);
       return svg`<line class="grid-line" x1=${offset} x2=${offset} y1=${plot.top} y2=${plot.bottom} />
-        <text class="svg-label" x=${offset} y="207" text-anchor="middle">${value.toFixed(x.digits)}</text>`;
+        <text class="svg-label" x=${offset} y=${plot.bottom + 15} text-anchor="middle">${value.toFixed(x.digits)}</text>`;
     })}
     ${traces}
     <line class="graph-cursor" x1=${cursor} x2=${cursor} y1=${plot.top} y2=${plot.bottom} />
     ${points.map(
       ({ kind, value }) => svg`<circle class=${`chart-point ${kind}`}
-      data-series=${kind} data-value=${value} cx=${cursor} cy=${vertical(value, y)} r="4" />`,
+      data-series=${kind} data-value=${value} cx=${cursor} cy=${vertical(plot, value, y)} r="4" />`,
     )}
-    <text class="svg-label" x=${plot.right} y="224" text-anchor="end">${x.label}</text>
+    <text class="svg-label" x=${plot.right} y=${height - 4} text-anchor="end">${x.label}</text>
   </svg>`;
 }

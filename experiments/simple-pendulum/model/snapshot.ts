@@ -8,13 +8,18 @@ import {
 } from "./physics";
 
 export type Observation = "period" | "motion" | "energy";
+export type Support = "formula" | "tasks";
 export type Rate = 1 | 0.5 | 0.25;
+
 export interface Snapshot {
   parameters: Parameters;
   time: number;
   rate: Rate;
   observation: Observation;
+  support: Support;
   comparison: boolean;
+  velocity: boolean;
+  acceleration: boolean;
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -41,6 +46,9 @@ export function normalizeSnapshot(value: unknown): Snapshot {
       raw.observation === "motion" || raw.observation === "energy"
         ? raw.observation
         : "period",
+    support: raw.support === "tasks" ? "tasks" : "formula",
     comparison: raw.comparison !== false,
+    velocity: raw.velocity !== false,
+    acceleration: raw.acceleration !== false,
   };
 }

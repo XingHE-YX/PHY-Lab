@@ -8,7 +8,13 @@ import type {
   SliderElement,
   TabsElement,
 } from "../../src/infra/platform/protocols/v2/components";
-import { chart, chartData } from "./components/chart";
+import {
+  chart,
+  chartData,
+  chartFraction,
+  defaultChartHeight,
+  viewWidth,
+} from "./components/chart";
 import { dragAngle, scene } from "./components/scene";
 import { messages, type Messages } from "./locales/messages";
 import {
@@ -28,6 +34,7 @@ import {
   type Observation,
   type Rate,
   type Snapshot,
+  type Support,
 } from "./model/snapshot";
 import { styles } from "./styles/desktop";
 
@@ -38,6 +45,38 @@ const equations: Record<Observation, string> = {
   motion: String.raw`\ddot\theta=-\frac{g}{L}\sin\theta`,
   energy: String.raw`\frac{E}{m}=\frac{L^2\dot\theta^2}{2}+gL(1-\cos\theta)`,
 };
+const taskDefinitions: {
+  preset: Preset;
+  titleKey: "small" | "large" | "extreme" | "lunar";
+  descKey: "taskSmall" | "taskLarge" | "taskExtreme" | "taskLunar";
+  observation: Observation;
+}[] = [
+  {
+    preset: "small",
+    titleKey: "small",
+    descKey: "taskSmall",
+    observation: "period",
+  },
+  {
+    preset: "large",
+    titleKey: "large",
+    descKey: "taskLarge",
+    observation: "period",
+  },
+  {
+    preset: "extreme",
+    titleKey: "extreme",
+    descKey: "taskExtreme",
+    observation: "motion",
+  },
+  {
+    preset: "lunar",
+    titleKey: "lunar",
+    descKey: "taskLunar",
+    observation: "period",
+  },
+];
+
 const display = (value: number, digits = 2) =>
   (Math.abs(value) < 0.5 * 10 ** -digits ? 0 : value).toFixed(digits);
 
@@ -58,10 +97,15 @@ export class PendulumExperiment extends LitElement {
   private frame?: number;
   private previousFrame?: number;
   private pointer?: number;
+  private chartPointer?: number;
+  private chartObserver?: ResizeObserver;
+  private chartNode?: Element;
+  private chartHeight = defaultChartHeight;
   private modelCache?: { parameters: Parameters; model: Pendulum };
   private chartCache?: {
     model: Pendulum;
     observation: Observation;
+    height: number;
     data: ReturnType<typeof chartData>;
   };
 
@@ -102,6 +146,10 @@ export class PendulumExperiment extends LitElement {
   disconnectedCallback() {
     this.pause();
     this.pointer = undefined;
+    this.chartPointer = undefined;
+    this.chartObserver?.disconnect();
+    this.chartObserver = undefined;
+    this.chartNode = undefined;
     this.dialog?.close();
     render(nothing, this.help.shadowRoot!);
     this.context?.toolbar?.setControls(null);
@@ -112,6 +160,30 @@ export class PendulumExperiment extends LitElement {
   }
 
   protected updated(changed: PropertyValues) {
+    if (!this.chartObserver)
+      this.chartObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const width = Math.max(1, entry.contentRect.width);
+          const height = Math.max(
+            165,
+            Math.min(
+              380,
+              Math.round((entry.contentRect.height * viewWidth) / width),
+            ),
+          );
+          if (Math.abs(height - this.chartHeight) > 2) {
+            this.chartHeight = height;
+            this.requestUpdate();
+          }
+        }
+      });
+    const nextChart = this.renderRoot.querySelector(".chart-wrap");
+    if (nextChart !== this.chartNode) {
+      if (this.chartNode) this.chartObserver.unobserve(this.chartNode);
+      if (nextChart) this.chartObserver.observe(nextChart);
+      this.chartNode = nextChart ?? undefined;
+    }
+
     const previous = changed.get("data") as Snapshot | undefined;
     if (
       !previous ||
@@ -185,9 +257,15 @@ export class PendulumExperiment extends LitElement {
     });
   };
 
-  private load(parameters: Parameters) {
+  private load(parameters: Parameters, extra: Partial<Snapshot> = {}) {
     this.stop();
-    this.set({ parameters, time: 0 });
+    this.set({ ...extra, parameters: { ...parameters }, time: 0 });
+  }
+
+  private async loadTask(preset: Preset, observation: Observation) {
+    this.load(presets[preset], { observation, support: "formula" });
+    await this.updateComplete;
+    this.renderRoot.querySelector<TabsElement>(".observation-tabs")?.focus();
   }
 
   private changeParameter(key: Parameter, input: number) {
@@ -215,28 +293,63 @@ export class PendulumExperiment extends LitElement {
     key: (event: KeyboardEvent) => {
       const step = event.shiftKey ? 10 : 1;
       const angle =
-        event.key === "ArrowLeft"
+        event.key === "ArrowLeft" || event.key === "ArrowDown"
           ? this.data.parameters.angle - step
-          : event.key === "ArrowRight"
+          : event.key === "ArrowRight" || event.key === "ArrowUp"
             ? this.data.parameters.angle + step
             : event.key === "Home"
               ? 0
-              : null;
+              : event.key === "End"
+                ? limits.angle.max
+                : null;
       if (angle === null) return;
       event.preventDefault();
       this.changeParameter("angle", angle);
     },
   };
 
+  private applyChartPointer(event: PointerEvent) {
+    const raw = chartFraction(event);
+    if (raw === null) return;
+    const fraction = Math.max(0, Math.min(1, raw));
+    if (this.data.observation === "period") {
+      const sign = this.data.parameters.angle < 0 ? -1 : 1;
+      this.changeParameter("angle", sign * fraction * limits.angle.max);
+    } else if (this.model.period !== null) {
+      this.seek(fraction * this.model.duration);
+    }
+  }
+
+  private chartInteractions = {
+    start: (event: PointerEvent) => {
+      if (event.button !== 0 || this.chartPointer !== undefined) return;
+      const raw = chartFraction(event);
+      if (raw === null || raw < 0 || raw > 1) return;
+      this.chartPointer = event.pointerId;
+      (event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
+      this.applyChartPointer(event);
+    },
+    move: (event: PointerEvent) => {
+      if (this.chartPointer !== event.pointerId) return;
+      this.applyChartPointer(event);
+    },
+    end: (event: PointerEvent) => {
+      if (this.chartPointer === event.pointerId) this.chartPointer = undefined;
+    },
+  };
+
   private playback() {
     const t = messages(this.locale);
-    return html` <phy-button
+    return html`<phy-button
         variant="primary"
         ?disabled=${this.data.parameters.angle === 0}
         @click=${this.togglePlayback}
-        >${this.playing ? t.pause : t.play}</phy-button
+        ><span aria-hidden="true">${this.playing ? "Ⅱ" : "▷"}</span>
+        ${this.playing ? t.pause : t.play}</phy-button
       >
-      <phy-button @click=${() => this.seek(0)}>${t.reset}</phy-button>
+      <phy-button @click=${() => this.seek(0)}
+        ><span aria-hidden="true">↺</span> ${t.reset}</phy-button
+      >
       <phy-select
         .label=${t.rate}
         .value=${String(this.data.rate)}
@@ -307,11 +420,11 @@ export class PendulumExperiment extends LitElement {
     });
   };
 
-  private timing(t: Messages) {
+  private timing(t: Messages, totalEnergy: number) {
     const { approximate, period, ratio } = this.model;
     return html`<dl class="periods">
       <div>
-        <dt>${t.approximate} T₀</dt>
+        <dt>${t.approximate}</dt>
         <dd>
           <output data-period="approximate"
             >${display(approximate, 3)} s</output
@@ -319,7 +432,7 @@ export class PendulumExperiment extends LitElement {
         </dd>
       </div>
       <div>
-        <dt>${t.actual} T</dt>
+        <dt>${t.actual}</dt>
         <dd>
           <output data-period="actual"
             >${period === null ? "—" : `${display(period, 3)} s`}</output
@@ -334,20 +447,28 @@ export class PendulumExperiment extends LitElement {
           >
         </dd>
       </div>
+      <div>
+        <dt>${t.totalEnergy}</dt>
+        <dd>
+          <output data-period="energy">${display(totalEnergy)} J/kg</output>
+        </dd>
+      </div>
     </dl>`;
   }
 
-  private observation(t: Messages, model: Pendulum, sample: Sample) {
-    const { observation, parameters, time } = this.data;
+  private observationPanel(t: Messages, model: Pendulum, sample: Sample) {
+    const { observation, parameters, time, support } = this.data;
     const amplitude = Math.abs(parameters.angle);
     if (
       this.chartCache?.model !== model ||
-      this.chartCache.observation !== observation
+      this.chartCache.observation !== observation ||
+      this.chartCache.height !== this.chartHeight
     )
       this.chartCache = {
         model,
         observation,
-        data: chartData(model, observation, amplitude),
+        height: this.chartHeight,
+        data: chartData(model, observation, amplitude, this.chartHeight),
       };
     const legend =
       observation === "energy"
@@ -360,51 +481,143 @@ export class PendulumExperiment extends LitElement {
             { kind: "actual", label: t.nonlinear },
             { kind: "approximation", label: t.linear },
           ];
+    const potentialShare =
+      sample.total > 1e-12 ? (sample.potential / sample.total) * 100 : 0;
+    const kineticShare =
+      sample.total > 1e-12 ? (sample.kinetic / sample.total) * 100 : 0;
+
     return html`<phy-tabs
       class="observation-tabs"
       .label=${t.observation}
       .value=${observation}
       .items=${observations.map((mode) => ({ value: mode, label: t[mode] }))}
-      @change=${(event: Event) => {
-        if (event.target === event.currentTarget)
-          this.set({
-            observation: (event.currentTarget as TabsElement)
-              .value as Observation,
-          });
+      @activate=${(event: Event) => {
+        if (event.target !== event.currentTarget) return;
+        this.set({
+          observation: (event.currentTarget as TabsElement)
+            .value as Observation,
+          support: "formula",
+        });
       }}
     >
-      <div class="plot-panel" slot=${observation}>
-        <p class="legend">
-          ${legend.map(({ kind, label }) => html`<span class=${kind}>${label}</span>`)}
-        </p>
-        <div class="chart-wrap">
-          ${chart(this.chartCache.data, model, observation, amplitude, time, sample, this.seek, t)}
-        </div>
-        <section class="model-formula">
-          <phy-math .source=${equations[observation]}></phy-math>
-          <p>${model.period === null ? t.atRest : t[`${observation}Hint`]}</p>
-        </section>
+      ${
+        support === "formula"
+          ? html`<div class="plot-panel" slot=${observation}>
+              <p class="legend">
+                ${legend.map(({ kind, label }) => html`<span class=${kind}>${label}</span>`)}
+              </p>
+              <div class="chart-wrap">
+                ${chart(this.chartCache.data, model, observation, amplitude, time, sample, this.chartInteractions, t, this.chartHeight)}
+              </div>
+              ${
+                observation === "energy"
+                  ? html`<div class="energy-strip">
+                      <div class="energy-values">
+                        <span class="potential"
+                          >Eₚ ${display(sample.potential)}</span
+                        >
+                        <span class="kinetic"
+                          >Eₖ ${display(sample.kinetic)}</span
+                        >
+                        <span class="total"
+                          >E ${display(sample.total)} J/kg</span
+                        >
+                      </div>
+                      <div class="energy-bar" aria-hidden="true">
+                        <div
+                          class="potential-fill"
+                          style=${`width:${potentialShare.toFixed(1)}%`}
+                        ></div>
+                        <div
+                          class="kinetic-fill"
+                          style=${`width:${kineticShare.toFixed(1)}%`}
+                        ></div>
+                      </div>
+                    </div>`
+                  : nothing
+              }
+              <p class="chart-hint">
+                ${observation === "period" ? t.periodDragHint : t.chartDragHint}
+              </p>
+            </div>`
+          : nothing
+      }
+    </phy-tabs>`;
+  }
+
+  private supportPanel(t: Messages, model: Pendulum) {
+    const { observation, support } = this.data;
+    return html`<phy-tabs
+      class="support support-tabs"
+      variant="segmented"
+      .label=${t.supportLabel}
+      .value=${support}
+      .items=${[
+        { value: "formula", label: t.formulaTab },
+        { value: "tasks", label: t.tasksTab },
+      ]}
+      @change=${(event: Event) => {
+        if (event.target !== event.currentTarget) return;
+        this.set({
+          support: (event.currentTarget as TabsElement).value as Support,
+        });
+      }}
+    >
+      <div class="support-body" slot=${support}>
+        ${
+          support === "formula"
+            ? html`<section class="model-formula">
+                <phy-math .source=${equations[observation]}></phy-math>
+                <p>
+                  ${model.period === null ? t.atRest : t[`${observation}Hint`]}
+                </p>
+              </section>`
+            : html`<div class="task-content">
+                <p class="tasks-hint">${t.tasksHint}</p>
+                <div class="task-grid">
+                  ${taskDefinitions.map(
+                    ({ preset, titleKey, descKey, observation: mode }) =>
+                      html`<article class="task">
+                        <h3>${t[titleKey]}</h3>
+                        <p>${t[descKey]}</p>
+                        <button
+                          type="button"
+                          data-preset=${preset}
+                          @click=${() => void this.loadTask(preset, mode)}
+                        >
+                          ${t.loadPreset}
+                        </button>
+                      </article>`,
+                  )}
+                </div>
+              </div>`
+        }
       </div>
     </phy-tabs>`;
   }
 
   protected render() {
     const t = messages(this.locale);
-    const { parameters, time, comparison } = this.data;
+    const { parameters, time, comparison, velocity, acceleration, support } =
+      this.data;
     const model = this.model;
     const sample = model.at(time);
     const stationary = model.period === null;
+    const angleDeg = sample.angle / radians;
+    const linearDeg = sample.angleLinear / radians;
+    const lagDeg = angleDeg - linearDeg;
+
     const readouts = [
       {
         kind: "actual",
         label: t.currentAngle,
-        value: sample.angle / radians,
+        value: angleDeg,
         unit: "°",
       },
       {
         kind: "approximation",
         label: t.linearAngle,
-        value: sample.angleLinear / radians,
+        value: linearDeg,
         unit: "°",
       },
       {
@@ -421,15 +634,21 @@ export class PendulumExperiment extends LitElement {
       },
     ];
     const moments = [
-      { label: t.bottom, time: (model.period ?? 0) / 4 },
-      { label: t.opposite, time: (model.period ?? 0) / 2 },
-      { label: t.linearReturn, time: model.approximate },
-      { label: t.full, time: model.period ?? 0 },
+      { label: t.bottom, mark: "T/4", time: (model.period ?? 0) / 4 },
+      { label: t.opposite, mark: "T/2", time: (model.period ?? 0) / 2 },
+      { label: t.linearReturn, mark: "T₀", time: model.approximate },
+      { label: t.full, mark: "T", time: model.period ?? 0 },
     ];
-    return html` <header class="heading">
-        <h1>${t.title}</h1>
-        <p>${t.subtitle}</p>
-        ${this.context?.toolbar ? nothing : html`<div class="fallback-controls">${this.playback()}</div>`}
+    return html`<header class="heading">
+        <div class="heading-main">
+          <h1>${t.title}</h1>
+          <span class="subtitle">${t.subtitle}</span>
+        </div>
+        ${
+          this.context?.toolbar
+            ? html`<span class="model-note">${t.modelNote}</span>`
+            : html`<div class="fallback-controls">${this.playback()}</div>`
+        }
       </header>
       <div class="lab">
         <phy-box
@@ -437,38 +656,52 @@ export class PendulumExperiment extends LitElement {
           role="complementary"
           aria-label=${t.parameters}
         >
-          <div class="panel-heading"><h2>${t.parameters}</h2></div>
+          <div class="panel-heading">
+            <h2>${t.parameters}</h2>
+            <small class=${this.playing ? "status running" : "status"}
+              >${this.playing ? t.playingStatus : t.pausedStatus}</small
+            >
+          </div>
           <div class="parameters">
             ${this.parameter("angle", t)}${this.parameter("length", t)}${this.parameter("gravity", t)}
           </div>
-          ${this.timing(t)}
-          <div class="source-footer">
-            <p>${t.resetHint}</p>
-            <phy-select
-              .label=${t.preset}
-              .value=${""}
-              .options=${[{ value: "", label: t.preset, disabled: true }, ...(Object.keys(presets) as Preset[]).map((key) => ({ value: key, label: t[key] }))]}
-              @change=${(event: Event) => {
-                const control = event.currentTarget as SelectElement;
-                const preset = presets[control.value as Preset];
-                if (preset) this.load({ ...preset });
-                control.value = "";
-              }}
-            ></phy-select>
+          ${this.timing(t, sample.total)}
+          <div class="parameter-footer">
             <phy-button @click=${this.openHelp}>${t.help}</phy-button>
+            <small>${t.resetHint}</small>
           </div>
         </phy-box>
         <phy-box class="panel center" role="region" aria-label=${t.scene}>
           <div class="panel-heading">
             <h2>${t.scene}</h2>
-            <phy-checkbox
-              .checked=${comparison}
-              @change=${(event: Event) => this.set({ comparison: (event.currentTarget as CheckboxElement).checked })}
-              >${t.comparison}</phy-checkbox
+            <small class="mono" data-angle-summary
+              >θ = ${display(angleDeg, 1)}° · ${t.phaseLag}
+              ${lagDeg >= 0 ? "+" : ""}${display(lagDeg, 1)}°</small
             >
           </div>
           <div class="scene-wrap">
-            ${scene(parameters, sample, comparison, this.drag, t)}
+            ${scene(parameters, sample, { comparison, velocity, acceleration }, this.drag, t)}
+            <span class="scene-scale">L = ${display(parameters.length)} m</span>
+          </div>
+          <div class="layer-controls">
+            <div>
+              <phy-checkbox
+                .checked=${comparison}
+                @change=${(event: Event) => this.set({ comparison: (event.currentTarget as CheckboxElement).checked })}
+                >${t.comparison}</phy-checkbox
+              >
+              <phy-checkbox
+                .checked=${velocity}
+                @change=${(event: Event) => this.set({ velocity: (event.currentTarget as CheckboxElement).checked })}
+                >${t.velocityArrow}</phy-checkbox
+              >
+              <phy-checkbox
+                .checked=${acceleration}
+                @change=${(event: Event) => this.set({ acceleration: (event.currentTarget as CheckboxElement).checked })}
+                >${t.accelerationArrow}</phy-checkbox
+              >
+            </div>
+            <span class="layer-hint">${t.dragHint}</span>
           </div>
           <div class="readouts">
             ${readouts.map(
@@ -482,13 +715,7 @@ export class PendulumExperiment extends LitElement {
             )}
           </div>
           <div class="timeline">
-            <div class="time-label">
-              <span>${t.timeline}</span
-              ><output data-time=${time}
-                >${display(time)} /
-                ${stationary ? "—" : display(model.duration)} s</output
-              >
-            </div>
+            <span>0.0 s</span>
             <phy-slider
               .label=${t.timeline}
               .valueText=${`${display(time)} s`}
@@ -499,14 +726,33 @@ export class PendulumExperiment extends LitElement {
               ?disabled=${stationary}
               @input=${(event: Event) => this.seek(((event.currentTarget as SliderElement).value / timelineSteps) * model.duration)}
             ></phy-slider>
-            <div class="moments">
-              ${moments.map(({ label, time }) => html`<phy-button ?disabled=${stationary} @click=${() => this.seek(time)}>${label}</phy-button>`)}
-            </div>
+            <span>${stationary ? "—" : `${display(model.duration, 1)} s`}</span>
+            <output class="time-label" data-time=${time}
+              >t = ${display(time)} s</output
+            >
+          </div>
+          <div class="moments" role="group" aria-label=${t.momentsLabel}>
+            ${moments.map(({ label, mark, time: target }) => {
+              const selected = !stationary && Math.abs(time - target) < 1e-3;
+              return html`<button
+                type="button"
+                class=${selected ? "selected" : ""}
+                ?disabled=${stationary}
+                @click=${() => this.seek(target)}
+              >
+                ${label}<small>${mark}</small>
+              </button>`;
+            })}
           </div>
         </phy-box>
-        <phy-box class="panel" role="region" aria-label=${t.observation}
-          >${this.observation(t, model, sample)}</phy-box
+        <phy-box
+          class=${"panel right" + (support === "tasks" ? " exploring" : "")}
+          role="region"
+          aria-label=${t.observation}
         >
+          ${this.observationPanel(t, model, sample)}
+          ${this.supportPanel(t, model)}
+        </phy-box>
       </div>`;
   }
 }
