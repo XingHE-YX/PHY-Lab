@@ -1,0 +1,27 @@
+{
+  "id": "simple-pendulum",
+  "version": "0.1.0",
+  "apiVersion": 2,
+  "apiRevision": 0,
+  "stateVersion": 1,
+  "title": { "zh-CN": "单摆", "en": "Simple pendulum" },
+  "description": {
+    "zh-CN": "拖动摆球，从静止释放，对比小角近似与大角度单摆的周期。",
+    "en": "Pull the pendulum bob aside and compare its nonlinear period with the small-angle prediction."
+  },
+  "author": [{ "name": "XingHE-YX" }],
+  "catagory": {
+    "id": "mechanics",
+    "title": { "zh-CN": "力学", "en": "Mechanics" }
+  },
+  "tags": {
+    "zh-CN": ["振动", "单摆", "小角近似", "周期", "能量守恒"],
+    "en": [
+      "Oscillations",
+      "Pendulum",
+      "Small-angle approximation",
+      "Period",
+      "Energy conservation"
+    ]
+  }
+}
