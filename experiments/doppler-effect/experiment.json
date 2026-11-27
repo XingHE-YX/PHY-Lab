@@ -9,6 +9,10 @@
     "zh-CN": "切换声源或观察者运动，从波前间距和到达间隔读出接收频率。",
     "en": "Move the source or the observer, and compare wavefront spacing, arrival intervals, and received frequency."
   },
+  "thumbnail": {
+    "light": "assets/thumbnail-light.svg",
+    "dark": "assets/thumbnail-dark.svg"
+  },
   "author": [{ "name": "XingHE-YX" }],
   "catagory": {
     "id": "mechanics",
