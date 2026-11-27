@@ -26,6 +26,55 @@ export const defaults: Parameters = {
   frequency: 400,
 };
 
+export interface ScenarioPreset {
+  id: "sourceApproach" | "observerApproach" | "retreatContrast" | "halfMach";
+  parameters: Parameters;
+  observation: "arrivals" | "comparison";
+}
+
+export const scenarios: readonly ScenarioPreset[] = [
+  {
+    id: "sourceApproach",
+    parameters: {
+      mover: "source",
+      motion: "approach",
+      speed: 85,
+      frequency: 400,
+    },
+    observation: "arrivals",
+  },
+  {
+    id: "observerApproach",
+    parameters: {
+      mover: "observer",
+      motion: "approach",
+      speed: 85,
+      frequency: 400,
+    },
+    observation: "arrivals",
+  },
+  {
+    id: "retreatContrast",
+    parameters: {
+      mover: "source",
+      motion: "retreat",
+      speed: 85,
+      frequency: 400,
+    },
+    observation: "comparison",
+  },
+  {
+    id: "halfMach",
+    parameters: {
+      mover: "source",
+      motion: "approach",
+      speed: 170,
+      frequency: 400,
+    },
+    observation: "arrivals",
+  },
+];
+
 export function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }

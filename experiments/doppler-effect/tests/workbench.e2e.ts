@@ -9,6 +9,16 @@ const time = async (page: Page) =>
   Number(await page.locator("output[data-time]").getAttribute("data-time"));
 const mover = (page: Page) =>
   page.getByRole("slider", { name: "运动物体回看位置", exact: true });
+const selectRole = (page: Page, label: string) =>
+  page
+    .getByRole("radiogroup", { name: "运动物体", exact: true })
+    .getByRole("radio", { name: label, exact: true })
+    .click();
+const selectMotion = (page: Page, label: string) =>
+  page
+    .getByRole("radiogroup", { name: "相对运动", exact: true })
+    .getByRole("radio", { name: label, exact: true })
+    .click();
 
 async function open(page: Page) {
   await page.goto(route);
@@ -22,16 +32,11 @@ test("catalog opens the lab and both roles compare approach, retreat, and rest",
   await page.getByRole("searchbox").fill("多普勒");
   await page.getByRole("link", { name: /多普勒效应/ }).click();
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
-  const role = page.getByRole("combobox", { name: "运动物体", exact: true });
-  const movement = page.getByRole("combobox", {
-    name: "相对运动",
-    exact: true,
-  });
   await expect(read(page, "received")).toHaveText("533.33 Hz");
   await expect(read(page, "wavelength")).toHaveText("0.637 m");
-  await movement.selectOption("retreat");
+  await selectMotion(page, "远离");
   await expect(read(page, "received")).toHaveText("320.00 Hz");
-  await role.selectOption("observer");
+  await selectRole(page, "观察者");
   await expect(read(page, "received")).toHaveText("300.00 Hz");
   await expect(read(page, "wavelength")).toHaveText("0.850 m");
   await expect(page.locator(".wavefronts .wavefront").first()).toBeVisible();
@@ -41,10 +46,10 @@ test("catalog opens the lab and both roles compare approach, retreat, and rest",
       ...new Set(nodes.map((node) => node.getAttribute("cx"))),
     ]);
   expect(centres).toHaveLength(1);
-  await movement.selectOption("approach");
+  await selectMotion(page, "靠近");
   await expect(read(page, "received")).toHaveText("500.00 Hz");
   await expect(read(page, "wavelength")).toHaveText("0.850 m");
-  await movement.selectOption("rest");
+  await selectMotion(page, "静止");
   await expect(read(page, "received")).toHaveText("400.00 Hz");
   await expect(mover(page)).toHaveCount(0);
   await page.getByRole("tab", { name: "运动对照" }).click();
@@ -57,7 +62,10 @@ test("catalog opens the lab and both roles compare approach, retreat, and rest",
   await expect(page.locator(".comparison-row[data-active]")).toContainText(
     "400.00 Hz",
   );
-  await movement.selectOption("approach");
+  await page.locator('[data-case="approach"]').click();
+  await expect(read(page, "received")).toHaveText("500.00 Hz");
+  await page.locator(".switch-role").click();
+  await expect(read(page, "received")).toHaveText("533.33 Hz");
   await page
     .getByRole("slider", { name: "运动时速率", exact: true })
     .press("Home");
@@ -109,7 +117,7 @@ test("next arrival aligns the measured crest, observer and arrival tick", async 
   expect(errors).toEqual([]);
 });
 
-test("drag and keyboard replay preserve the model; hiding and reload stay paused", async ({
+test("drag, chart scrub, layer toggles, scenarios, and reload stay paused", async ({
   page,
 }) => {
   await open(page);
@@ -132,6 +140,35 @@ test("drag and keyboard replay preserve the model; hiding and reload stay paused
   await page.mouse.up();
   expect(await time(page)).toBeCloseTo(0.03, 3);
   await expect(read(page, "received")).toHaveText("533.33 Hz");
+
+  // Chart scrubbing updates physical time
+  const chartBox = await page.locator(".timing-chart").boundingBox();
+  expect(chartBox).not.toBeNull();
+  const timeBeforeChart = await time(page);
+  await page.mouse.click(
+    chartBox!.x + chartBox!.width * 0.72,
+    chartBox!.y + chartBox!.height * 0.5,
+  );
+  expect(await time(page)).not.toBeCloseTo(timeBeforeChart, 4);
+
+  // Layer toggles hide and show wavelength guide & velocity vector
+  await expect(page.locator(".wavelength-guide")).toBeVisible();
+  await expect(page.locator(".velocity-cue")).toBeVisible();
+  await page
+    .getByRole("checkbox", { name: "波长标尺 λ₊", exact: true })
+    .uncheck();
+  await expect(page.locator(".wavelength-guide")).toHaveCount(0);
+  await page.getByRole("checkbox", { name: "速度矢量", exact: true }).uncheck();
+  await expect(page.locator(".velocity-cue")).toHaveCount(0);
+
+  // Explore tab loads scenario and returns to formula view
+  await page.getByRole("tab", { name: "探索", exact: true }).click();
+  await page.locator('[data-scenario="halfMach"]').click();
+  await expect(read(page, "received")).toHaveText("800.00 Hz");
+  await expect(
+    page.getByRole("tab", { name: "公式", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+
   const before = await time(page);
   const rate = page.getByRole("combobox", { name: "播放速度" });
   await rate.selectOption("0.25");
@@ -180,7 +217,7 @@ for (const viewport of [
     const scene = page.locator(".scene-wrap");
     const bounds = await scene.boundingBox();
     const keys = page.locator(
-      '.heading, .panel, .parameters, .medium, .footer, .scene-wrap, .readouts, .timeline, .timing, .comparison, .model-formula, phy-math [part="formula"]',
+      '.heading, .panel, .parameters, .derived-metrics, .parameter-footer, .scene-wrap, .layer-controls, .readouts, .timeline, .moments, .timing, .comparison, .model-formula, phy-math [part="formula"]',
     );
     for (const language of ["zh", "en"]) {
       if (language === "en")
@@ -246,12 +283,15 @@ test("first visit and reload work offline with the selected role and crest", asy
   await page.getByRole("button", { name: "关闭", exact: true }).click();
   await context.setOffline(true);
   await open(page);
-  const role = page.getByRole("combobox", { name: "运动物体", exact: true });
-  await role.selectOption("observer");
+  await selectRole(page, "观察者");
   await page.getByRole("button", { name: "首个到达", exact: true }).click();
   const saved = await time(page);
   await page.reload();
-  await expect(role).toHaveValue("observer");
+  await expect(
+    page
+      .getByRole("radiogroup", { name: "运动物体", exact: true })
+      .getByRole("radio", { name: "观察者", exact: true }),
+  ).toBeChecked();
   await expect(read(page, "received")).toHaveText("500.00 Hz");
   expect(await time(page)).toBe(saved);
   await expect(page.locator(".wavefront.hitting")).toBeVisible();

@@ -4,26 +4,30 @@ import type { DialogHandle } from "../../src/infra/platform/protocols/v2/api/dia
 import type { Locale } from "../../src/infra/platform/protocols/v2/api/environment";
 import type {
   CheckboxElement,
+  RadioGroupElement,
   SelectElement,
   SliderElement,
   TabsElement,
 } from "../../src/infra/platform/protocols/v2/components";
 import { scene, trackCoordinate } from "./components/scene";
-import { arrivals, comparison } from "./components/timing";
+import { arrivals, chartTimeFromEvent, comparison } from "./components/timing";
 import { messages, type Messages } from "./locales/messages";
 import {
   clamp,
+  defaults,
   duration,
   limits,
   makeTrial,
   motions,
   parameterValue,
   playbackScale,
+  scenarios,
   soundSpeed,
   type Motion,
   type Mover,
   type Parameter,
   type Parameters,
+  type ScenarioPreset,
   type Trial,
 } from "./model/physics";
 import {
@@ -31,6 +35,7 @@ import {
   type Observation,
   type Rate,
   type Snapshot,
+  type Support,
 } from "./model/snapshot";
 import { styles } from "./styles/desktop";
 
@@ -45,10 +50,12 @@ export class DopplerExperiment extends LitElement {
     locale: { state: true },
     playing: { state: true },
     data: { state: true },
+    chartHeight: { state: true },
   };
   declare locale: Locale;
   declare private playing: boolean;
   declare private data: Snapshot;
+  declare private chartHeight: number;
   private context?: ExperimentContext;
   private readonly controls = document.createElement("div");
   private readonly help = document.createElement("div");
@@ -56,6 +63,9 @@ export class DopplerExperiment extends LitElement {
   private frame?: number;
   private previousFrame?: number;
   private pointer?: { id: number; coordinate: number; time: number };
+  private chartPointer?: { id: number; windowStart: number };
+  private chartObserver?: ResizeObserver;
+  private observedChartWrap?: Element;
   private modelCache?: { parameters: Parameters; trial: Trial };
 
   constructor() {
@@ -63,6 +73,7 @@ export class DopplerExperiment extends LitElement {
     this.locale = "zh-CN";
     this.data = normalizeSnapshot(null);
     this.playing = false;
+    this.chartHeight = 220;
     this.controls.style.cssText = "display:flex;align-items:center;gap:8px";
     this.help.attachShadow({ mode: "open" });
   }
@@ -95,6 +106,9 @@ export class DopplerExperiment extends LitElement {
   disconnectedCallback() {
     this.pause();
     this.dialog?.close();
+    this.chartObserver?.disconnect();
+    this.chartObserver = undefined;
+    this.observedChartWrap = undefined;
     render(nothing, this.help.shadowRoot!);
     this.context?.toolbar?.setControls(null);
     render(nothing, this.controls);
@@ -113,6 +127,21 @@ export class DopplerExperiment extends LitElement {
     )
       render(this.playback(), this.controls);
     if (this.dialog && changed.has("locale")) this.updateHelp();
+    this.syncChartObserver();
+  }
+
+  private syncChartObserver() {
+    const wrap = this.renderRoot.querySelector(".chart-wrap");
+    if (wrap === this.observedChartWrap) return;
+    this.chartObserver?.disconnect();
+    this.observedChartWrap = wrap ?? undefined;
+    if (!wrap) return;
+    this.chartObserver = new ResizeObserver((entries) => {
+      const height = Math.round(entries[0]?.contentRect.height ?? 0);
+      if (height >= 120 && Math.abs(height - this.chartHeight) > 2)
+        this.chartHeight = height;
+    });
+    this.chartObserver.observe(wrap);
   }
 
   private persist() {
@@ -139,6 +168,7 @@ export class DopplerExperiment extends LitElement {
 
   pause() {
     this.pointer = undefined;
+    this.chartPointer = undefined;
     this.stop();
     this.persist();
   }
@@ -174,8 +204,33 @@ export class DopplerExperiment extends LitElement {
 
   private configure(patch: Partial<Parameters>) {
     this.pointer = undefined;
+    this.chartPointer = undefined;
     this.stop();
     this.set({ parameters: { ...this.data.parameters, ...patch }, time: 0 });
+  }
+
+  private restoreDefaults = () => {
+    this.pointer = undefined;
+    this.chartPointer = undefined;
+    this.stop();
+    this.set({ parameters: { ...defaults }, time: 0 });
+  };
+
+  private loadScenario(preset: ScenarioPreset) {
+    this.pointer = undefined;
+    this.chartPointer = undefined;
+    this.stop();
+    this.set({
+      parameters: { ...preset.parameters },
+      time: 0,
+      observation: preset.observation,
+      support: "formula",
+    });
+    void this.updateComplete.then(() => {
+      (
+        this.renderRoot.querySelector(".observation-tabs") as HTMLElement | null
+      )?.focus?.();
+    });
   }
 
   private get moverVelocity() {
@@ -229,12 +284,37 @@ export class DopplerExperiment extends LitElement {
     },
   };
 
+  private chartScrub = {
+    start: (event: PointerEvent, windowStart: number) => {
+      if (event.button !== 0 || this.chartPointer) return;
+      const next = chartTimeFromEvent(event, windowStart);
+      if (next === null) return;
+      this.pause();
+      this.chartPointer = { id: event.pointerId, windowStart };
+      (event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
+      this.seek(next);
+    },
+    move: (event: PointerEvent) => {
+      const pointer = this.chartPointer;
+      if (!pointer || pointer.id !== event.pointerId) return;
+      const next = chartTimeFromEvent(event, pointer.windowStart);
+      if (next !== null) this.seek(next);
+    },
+    end: (event: PointerEvent) => {
+      if (this.chartPointer?.id === event.pointerId)
+        this.chartPointer = undefined;
+    },
+  };
+
   private playback() {
     const t = messages(this.locale);
     return html`<phy-button variant="primary" @click=${this.toggle}
-        >${this.playing ? t.pause : t.play}</phy-button
+        ><span aria-hidden="true">${this.playing ? "Ⅱ" : "▷"}</span>
+        ${this.playing ? t.pause : t.play}</phy-button
       >
-      <phy-button @click=${() => this.seek(0)}>${t.reset}</phy-button>
+      <phy-button @click=${() => this.seek(0)}
+        ><span aria-hidden="true">↺</span> ${t.reset}</phy-button
+      >
       <phy-select
         .label=${t.rate}
         .value=${String(this.data.rate)}
@@ -252,9 +332,17 @@ export class DopplerExperiment extends LitElement {
     const { min, max, step, unit } = limits[key];
     const value = this.data.parameters[key];
     const label = `${value} ${unit}`;
-    return html`<div class="parameter">
+    const restSpeed = key === "speed" && this.data.parameters.motion === "rest";
+    return html`<div class=${restSpeed ? "parameter muted-param" : "parameter"}>
       <div class="parameter-label">
-        <span>${t[key]}</span><output>${label}</output>
+        <span>${t[key]}</span
+        ><output
+          >${label}${
+            restSpeed
+              ? html`<span class="rest-tag">(${t.speedCompareOnly})</span>`
+              : nothing
+          }</output
+        >
       </div>
       <phy-slider
         .label=${t[key]}
@@ -312,17 +400,132 @@ export class DopplerExperiment extends LitElement {
     });
   };
 
-  protected render() {
-    const t = messages(this.locale);
-    const { parameters, time, wavefronts, observation } = this.data;
-    const trial = this.trial;
-    const sample = trial.at(time);
+  private observationPanel(
+    t: Messages,
+    trial: Trial,
+    sample: ReturnType<Trial["at"]>,
+  ) {
+    const { parameters, time, observation, support } = this.data;
+    return html`<phy-tabs
+      class="observation-tabs"
+      .label=${t.observe}
+      .value=${observation}
+      .items=${observations.map((value) => ({ value, label: t[value] }))}
+      @change=${(event: Event) => {
+        if (event.target !== event.currentTarget) return;
+        this.set({
+          observation: (event.currentTarget as TabsElement)
+            .value as Observation,
+          support: "formula",
+        });
+      }}
+      @activate=${(event: Event) => {
+        if (event.target !== event.currentTarget) return;
+        if (this.data.support !== "formula") this.set({ support: "formula" });
+      }}
+    >
+      ${
+        support === "formula"
+          ? html`<div class="observation" slot=${observation}>
+              ${
+                observation === "arrivals"
+                  ? arrivals(
+                      trial,
+                      sample,
+                      time,
+                      this.chartHeight,
+                      this.chartScrub,
+                      t,
+                    )
+                  : comparison(
+                      parameters,
+                      (motion: Motion) => this.configure({ motion }),
+                      () =>
+                        this.configure({
+                          mover:
+                            parameters.mover === "source"
+                              ? "observer"
+                              : "source",
+                        }),
+                      t,
+                    )
+              }
+            </div>`
+          : nothing
+      }
+    </phy-tabs>`;
+  }
+
+  private supportPanel(t: Messages, trial: Trial) {
+    const { parameters, support } = this.data;
     const hint =
       trial.motion === "rest"
         ? t.restHint
         : parameters.mover === "source"
           ? t.sourceHint
           : t.observerHint;
+    return html`<phy-tabs
+      class="support support-tabs"
+      variant="segmented"
+      .label=${t.supportLabel}
+      .value=${support}
+      .items=${[
+        { value: "formula", label: t.formulaTab },
+        { value: "explore", label: t.exploreTab },
+      ]}
+      @change=${(event: Event) => {
+        if (event.target !== event.currentTarget) return;
+        this.set({
+          support: (event.currentTarget as TabsElement).value as Support,
+        });
+      }}
+    >
+      <div class="support-body" slot=${support}>
+        ${
+          support === "formula"
+            ? html`<section class="model-formula">
+                <phy-math .source=${equation}></phy-math>
+                <p>${hint}</p>
+              </section>`
+            : html`<div class="explore-content">
+                <p class="explore-hint">${t.exploreHint}</p>
+                <div class="scenario-grid">
+                  ${scenarios.map((preset) => {
+                    const copy = t.scenarios[preset.id];
+                    return html`<article class="scenario-card">
+                      <h3>${copy.title}</h3>
+                      <p>${copy.detail}</p>
+                      <button
+                        type="button"
+                        data-scenario=${preset.id}
+                        @click=${() => this.loadScenario(preset)}
+                      >
+                        ${t.loadScenario}
+                      </button>
+                    </article>`;
+                  })}
+                </div>
+              </div>`
+        }
+      </div>
+    </phy-tabs>`;
+  }
+
+  protected render() {
+    const t = messages(this.locale);
+    const { parameters, time, wavefronts, wavelengthGuide, vectors, support } =
+      this.data;
+    const trial = this.trial;
+    const sample = trial.at(time);
+    const firstArrival = trial.nextArrival(0);
+    const periodMs = (1000 / trial.received).toFixed(2);
+    const activeSpeed = Math.abs(this.moverVelocity);
+    const mach = activeSpeed / soundSpeed;
+    const freqRatio = trial.received / trial.emitted;
+    const isAtFirst = Math.abs(time - firstArrival) < 1e-6;
+    const isAtEnd = Math.abs(time - duration) < 1e-6;
+    const isAtCrest = !isAtFirst && !isAtEnd && sample.phase < 0.04;
+
     const readouts = [
       {
         key: "emitted",
@@ -349,57 +552,125 @@ export class DopplerExperiment extends LitElement {
         unit: "m",
       },
     ];
+
+    const isDefault =
+      parameters.mover === defaults.mover &&
+      parameters.motion === defaults.motion &&
+      parameters.speed === defaults.speed &&
+      parameters.frequency === defaults.frequency;
+
     return html`<header class="heading">
-        <h1>${t.title}</h1>
-        <p>${t.subtitle}</p>
-        ${this.context?.toolbar ? nothing : html`<div class="fallback-controls">${this.playback()}</div>`}
+        <div class="heading-main">
+          <h1>${t.title}</h1>
+          <span class="subtitle">${t.subtitle}</span>
+        </div>
+        ${
+          this.context?.toolbar
+            ? html`<span class="model-note">${t.modelNote}</span>`
+            : html`<div class="fallback-controls">${this.playback()}</div>`
+        }
       </header>
       <div class="lab">
         <phy-box class="panel" role="complementary" aria-label=${t.settings}>
-          <div class="panel-heading"><h2>${t.settings}</h2></div>
+          <div class="panel-heading">
+            <h2>${t.settings}</h2>
+            <span class=${this.playing ? "status active" : "status"}
+              >${this.playing ? t.running : t.paused}</span
+            >
+          </div>
           <div class="parameters">
-            <div class="field-label">
+            <div class="segmented-field">
               <span>${t.mover}</span>
-              <phy-select
+              <phy-radio-group
+                variant="segmented"
                 .label=${t.mover}
                 .value=${parameters.mover}
-                .options=${movers.map((value) => ({ value, label: value === "source" ? t.sourceMoves : t.observerMoves }))}
-                @change=${(event: Event) => this.configure({ mover: (event.currentTarget as SelectElement).value as Mover })}
-              ></phy-select>
+                .options=${movers.map((value) => ({ value, label: t[value] }))}
+                @change=${(event: Event) =>
+                  this.configure({
+                    mover: (event.currentTarget as RadioGroupElement)
+                      .value as Mover,
+                  })}
+              ></phy-radio-group>
             </div>
-            <div class="field-label">
+            <div class="segmented-field">
               <span>${t.motion}</span>
-              <phy-select
+              <phy-radio-group
+                variant="segmented"
                 .label=${t.motion}
                 .value=${parameters.motion}
                 .options=${motions.map((value) => ({ value, label: t[value] }))}
-                @change=${(event: Event) => this.configure({ motion: (event.currentTarget as SelectElement).value as Motion })}
-              ></phy-select>
+                @change=${(event: Event) =>
+                  this.configure({
+                    motion: (event.currentTarget as RadioGroupElement)
+                      .value as Motion,
+                  })}
+              ></phy-radio-group>
             </div>
             ${this.parameter("speed", t)} ${this.parameter("frequency", t)}
           </div>
-          <div class="medium">
-            <span>${t.medium}</span><output>${soundSpeed} m/s</output>
+          <div class="derived-metrics">
+            <div>
+              <span>${t.medium}</span><output>${soundSpeed} m/s</output>
+            </div>
+            <div><span>${t.mach}</span><output>${mach.toFixed(2)}</output></div>
+            <div>
+              <span>${t.behindWavelength}</span
+              ><output>${trial.behind.toFixed(3)} m</output>
+            </div>
+            <div>
+              <span>${t.freqRatio}</span
+              ><output>${freqRatio.toFixed(2)}×</output>
+            </div>
           </div>
-          <div class="footer">
-            <p>${t.resetHint}</p>
+          <div class="parameter-footer">
+            <phy-button
+              ?disabled=${isDefault && time === 0}
+              @click=${this.restoreDefaults}
+              >${t.restoreDefaults}</phy-button
+            >
             <phy-button @click=${this.openHelp}>${t.help}</phy-button>
+            <small>${t.resetHint}</small>
           </div>
         </phy-box>
-        <phy-box class="panel" role="region" aria-label=${t.waveView}>
+        <phy-box class="panel center" role="region" aria-label=${t.waveView}>
           <div class="panel-heading">
             <h2>${t.waveView}</h2>
-            <small class="motion-status"
-              >${t[trial.motion]} · ${Math.abs(this.moverVelocity)} m/s</small
-            >
-            <phy-checkbox
-              .checked=${wavefronts}
-              @change=${(event: Event) => this.set({ wavefronts: (event.currentTarget as CheckboxElement).checked })}
-              >${t.wavefronts}</phy-checkbox
+            <small class="motion-status mono"
+              >${t[trial.motion]} · ${activeSpeed} m/s</small
             >
           </div>
           <div class="scene-wrap">
-            ${scene(trial, sample, time, wavefronts, this.scrub, t)}
+            ${scene(
+              trial,
+              sample,
+              time,
+              { wavefronts, wavelengthGuide, vectors },
+              this.scrub,
+              t,
+            )}
+          </div>
+          <div class="layer-controls">
+            <div>
+              <phy-checkbox
+                .checked=${wavefronts}
+                @change=${(event: Event) => this.set({ wavefronts: (event.currentTarget as CheckboxElement).checked })}
+                >${t.wavefronts}</phy-checkbox
+              >
+              <phy-checkbox
+                .checked=${wavelengthGuide}
+                @change=${(event: Event) => this.set({ wavelengthGuide: (event.currentTarget as CheckboxElement).checked })}
+                >${t.wavelengthGuide}</phy-checkbox
+              >
+              <phy-checkbox
+                .checked=${vectors}
+                @change=${(event: Event) => this.set({ vectors: (event.currentTarget as CheckboxElement).checked })}
+                >${t.vectors}</phy-checkbox
+              >
+            </div>
+            <span class="layer-hint"
+              >${activeSpeed > 0 ? t.drag : t.dragDisabled}</span
+            >
           </div>
           <div class="readouts">
             ${readouts.map(
@@ -413,12 +684,7 @@ export class DopplerExperiment extends LitElement {
             )}
           </div>
           <div class="timeline">
-            <div class="time-label">
-              <span>${t.timeline}</span><small>${t.slowScale}</small>
-              <output data-time=${time}
-                >${milliseconds(time)} / ${duration * 1000} ms</output
-              >
-            </div>
+            <span>0 ms</span>
             <phy-slider
               .label=${t.timeline}
               .valueText=${`${milliseconds(time)} ms`}
@@ -428,42 +694,44 @@ export class DopplerExperiment extends LitElement {
               .value=${Math.round(time * 10000) / 10}
               @input=${(event: Event) => this.seek((event.currentTarget as SliderElement).value / 1000)}
             ></phy-slider>
-            <div class="moments">
-              <phy-button @click=${() => this.seek(trial.nextArrival(0))}
-                >${t.first}</phy-button
+            <span>${duration * 1000} ms</span>
+            <output class="time-label" data-time=${time}
+              >t = ${milliseconds(time)} ms</output
+            >
+          </div>
+          <div class="moments">
+            <button
+              type="button"
+              class=${isAtFirst ? "selected" : ""}
+              @click=${() => this.seek(firstArrival)}
+            >
+              ${t.first}<small aria-hidden="true"
+                >${milliseconds(firstArrival)} ms</small
               >
-              <phy-button
-                @click=${() => this.seek(trial.nextArrival(this.data.time))}
-                >${t.next}</phy-button
-              >
-              <phy-button @click=${() => this.seek(duration)}
-                >${t.end}</phy-button
-              >
-            </div>
+            </button>
+            <button
+              type="button"
+              class=${isAtCrest ? "selected" : ""}
+              @click=${() => this.seek(trial.nextArrival(this.data.time))}
+            >
+              ${t.next}<small aria-hidden="true">+${periodMs} ms</small>
+            </button>
+            <button
+              type="button"
+              class=${isAtEnd ? "selected" : ""}
+              @click=${() => this.seek(duration)}
+            >
+              ${t.end}<small aria-hidden="true">${duration * 1000}.00 ms</small>
+            </button>
           </div>
         </phy-box>
-        <phy-box class="panel" role="region" aria-label=${t.observe}>
-          <phy-tabs
-            class="observation-tabs"
-            .label=${t.observe}
-            .value=${observation}
-            .items=${observations.map((value) => ({ value, label: t[value] }))}
-            @change=${(event: Event) => {
-              if (event.target === event.currentTarget)
-                this.set({
-                  observation: (event.currentTarget as TabsElement)
-                    .value as Observation,
-                });
-            }}
-          >
-            <div class="observation" slot=${observation}>
-              ${observation === "arrivals" ? arrivals(trial, sample, time, t) : comparison(parameters, t)}
-              <section class="model-formula">
-                <phy-math .source=${equation}></phy-math>
-                <p>${hint}</p>
-              </section>
-            </div>
-          </phy-tabs>
+        <phy-box
+          class=${"panel right" + (support === "explore" ? " exploring" : "")}
+          role="region"
+          aria-label=${t.observe}
+        >
+          ${this.observationPanel(t, trial, sample)}
+          ${this.supportPanel(t, trial)}
         </phy-box>
       </div>`;
   }

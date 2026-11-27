@@ -7,13 +7,17 @@ import {
 } from "./physics";
 
 export type Observation = "arrivals" | "comparison";
+export type Support = "formula" | "explore";
 export type Rate = 1 | 0.5 | 0.25;
 export interface Snapshot {
   parameters: Parameters;
   time: number;
   observation: Observation;
+  support: Support;
   rate: Rate;
   wavefronts: boolean;
+  wavelengthGuide: boolean;
+  vectors: boolean;
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -41,7 +45,10 @@ export function normalizeSnapshot(value: unknown): Snapshot {
         : 0,
     observation:
       raw.observation === "comparison" ? raw.observation : "arrivals",
+    support: raw.support === "explore" ? "explore" : "formula",
     rate: raw.rate === 0.5 || raw.rate === 0.25 ? raw.rate : 1,
     wavefronts: raw.wavefronts !== false,
+    wavelengthGuide: raw.wavelengthGuide !== false,
+    vectors: raw.vectors !== false,
   };
 }
