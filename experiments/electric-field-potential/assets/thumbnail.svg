@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180">
+  <style>
+    svg { color-scheme: light dark; }
+    .paper { fill: light-dark(#fafafa,#101113); }
+    .positive { color: light-dark(#ad5436,#ef9c77); }
+    .negative { color: light-dark(#245edb,#7ca4ff); }
+    .zero { stroke: light-dark(#414750,#a4adba); }
+    .field { stroke: light-dark(#25805d,#62ba94); }
+  </style>
+  <path class="paper" d="M0 0h320v180H0z"/>
+  <path class="zero" d="M160 22v136" fill="none" stroke-dasharray="3 4"/>
+  <g class="positive">
+    <g fill="none" stroke="currentColor" opacity=".76"><ellipse cx="86" cy="90" rx="55" ry="65"/><ellipse cx="94" cy="90" rx="39" ry="43"/><ellipse cx="97" cy="90" rx="25" ry="27"/></g>
+    <circle cx="99" cy="90" r="9" fill="currentColor"/>
+  </g>
+  <g class="negative">
+    <g fill="none" stroke="currentColor" opacity=".76" stroke-dasharray="4 3"><ellipse cx="234" cy="90" rx="55" ry="65"/><ellipse cx="226" cy="90" rx="39" ry="43"/><ellipse cx="223" cy="90" rx="25" ry="27"/></g>
+    <circle cx="221" cy="90" r="9" fill="currentColor"/>
+  </g>
+  <g fill="white" font-family="monospace" font-size="12" text-anchor="middle"><text x="99" y="94">+</text><text x="221" y="94">−</text></g>
+  <path class="field" d="M160 90h24l-5-4m5 4-5 4" fill="none" stroke-width="2"/>
+</svg>
