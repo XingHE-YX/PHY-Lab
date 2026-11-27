@@ -26,6 +26,27 @@ export const presets = {
 } as const;
 export type Preset = keyof typeof presets;
 
+export interface ScenarioPreset {
+  id: "headOn" | "stickyHeadOn" | "exchange" | "tandem";
+  parameters: Parameters;
+  metric: Metric;
+}
+
+export const scenarios: readonly ScenarioPreset[] = [
+  { id: "headOn", parameters: defaults, metric: "momentum" },
+  {
+    id: "stickyHeadOn",
+    parameters: { ...defaults, mode: "inelastic" },
+    metric: "kinetic",
+  },
+  { id: "exchange", parameters: presets.exchange, metric: "momentum" },
+  {
+    id: "tandem",
+    parameters: { ...presets.tandem, mode: "inelastic" },
+    metric: "momentum",
+  },
+];
+
 export const width = 1;
 const initial: Pair = { left: -1.8, right: 1.8 };
 const gap = initial.right - initial.left - width;
@@ -71,6 +92,8 @@ export function makeTrial(parameters: Parameters) {
   const before = quantities(mass, incoming);
   const massSum = mass.left + mass.right;
   const centerVelocity = before.momentum.total / massSum;
+  const centerInitial =
+    (mass.left * initial.left + mass.right * initial.right) / massSum;
   const elasticity = parameters.mode === "elastic" ? 1 : 0;
   const outgoing = {
     left: centerVelocity - (elasticity * closing * mass.right) / massSum,
@@ -86,6 +109,10 @@ export function makeTrial(parameters: Parameters) {
         2;
 
   function at(time: number) {
+    const centerOfMass = {
+      position: centerInitial + centerVelocity * time,
+      velocity: centerVelocity,
+    };
     if (contact === null || after === null || time < contact) {
       return {
         ...before,
@@ -93,6 +120,7 @@ export function makeTrial(parameters: Parameters) {
           left: initial.left + incoming.left * time,
           right: initial.right + incoming.right * time,
         },
+        centerOfMass,
         phase: contact === null ? ("noContact" as const) : ("before" as const),
         coupled: false,
       };
@@ -104,6 +132,7 @@ export function makeTrial(parameters: Parameters) {
         left: contactLeft + outgoing.left * since,
         right: contactLeft + width + outgoing.right * since,
       },
+      centerOfMass,
       phase: "after" as const,
       coupled: elasticity === 0,
     };
@@ -118,6 +147,7 @@ export function makeTrial(parameters: Parameters) {
     contact,
     duration,
     transfer,
+    centerVelocity,
     preContact: contact === null ? null : contact - Math.min(0.12, contact / 4),
     maximumGap: Math.max(initial.right - initial.left, end.right - end.left),
   };

@@ -5,10 +5,11 @@ const route = "/#/experiments/collision-momentum";
 const title = /^(碰撞与动量守恒|Collisions and momentum)$/;
 const time = async (page: Page) =>
   Number(await page.locator("output[data-time]").getAttribute("data-time"));
-const mode = (page: Page) =>
-  page.getByRole("combobox", { name: "碰撞类型", exact: true });
-const preset = (page: Page) =>
-  page.getByRole("combobox", { name: "选择探索预设", exact: true });
+const selectMode = (page: Page, label: string) =>
+  page
+    .getByRole("radiogroup", { name: "碰撞类型", exact: true })
+    .getByRole("radio", { name: label, exact: true })
+    .click();
 const read = (page: Page, key: string) =>
   page.locator(`[data-readout="${key}"]`);
 
@@ -37,7 +38,7 @@ test("catalog opens both collision types and live totals match the comparison an
   await expect(read(page, "left")).toHaveText("-0.30 m/s");
   await expect(read(page, "right")).toHaveText("3.20 m/s");
   await expect(page.locator(".coupling")).toHaveCount(0);
-  await mode(page).selectOption("inelastic");
+  await selectMode(page, "完全非弹性");
   expect(await time(page)).toBe(0);
   await page.getByRole("tab", { name: "动能", exact: true }).click();
   await page.getByRole("button", { name: "接触前", exact: true }).click();
@@ -57,12 +58,15 @@ test("catalog opens both collision types and live totals match the comparison an
   expect(errors).toEqual([]);
 });
 
-test("the equal-speed run has no fabricated after state or contact marker", async ({
+test("the equal-speed scenario has no fabricated after state or contact marker", async ({
   page,
 }) => {
   await open(page);
-  await mode(page).selectOption("inelastic");
-  await preset(page).selectOption("tandem");
+  await page.getByRole("tab", { name: "探索", exact: true }).click();
+  await page.locator('[data-scenario="tandem"]').click();
+  await expect(
+    page.getByRole("tab", { name: "公式", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
   await expect(page.locator(".phase")).toHaveAttribute(
     "data-phase",
     "noContact",
@@ -82,7 +86,7 @@ test("the equal-speed run has no fabricated after state or contact marker", asyn
   await expect(page.locator(".coupling")).toHaveCount(0);
 });
 
-test("mass and signed initial velocity are editable through sliders and the scene", async ({
+test("mass, signed initial velocity, chart scrubbing, and CM layer work cleanly", async ({
   page,
 }) => {
   await open(page);
@@ -120,6 +124,26 @@ test("mass and signed initial velocity are editable through sliders and the scen
   ).toHaveValue("-0.5");
   await expect(page.locator('[data-before="momentum"]')).toHaveText("-1.25");
   expect(await time(page)).toBe(0);
+
+  // CM layer toggle & chart scrubbing
+  await expect(page.locator(".cm-layer")).toBeVisible();
+  await page.getByRole("checkbox", { name: "质心 CM", exact: true }).uncheck();
+  await expect(page.locator(".cm-layer")).toHaveCount(0);
+
+  const chartBox = await page.locator(".quantity-chart").boundingBox();
+  expect(chartBox).not.toBeNull();
+  await page.mouse.move(
+    chartBox!.x + chartBox!.width * 0.4,
+    chartBox!.y + chartBox!.height * 0.5,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    chartBox!.x + chartBox!.width * 0.72,
+    chartBox!.y + chartBox!.height * 0.5,
+    { steps: 4 },
+  );
+  await page.mouse.up();
+  expect(await time(page)).toBeGreaterThan(1);
 });
 
 test("slow playback and visibility preserve exact time and reload the paused view", async ({
@@ -177,12 +201,12 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
     await open(page);
-    await mode(page).selectOption("inelastic");
+    await selectMode(page, "完全非弹性");
     await page.getByRole("button", { name: "接触后", exact: true }).click();
     const scene = page.locator(".scene-wrap");
     const bounds = await scene.boundingBox();
     const keys = page.locator(
-      '.heading, .panel, .parameters, .footer, .scene-wrap, .readouts, .timeline, .totals, .chart-wrap, .model-formula, phy-math [part="formula"]',
+      '.heading, .panel, .parameters, .parameter-footer, .scene-wrap, .layer-controls, .readouts, .timeline, .moments, .totals, .chart-wrap, .model-formula, phy-math [part="formula"]',
     );
     for (const language of ["zh", "en"]) {
       if (language === "en")
@@ -248,11 +272,15 @@ test("first offline visit and reload preserve the stuck carts", async ({
   await page.getByRole("button", { name: "关闭", exact: true }).click();
   await context.setOffline(true);
   await open(page);
-  await mode(page).selectOption("inelastic");
+  await selectMode(page, "完全非弹性");
   await page.getByRole("button", { name: "接触后", exact: true }).click();
   const saved = await time(page);
   await page.reload();
-  await expect(mode(page)).toHaveValue("inelastic");
+  await expect(
+    page
+      .getByRole("radiogroup", { name: "碰撞类型", exact: true })
+      .getByRole("radio", { name: "完全非弹性", exact: true }),
+  ).toBeChecked();
   await expect(page.locator(".coupling")).toBeVisible();
   expect(await time(page)).toBe(saved);
 });

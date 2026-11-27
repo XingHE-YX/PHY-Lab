@@ -4,28 +4,41 @@ import type { DialogHandle } from "../../src/infra/platform/protocols/v2/api/dia
 import type { Locale } from "../../src/infra/platform/protocols/v2/api/environment";
 import type {
   CheckboxElement,
+  RadioGroupElement,
   SelectElement,
   SliderElement,
   TabsElement,
 } from "../../src/infra/platform/protocols/v2/components";
-import { number, plotQuantities, totals, units } from "./components/quantities";
+import {
+  chartTimeFromEvent,
+  number,
+  plotQuantities,
+  totals,
+  units,
+} from "./components/quantities";
 import { scene, velocityCoordinate } from "./components/scene";
 import { messages, type Messages } from "./locales/messages";
 import {
   clamp,
+  defaults,
   limits,
   makeTrial,
   parameterValue,
-  presets,
+  scenarios,
   type Cart,
   type Metric,
   type Mode,
   type Parameter,
   type Parameters,
-  type Preset,
+  type ScenarioPreset,
   type Trial,
 } from "./model/physics";
-import { normalizeSnapshot, type Rate, type Snapshot } from "./model/snapshot";
+import {
+  normalizeSnapshot,
+  type Rate,
+  type Snapshot,
+  type Support,
+} from "./model/snapshot";
 import { styles } from "./styles/desktop";
 
 const timelineSteps = 4000;
@@ -45,10 +58,12 @@ export class CollisionExperiment extends LitElement {
     locale: { state: true },
     data: { state: true },
     playing: { state: true },
+    chartHeight: { state: true },
   };
   declare locale: Locale;
   declare private data: Snapshot;
   declare private playing: boolean;
+  declare private chartHeight: number;
   private context?: ExperimentContext;
   private readonly controls = document.createElement("div");
   private readonly help = document.createElement("div");
@@ -61,6 +76,9 @@ export class CollisionExperiment extends LitElement {
     coordinate: number;
     velocity: number;
   };
+  private chartPointer?: number;
+  private chartObserver?: ResizeObserver;
+  private observedChartWrap?: Element;
   private cached?: { parameters: Parameters; trial: Trial };
 
   constructor() {
@@ -68,6 +86,7 @@ export class CollisionExperiment extends LitElement {
     this.locale = "zh-CN";
     this.data = normalizeSnapshot(null);
     this.playing = false;
+    this.chartHeight = 190;
     this.controls.style.cssText = "display:flex;align-items:center;gap:8px";
     this.help.attachShadow({ mode: "open" });
   }
@@ -100,6 +119,9 @@ export class CollisionExperiment extends LitElement {
   disconnectedCallback() {
     this.pause();
     this.dialog?.close();
+    this.chartObserver?.disconnect();
+    this.chartObserver = undefined;
+    this.observedChartWrap = undefined;
     render(nothing, this.help.shadowRoot!);
     this.context?.toolbar?.setControls(null);
     render(nothing, this.controls);
@@ -118,6 +140,21 @@ export class CollisionExperiment extends LitElement {
     )
       render(this.playback(), this.controls);
     if (this.dialog && changed.has("locale")) this.updateHelp();
+    this.syncChartObserver();
+  }
+
+  private syncChartObserver() {
+    const wrap = this.renderRoot.querySelector(".chart-wrap");
+    if (wrap === this.observedChartWrap) return;
+    this.chartObserver?.disconnect();
+    this.observedChartWrap = wrap ?? undefined;
+    if (!wrap) return;
+    this.chartObserver = new ResizeObserver((entries) => {
+      const height = Math.round(entries[0]?.contentRect.height ?? 0);
+      if (height >= 120 && Math.abs(height - this.chartHeight) > 2)
+        this.chartHeight = height;
+    });
+    this.chartObserver.observe(wrap);
   }
 
   private persist() {
@@ -145,6 +182,7 @@ export class CollisionExperiment extends LitElement {
   pause() {
     this.stop();
     this.pointer = undefined;
+    this.chartPointer = undefined;
     this.persist();
   }
 
@@ -178,7 +216,32 @@ export class CollisionExperiment extends LitElement {
 
   private configure(patch: Partial<Parameters>) {
     this.stop();
+    this.chartPointer = undefined;
     this.set({ parameters: { ...this.data.parameters, ...patch }, time: 0 });
+  }
+
+  private restoreDefaults = () => {
+    this.stop();
+    this.pointer = undefined;
+    this.chartPointer = undefined;
+    this.set({ parameters: { ...defaults }, time: 0 });
+  };
+
+  private loadScenario(preset: ScenarioPreset) {
+    this.stop();
+    this.pointer = undefined;
+    this.chartPointer = undefined;
+    this.set({
+      parameters: { ...preset.parameters },
+      time: 0,
+      metric: preset.metric,
+      support: "formula",
+    });
+    void this.updateComplete.then(() => {
+      (
+        this.renderRoot.querySelector(".observation-tabs") as HTMLElement | null
+      )?.focus?.();
+    });
   }
 
   private change(key: Parameter, input: number) {
@@ -241,12 +304,35 @@ export class CollisionExperiment extends LitElement {
     },
   };
 
+  private chartScrub = {
+    start: (event: PointerEvent) => {
+      if (event.button !== 0 || this.chartPointer !== undefined) return;
+      const next = chartTimeFromEvent(event, this.trial.duration);
+      if (next === null) return;
+      this.pause();
+      this.chartPointer = event.pointerId;
+      (event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
+      this.seek(next);
+    },
+    move: (event: PointerEvent) => {
+      if (this.chartPointer !== event.pointerId) return;
+      const next = chartTimeFromEvent(event, this.trial.duration);
+      if (next !== null) this.seek(next);
+    },
+    end: (event: PointerEvent) => {
+      if (this.chartPointer === event.pointerId) this.chartPointer = undefined;
+    },
+  };
+
   private playback() {
     const t = messages(this.locale);
     return html`<phy-button variant="primary" @click=${this.toggle}
-        >${this.playing ? t.pause : t.play}</phy-button
+        ><span aria-hidden="true">${this.playing ? "Ⅱ" : "▷"}</span>
+        ${this.playing ? t.pause : t.play}</phy-button
       >
-      <phy-button @click=${() => this.seek(0)}>${t.reset}</phy-button>
+      <phy-button @click=${() => this.seek(0)}
+        ><span aria-hidden="true">↺</span> ${t.reset}</phy-button
+      >
       <phy-select
         .label=${t.rate}
         .value=${String(this.data.rate)}
@@ -318,11 +404,50 @@ export class CollisionExperiment extends LitElement {
     });
   };
 
-  protected render() {
-    const t = messages(this.locale);
-    const { parameters, time, vectors, metric } = this.data;
-    const trial = this.trial;
-    const sample = trial.at(time);
+  private observationPanel(
+    t: Messages,
+    trial: Trial,
+    sample: ReturnType<Trial["at"]>,
+  ) {
+    const { time, metric, support } = this.data;
+    return html`<phy-tabs
+      class="observation-tabs"
+      .label=${t.observe}
+      .value=${metric}
+      .items=${metrics.map((value) => ({ value, label: t[value] }))}
+      @change=${(event: Event) => {
+        if (event.target !== event.currentTarget) return;
+        this.set({
+          metric: (event.currentTarget as TabsElement).value as Metric,
+          support: "formula",
+        });
+      }}
+      @activate=${(event: Event) => {
+        if (event.target !== event.currentTarget) return;
+        if (this.data.support !== "formula") this.set({ support: "formula" });
+      }}
+    >
+      ${
+        support === "formula"
+          ? html`<div class="observation" slot=${metric}>
+              ${totals(trial, sample, t)}
+              ${plotQuantities(
+                trial,
+                sample,
+                time,
+                metric,
+                this.chartHeight,
+                this.chartScrub,
+                t,
+              )}
+            </div>`
+          : nothing
+      }
+    </phy-tabs>`;
+  }
+
+  private supportPanel(t: Messages, trial: Trial) {
+    const { parameters, support } = this.data;
     const outcome = trial.contact === null ? "noContact" : parameters.mode;
     const hint =
       outcome === "noContact"
@@ -330,6 +455,73 @@ export class CollisionExperiment extends LitElement {
         : outcome === "elastic"
           ? t.elasticHint
           : t.inelasticHint;
+    return html`<phy-tabs
+      class="support support-tabs"
+      variant="segmented"
+      .label=${t.supportLabel}
+      .value=${support}
+      .items=${[
+        { value: "formula", label: t.formulaTab },
+        { value: "explore", label: t.exploreTab },
+      ]}
+      @change=${(event: Event) => {
+        if (event.target !== event.currentTarget) return;
+        this.set({
+          support: (event.currentTarget as TabsElement).value as Support,
+        });
+      }}
+    >
+      <div class="support-body" slot=${support}>
+        ${
+          support === "formula"
+            ? html`<section class="model-formula">
+                <phy-math .source=${equations[outcome]}></phy-math>
+                <p>${hint}</p>
+              </section>`
+            : html`<div class="explore-content">
+                <p class="explore-hint">${t.exploreHint}</p>
+                <div class="scenario-grid">
+                  ${scenarios.map((preset) => {
+                    const copy = t.scenarios[preset.id];
+                    return html`<article class="scenario-card">
+                      <h3>${copy.title}</h3>
+                      <p>${copy.detail}</p>
+                      <button
+                        type="button"
+                        data-scenario=${preset.id}
+                        @click=${() => this.loadScenario(preset)}
+                      >
+                        ${t.loadScenario}
+                      </button>
+                    </article>`;
+                  })}
+                </div>
+              </div>`
+        }
+      </div>
+    </phy-tabs>`;
+  }
+
+  protected render() {
+    const t = messages(this.locale);
+    const { parameters, time, vectors, centerOfMass, support } = this.data;
+    const trial = this.trial;
+    const sample = trial.at(time);
+    const editable = !this.playing && time === 0;
+
+    const isDefault =
+      parameters.mode === defaults.mode &&
+      parameters.leftMass === defaults.leftMass &&
+      parameters.rightMass === defaults.rightMass &&
+      parameters.leftVelocity === defaults.leftVelocity &&
+      parameters.rightVelocity === defaults.rightVelocity;
+
+    const atBefore =
+      trial.preContact !== null && Math.abs(time - trial.preContact) < 1e-4;
+    const atAfter =
+      trial.contact !== null && Math.abs(time - trial.contact) < 1e-4;
+    const atEnd = Math.abs(time - trial.duration) < 1e-4;
+
     const readouts = [
       { kind: "left", label: "vₐ", value: sample.velocity.left, unit: "m/s" },
       { kind: "right", label: "vᵦ", value: sample.velocity.right, unit: "m/s" },
@@ -346,69 +538,109 @@ export class CollisionExperiment extends LitElement {
         unit: units.kinetic,
       },
     ];
+
     return html`<header class="heading">
-        <h1>${t.title}</h1>
-        <p>${t.subtitle}</p>
-        ${this.context?.toolbar ? nothing : html`<div class="fallback-controls">${this.playback()}</div>`}
+        <div class="heading-main">
+          <h1>${t.title}</h1>
+          <span class="subtitle">${t.subtitle}</span>
+        </div>
+        ${
+          this.context?.toolbar
+            ? html`<span class="model-note">${t.modelNote}</span>`
+            : html`<div class="fallback-controls">${this.playback()}</div>`
+        }
       </header>
       <div class="lab">
         <phy-box class="panel" role="complementary" aria-label=${t.parameters}>
-          <div class="panel-heading"><h2>${t.parameters}</h2></div>
+          <div class="panel-heading">
+            <h2>${t.parameters}</h2>
+            <span class=${this.playing ? "status active" : "status"}
+              >${this.playing ? t.running : t.paused}</span
+            >
+          </div>
           <div class="parameters">
-            <div class="field-label">
+            <div class="segmented-field">
               <span>${t.mode}</span>
-              <phy-select
+              <phy-radio-group
+                variant="segmented"
                 .label=${t.mode}
                 .value=${parameters.mode}
                 .options=${modes.map((value) => ({ value, label: t[value] }))}
-                @change=${(event: Event) => this.configure({ mode: (event.currentTarget as SelectElement).value as Mode })}
-              ></phy-select>
+                @change=${(event: Event) =>
+                  this.configure({
+                    mode: (event.currentTarget as RadioGroupElement)
+                      .value as Mode,
+                  })}
+              ></phy-radio-group>
             </div>
             <section class="cart-parameters">
-              <h3 class="left">${t.cartLeft}</h3>
+              <div class="cart-heading">
+                <h3 class="left">${t.cartLeft}</h3>
+                <output
+                  >pₐ = ${number(trial.before.momentum.left)} kg·m/s</output
+                >
+              </div>
               ${this.parameter("leftMass", t)}${this.parameter("leftVelocity", t)}
             </section>
             <section class="cart-parameters">
-              <h3 class="right">${t.cartRight}</h3>
+              <div class="cart-heading">
+                <h3 class="right">${t.cartRight}</h3>
+                <output
+                  >pᵦ = ${number(trial.before.momentum.right)} kg·m/s</output
+                >
+              </div>
               ${this.parameter("rightMass", t)}${this.parameter("rightVelocity", t)}
             </section>
           </div>
-          <div class="footer">
-            <p>${t.resetHint}</p>
-            <phy-select
-              .label=${t.preset}
-              .value=${""}
-              .options=${[{ value: "", label: t.preset, disabled: true }, ...(Object.keys(presets) as Preset[]).map((key) => ({ value: key, label: t[key] }))]}
-              @change=${(event: Event) => {
-                const control = event.currentTarget as SelectElement;
-                const preset = presets[control.value as Preset];
-                if (preset)
-                  this.configure({ ...preset, mode: parameters.mode });
-                control.value = "";
-              }}
-            ></phy-select>
+          <div class="parameter-footer">
+            <phy-button
+              ?disabled=${isDefault && time === 0}
+              @click=${this.restoreDefaults}
+              >${t.restoreDefaults}</phy-button
+            >
             <phy-button @click=${this.openHelp}>${t.help}</phy-button>
+            <small>${t.resetHint}</small>
           </div>
         </phy-box>
-        <phy-box class="panel" role="region" aria-label=${t.scene}>
+        <phy-box class="panel center" role="region" aria-label=${t.scene}>
           <div class="panel-heading">
             <h2>${t.scene}</h2>
-            <small class="phase" data-phase=${sample.phase}
+            <small class="phase mono" data-phase=${sample.phase}
               >${t[sample.phase]}${trial.contact === null ? "" : ` · t꜀ = ${number(trial.contact, 3)} s`}</small
-            >
-            <phy-checkbox
-              .checked=${vectors}
-              @change=${(event: Event) => this.set({ vectors: (event.currentTarget as CheckboxElement).checked })}
-              >${t.vectors}</phy-checkbox
             >
           </div>
           <div class="scene-wrap">
-            ${scene(trial, sample, vectors, !this.playing && time === 0, this.adjust, t)}
+            ${scene(
+              trial,
+              sample,
+              time,
+              { vectors, centerOfMass },
+              editable,
+              this.adjust,
+              t,
+            )}
+          </div>
+          <div class="layer-controls">
+            <div>
+              <phy-checkbox
+                .checked=${vectors}
+                @change=${(event: Event) => this.set({ vectors: (event.currentTarget as CheckboxElement).checked })}
+                >${t.vectors}</phy-checkbox
+              >
+              <phy-checkbox
+                .checked=${centerOfMass}
+                @change=${(event: Event) => this.set({ centerOfMass: (event.currentTarget as CheckboxElement).checked })}
+                >${t.centerOfMass}</phy-checkbox
+              >
+            </div>
+            <span class="layer-hint"
+              >${editable ? t.dragHint : t.dragLocked}</span
+            >
           </div>
           <div class="readouts">
             ${readouts.map(
               ({ kind, label, value, unit }) =>
-                html` <div class=${kind}>
+                html`<div class=${kind}>
                   <span>${label}</span
                   ><output data-readout=${kind}
                     >${number(value)} <small>${unit}</small></output
@@ -417,12 +649,7 @@ export class CollisionExperiment extends LitElement {
             )}
           </div>
           <div class="timeline">
-            <div class="time-label">
-              <span>${t.timeline}</span
-              ><output data-time=${time}
-                >${number(time)} / ${number(trial.duration)} s</output
-              >
-            </div>
+            <span>0.00 s</span>
             <phy-slider
               .label=${t.timeline}
               .valueText=${`${number(time)} s`}
@@ -432,45 +659,50 @@ export class CollisionExperiment extends LitElement {
               .value=${Math.round((time * timelineSteps) / trial.duration)}
               @input=${(event: Event) => this.seek(trial.duration * ((event.currentTarget as SliderElement).value / timelineSteps))}
             ></phy-slider>
-            <div class="moments">
-              <phy-button
-                ?disabled=${trial.preContact === null}
-                @click=${() => this.seek(trial.preContact ?? 0)}
-                >${t.beforeContact}</phy-button
+            <span>${number(trial.duration)} s</span>
+            <output class="time-label" data-time=${time}
+              >t = ${number(time)} s</output
+            >
+          </div>
+          <div class="moments">
+            <button
+              type="button"
+              class=${atBefore ? "selected" : ""}
+              ?disabled=${trial.preContact === null}
+              @click=${() => this.seek(trial.preContact ?? 0)}
+            >
+              ${t.beforeContact}<small aria-hidden="true"
+                >${trial.preContact === null ? "—" : `${number(trial.preContact)} s`}</small
               >
-              <phy-button
-                ?disabled=${trial.contact === null}
-                @click=${() => this.seek(trial.contact ?? 0)}
-                >${t.afterContact}</phy-button
+            </button>
+            <button
+              type="button"
+              class=${atAfter ? "selected" : ""}
+              ?disabled=${trial.contact === null}
+              @click=${() => this.seek(trial.contact ?? 0)}
+            >
+              ${t.afterContact}<small aria-hidden="true"
+                >${trial.contact === null ? "—" : `${number(trial.contact)} s`}</small
               >
-              <phy-button @click=${() => this.seek(trial.duration)}
-                >${t.end}</phy-button
+            </button>
+            <button
+              type="button"
+              class=${atEnd ? "selected" : ""}
+              @click=${() => this.seek(trial.duration)}
+            >
+              ${t.end}<small aria-hidden="true"
+                >${number(trial.duration)} s</small
               >
-            </div>
+            </button>
           </div>
         </phy-box>
-        <phy-box class="panel" role="region" aria-label=${t.observe}>
-          ${totals(trial, sample, t)}
-          <phy-tabs
-            class="observation-tabs"
-            .label=${t.observe}
-            .value=${metric}
-            .items=${metrics.map((value) => ({ value, label: t[value] }))}
-            @change=${(event: Event) => {
-              if (event.target === event.currentTarget)
-                this.set({
-                  metric: (event.currentTarget as TabsElement).value as Metric,
-                });
-            }}
-          >
-            <div class="observation" slot=${metric}>
-              ${plotQuantities(trial, sample, time, metric, this.seek, t)}
-              <section class="model-formula">
-                <phy-math .source=${equations[outcome]}></phy-math>
-                <p>${hint}</p>
-              </section>
-            </div>
-          </phy-tabs>
+        <phy-box
+          class=${"panel right" + (support === "explore" ? " exploring" : "")}
+          role="region"
+          aria-label=${t.observe}
+        >
+          ${this.observationPanel(t, trial, sample)}
+          ${this.supportPanel(t, trial)}
         </phy-box>
       </div>`;
   }

@@ -9,14 +9,16 @@ test("preserves a paused post-contact sample and view preferences", () => {
     time: makeTrial(parameters).contact!,
     rate: 0.25,
     metric: "kinetic",
+    support: "explore",
     vectors: false,
+    centerOfMass: false,
   };
   expect(
     normalizeSnapshot({ ...JSON.parse(JSON.stringify(saved)), playing: true }),
   ).toEqual(saved);
 });
 
-test("limits invalid masses, signed velocities and time before restoring", () => {
+test("limits invalid masses, signed velocities and legacy missing fields before restoring", () => {
   const saved = normalizeSnapshot({
     parameters: {
       leftMass: -10,
@@ -27,6 +29,7 @@ test("limits invalid masses, signed velocities and time before restoring", () =>
     },
     time: 900,
     metric: "invalid",
+    support: "unknown",
     rate: -1,
     vectors: "false",
   });
@@ -35,8 +38,10 @@ test("limits invalid masses, signed velocities and time before restoring", () =>
     parameters,
     time: makeTrial(parameters).duration,
     metric: "momentum",
+    support: "formula",
     rate: 1,
     vectors: true,
+    centerOfMass: true,
   });
   expect(normalizeSnapshot(null)).toEqual(normalizeSnapshot({ time: NaN }));
 });
