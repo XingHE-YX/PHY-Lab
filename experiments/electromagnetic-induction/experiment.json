@@ -20,5 +20,9 @@
   "tags": {
     "zh-CN": ["电磁感应", "楞次定律", "磁通量", "感应电动势"],
     "en": ["Induction", "Lenz’s law", "Magnetic flux", "Induced EMF"]
+  },
+  "thumbnail": {
+    "light": "assets/thumbnail-light.svg",
+    "dark": "assets/thumbnail-dark.svg"
   }
 }
