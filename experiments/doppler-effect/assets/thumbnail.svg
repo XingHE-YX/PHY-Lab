@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180">
+  <style>
+    svg { color-scheme: light dark; }
+    .paper { fill: light-dark(#fafafa,#101113); }
+    .axis { stroke: light-dark(#c9cdd6,#505866); }
+    .wave { stroke: light-dark(#6d91d5,#6286ce); }
+    .source { fill: light-dark(#245edb,#7ca4ff); }
+    .observer { fill: light-dark(#25805d,#62ba94); }
+  </style>
+  <defs><clipPath id="field"><rect x="25" y="25" width="270" height="130"/></clipPath></defs>
+  <path class="paper" d="M0 0h320v180H0z"/>
+  <path class="axis" d="M25 90h270" fill="none" stroke-dasharray="4 4"/>
+  <g class="wave" fill="none" opacity=".68" clip-path="url(#field)">
+    <circle cx="114" cy="90" r="24"/>
+    <circle cx="108" cy="90" r="48"/>
+    <circle cx="102" cy="90" r="72"/>
+    <circle cx="96" cy="90" r="96"/>
+    <circle cx="90" cy="90" r="120"/>
+    <circle cx="84" cy="90" r="144"/>
+    <circle cx="78" cy="90" r="168"/>
+    <circle cx="72" cy="90" r="192"/>
+  </g>
+  <circle class="source" cx="120" cy="90" r="8"/>
+  <circle class="observer" cx="246" cy="90" r="8"/>
+</svg>
