@@ -50,9 +50,7 @@ test("catalog opens both collision types and live totals match the comparison an
   await expect(read(page, "momentum")).toHaveText("2.75 kg·m/s");
   await expect(read(page, "kinetic")).toHaveText("1.51 J");
   await expect(page.locator('[data-after="kinetic"]')).toHaveText("1.51");
-  await expect(page.locator("[data-transfer]")).toHaveText(
-    `${sticky.transfer!.toFixed(2)} J`,
-  );
+  await expect(page.locator("[data-transfer]")).toHaveText("3.68 J");
   await expect(
     page.locator('.chart-point[data-series="total"]'),
   ).toHaveAttribute("data-value", String(sticky.after!.kinetic.total));

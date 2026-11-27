@@ -8,7 +8,10 @@ export const symbols = { momentum: "p", kinetic: "K" };
 const plot = { left: 47, right: 317, top: 22, bottom: 143 };
 
 export function number(value: number, digits = 2) {
-  return (Math.abs(value) < 0.5 * 10 ** -digits ? 0 : value).toFixed(digits);
+  const factor = 10 ** digits;
+  const magnitude = Math.abs(value) * factor;
+  const rounded = Math.round(magnitude + Number.EPSILON * magnitude);
+  return ((Math.sign(value) * rounded) / factor).toFixed(digits);
 }
 
 export function totals(trial: Trial, sample: Sample, t: Messages) {
@@ -80,7 +83,7 @@ export function plotQuantities(
   const eventX = trial.contact === null ? null : xAt(trial.contact);
   const cursor = xAt(time);
 
-  return html` <div class="legend">
+  return html` <div class=${`legend ${metric}`}>
       <span class="left">A</span><span class="right">B</span
       ><span class="aggregate">${t.total}</span>
     </div>
