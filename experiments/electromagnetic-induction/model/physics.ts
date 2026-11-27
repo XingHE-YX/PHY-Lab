@@ -18,6 +18,13 @@ export const limits = {
 } as const;
 export type Control = keyof typeof limits;
 export const defaults: Parameters = { turns: 120, resistance: 15, polarity: 1 };
+export const scenarios = {
+  approachN: { turns: 120, resistance: 15, polarity: 1 as const },
+  approachS: { turns: 120, resistance: 15, polarity: -1 as const },
+  highTurns: { turns: 240, resistance: 15, polarity: 1 as const },
+  highResistance: { turns: 120, resistance: 45, polarity: 1 as const },
+} as const;
+export type Scenario = keyof typeof scenarios;
 export type Direction = "clockwise" | "counterclockwise" | "noCurrent";
 export type Motion = "approaching" | "retreating" | "stationary";
 
@@ -98,6 +105,20 @@ export function withStop(path: readonly number[]) {
   return path.length > 1 && path.at(-2) !== end && path.length <= maxSteps
     ? [...path, end]
     : path;
+}
+
+export function peakStep(parameters: Parameters, path: readonly number[]) {
+  let bestCursor = 0;
+  let peakEmf = 0;
+  for (let index = 1; index < path.length; index++) {
+    const sample = intervalSample(parameters, path[index - 1], path[index], 1);
+    const magnitude = Math.abs(sample.emf);
+    if (magnitude > peakEmf) {
+      peakEmf = magnitude;
+      bestCursor = index;
+    }
+  }
+  return { cursor: bestCursor, peakEmf };
 }
 
 export const demonstration = {

@@ -8,6 +8,7 @@ import {
   demonstration,
   distances,
   maxSpeed,
+  peakStep,
   sampleAt,
   stepSeconds,
   withStop,
@@ -106,4 +107,10 @@ test("the built-in trial has equal-distance approach and retreat, with a station
   expect(hold.emf).toBe(0);
   expect(hold.flux).toBe(read(3.5).flux);
   expect(read(demonstration.duration).velocity).toBe(0);
+  const peak = peakStep(defaults, path);
+  expect(peak.peakEmf).toBeGreaterThan(0);
+  expect(Math.abs(sampleAt(defaults, path, peak.cursor).emf)).toBeCloseTo(
+    peak.peakEmf,
+    12,
+  );
 });

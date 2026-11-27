@@ -11,6 +11,7 @@ import {
 } from "./physics";
 
 export type Observation = "flux" | "emf" | "current";
+export type Support = "formula" | "tasks";
 export type Rate = 1 | 0.5 | 0.25;
 export type Recording = "manual" | "demo";
 
@@ -20,7 +21,9 @@ export interface Snapshot {
   cursor: number;
   rate: Rate;
   observation: Observation;
+  support: Support;
   fields: boolean;
+  coilView: boolean;
   recording: Recording;
 }
 
@@ -62,8 +65,10 @@ export function normalizeSnapshot(value: unknown): Snapshot {
       raw.observation === "flux" || raw.observation === "current"
         ? raw.observation
         : "emf",
+    support: raw.support === "tasks" ? "tasks" : "formula",
     rate: raw.rate === 0.5 || raw.rate === 0.25 ? raw.rate : 1,
     fields: raw.fields !== false,
+    coilView: raw.coilView !== false,
     recording,
   };
 }

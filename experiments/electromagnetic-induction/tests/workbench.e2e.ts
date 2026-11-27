@@ -22,15 +22,22 @@ async function open(page: Page) {
   await expect(page.getByRole("heading", { name: heading })).toBeVisible();
 }
 
-test("drag toward, hold without releasing, then drag away and release", async ({
+test("catalog shows themed thumbnails and drag/hold/retreat records live induction", async ({
   page,
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
   await page.getByRole("searchbox").fill("楞次定律");
-  await page.getByRole("link", { name: /电磁感应与楞次定律/ }).click();
+  const card = page.getByRole("link", { name: /电磁感应与楞次定律/ });
+  const thumb = card.locator("img.thumb");
+  await expect(thumb).toHaveAttribute("src", /thumbnail-light\.svg$/);
+  await page.getByRole("button", { name: /切换明暗|Toggle theme/ }).click();
+  await expect(thumb).toHaveAttribute("src", /thumbnail-dark\.svg$/);
+  await page.getByRole("button", { name: /切换明暗|Toggle theme/ }).click();
+  await card.click();
   await expect(magnet(page)).toBeVisible();
+
   const points = await magnet(page).evaluate((node) => {
     const magnet = node as SVGGraphicsElement;
     const box = magnet.getBBox();
@@ -66,21 +73,28 @@ test("drag toward, hold without releasing, then drag away and release", async ({
   const final = await cursor(page);
   await page.evaluate(() => new Promise(requestAnimationFrame));
   expect(await cursor(page)).toBe(final);
+
+  // Manual recording supports jumping straight to the peak induced EMF
+  await page.getByRole("button", { name: /感应峰值/ }).click();
+  await expect(direction(page)).not.toHaveAttribute(
+    "data-direction",
+    "noCurrent",
+  );
   expect(errors).toEqual([]);
 });
 
-test("demo compares equal-distance approach and retreat with the same graph cursor and flips with pole", async ({
+test("demo and explore scenarios compare equal-distance approach, retreat and pole reversal", async ({
   page,
 }) => {
   await open(page);
   const path = demoPath();
   for (const [label, timestamp] of [
-    ["靠近", demonstration.approach],
-    ["停留", demonstration.hold],
-    ["远离", demonstration.retreat],
+    [/靠近/, demonstration.approach],
+    [/停留/, demonstration.hold],
+    [/远离/, demonstration.retreat],
   ] as const) {
-    if (label === "靠近") await demo(page).click();
-    await page.getByRole("button", { name: label, exact: true }).click();
+    if (timestamp === demonstration.approach) await demo(page).click();
+    await page.locator(".moments").getByRole("button", { name: label }).click();
     const expected = sampleAt(
       defaults,
       path,
@@ -103,14 +117,17 @@ test("demo compares equal-distance approach and retreat with the same graph curs
       String(expected.distance),
     );
   }
-  await page
-    .getByRole("combobox", { name: "朝向线圈的磁极" })
-    .selectOption("-1");
+
+  // Flip polarity with segmented radio group
+  await page.getByRole("radio", { name: "南极 (S)" }).click();
   expect(await cursor(page)).toBe(0);
   await demo(page).click();
-  await page.getByRole("button", { name: "靠近", exact: true }).click();
+  await page.locator(".moments").getByRole("button", { name: /靠近/ }).click();
   await expect(direction(page)).toHaveAttribute("data-direction", "clockwise");
+  await expect(page.locator(".induced-pole-badge")).toContainText("S");
+
   await page.getByRole("tab", { name: "电流", exact: true }).click();
+  await expect(page.locator(".trace.flux-ref")).toHaveCount(1);
   const expected = sampleAt(
     { ...defaults, polarity: -1 },
     path,
@@ -119,6 +136,15 @@ test("demo compares equal-distance approach and retreat with the same graph curs
   await expect(page.locator(".chart-point")).toHaveAttribute(
     "data-value",
     String(expected.current * 1e3),
+  );
+
+  // Explore tab loads and runs scenarios cleanly
+  await page.getByRole("tab", { name: "探索", exact: true }).click();
+  await expect(page.locator(".task-grid")).toBeVisible();
+  await page.locator('button[data-scenario="highTurns"]').click();
+  await expect(page.locator(".trace-chart")).toBeVisible();
+  await expect(page.getByRole("slider", { name: "线圈匝数 N" })).toHaveValue(
+    "240",
   );
 });
 
@@ -142,7 +168,7 @@ test("keyboard controls record motion; slow replay, visibility and reload preser
   await page.getByRole("combobox", { name: "回放速度" }).selectOption("0.25");
   await page.getByRole("button", { name: "回放", exact: true }).click();
   await expect.poll(() => cursor(page)).toBeGreaterThan(0);
-  await page.getByRole("checkbox", { name: "显示轴向磁场" }).uncheck();
+  await page.getByRole("checkbox", { name: "磁感线与磁场" }).uncheck();
   await page.getByRole("tab", { name: "磁通量", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "暂停", exact: true }),
@@ -169,7 +195,7 @@ test("keyboard controls record motion; slow replay, visibility and reload preser
     page.getByRole("tab", { name: "磁通量", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
   await expect(
-    page.getByRole("checkbox", { name: "显示轴向磁场" }),
+    page.getByRole("checkbox", { name: "磁感线与磁场" }),
   ).not.toBeChecked();
   await expect(page.getByRole("combobox", { name: "回放速度" })).toHaveValue(
     "0.25",
@@ -192,11 +218,14 @@ for (const viewport of [
     await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
     await open(page);
     await demo(page).click();
-    await page.getByRole("button", { name: "靠近", exact: true }).click();
+    await page
+      .locator(".moments")
+      .getByRole("button", { name: /靠近/ })
+      .click();
     const scene = page.locator(".scene-wrap");
     const frame = await scene.boundingBox();
     const keys = page.locator(
-      '.heading, .panel, .parameters, .position, .source-footer, .scene-wrap, .timeline, .chart-wrap, .model-formula, phy-math [part="formula"], .readouts, .direction, .moments',
+      '.heading, .panel, .parameters, .position, .parameter-footer, .layer-controls, .scene-wrap, .timeline, .chart-wrap, .model-formula, phy-math [part="formula"], .readouts, .direction, .moments',
     );
     for (const language of ["zh", "en"]) {
       if (language === "en")
@@ -263,12 +292,12 @@ test("first visit works offline and the stationary demo marker restores offline"
   await context.setOffline(true);
   await open(page);
   await demo(page).click();
-  await page.getByRole("button", { name: "停留", exact: true }).click();
+  await page.locator(".moments").getByRole("button", { name: /停留/ }).click();
   await expect(direction(page)).toHaveAttribute("data-direction", "noCurrent");
   const saved = await cursor(page);
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "停留", exact: true }),
+    page.locator(".moments").getByRole("button", { name: /停留/ }),
   ).toBeVisible();
   expect(await cursor(page)).toBe(saved);
   await expect(page.locator('[data-readout="emf"]')).toHaveText("0.000 mV");
