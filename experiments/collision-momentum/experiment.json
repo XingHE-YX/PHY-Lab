@@ -9,6 +9,10 @@
     "zh-CN": "调节两个滑块的质量和初速度，对比弹性与完全非弹性碰撞中的总动量和总动能。",
     "en": "Set two carts’ masses and initial velocities and compare total momentum and kinetic energy in elastic and perfectly inelastic collisions."
   },
+  "thumbnail": {
+    "light": "assets/thumbnail-light.svg",
+    "dark": "assets/thumbnail-dark.svg"
+  },
   "author": [{ "name": "XingHE-YX" }],
   "catagory": {
     "id": "mechanics",
