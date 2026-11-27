@@ -1,0 +1,25 @@
+{
+  "id": "doppler-effect",
+  "version": "0.1.0",
+  "apiVersion": 2,
+  "apiRevision": 0,
+  "stateVersion": 1,
+  "title": { "zh-CN": "多普勒效应", "en": "Doppler effect" },
+  "description": {
+    "zh-CN": "切换声源或观察者运动，从波前间距和到达间隔读出接收频率。",
+    "en": "Move the source or the observer, and compare wavefront spacing, arrival intervals, and received frequency."
+  },
+  "thumbnail": {
+    "light": "assets/thumbnail-light.svg",
+    "dark": "assets/thumbnail-dark.svg"
+  },
+  "author": [{ "name": "XingHE-YX" }],
+  "catagory": {
+    "id": "mechanics",
+    "title": { "zh-CN": "力学", "en": "Mechanics" }
+  },
+  "tags": {
+    "zh-CN": ["声波", "多普勒效应", "频率", "波前"],
+    "en": ["Sound waves", "Doppler effect", "Frequency", "Wavefronts"]
+  }
+}
