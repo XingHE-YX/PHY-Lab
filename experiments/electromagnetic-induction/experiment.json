@@ -1,0 +1,24 @@
+{
+  "id": "electromagnetic-induction",
+  "version": "0.1.0",
+  "apiVersion": 2,
+  "apiRevision": 0,
+  "stateVersion": 1,
+  "title": {
+    "zh-CN": "电磁感应与楞次定律",
+    "en": "Electromagnetic induction & Lenz’s law"
+  },
+  "description": {
+    "zh-CN": "拖动磁铁靠近、远离或停在线圈旁，比较磁通量、感应电动势和电流方向。",
+    "en": "Drag a magnet towards, away from, or hold it beside a coil. Compare flux, induced EMF, and current direction."
+  },
+  "author": [{ "name": "XingHE-YX" }],
+  "catagory": {
+    "id": "electromagnetism",
+    "title": { "zh-CN": "电磁学", "en": "Electromagnetism" }
+  },
+  "tags": {
+    "zh-CN": ["电磁感应", "楞次定律", "磁通量", "感应电动势"],
+    "en": ["Induction", "Lenz’s law", "Magnetic flux", "Induced EMF"]
+  }
+}

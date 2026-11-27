@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180">
+  <style>
+    svg { color-scheme: light dark; }
+    .paper { fill: light-dark(#fafafa,#101113); }
+    .axis { stroke: light-dark(#d2d6de,#414651); }
+    .turn { stroke: light-dark(#936042,#d69c79); }
+    .signal { stroke: light-dark(#245edb,#7ca4ff); }
+    .north { fill: light-dark(#bb4839,#d06554); }
+    .south { fill: light-dark(#3f64ad,#5b82ce); }
+  </style>
+  <path class="paper" d="M0 0h320v180H0z"/>
+  <path class="axis" d="M38 82h244 M42 142h237" fill="none" stroke-dasharray="4 4"/>
+  <path class="south" d="M49 65h43v34H49z"/>
+  <path class="north" d="M92 65h43v34H92z"/>
+  <text x="70" y="86" fill="white" font-family="monospace" font-size="13" text-anchor="middle">S</text>
+  <text x="113" y="86" fill="white" font-family="monospace" font-size="13" text-anchor="middle">N</text>
+  <path class="signal" d="M151 82h38l-6-5m6 5-6 5" fill="none" stroke-width="1.8"/>
+  <g class="turn" fill="none" stroke-width="2">
+    <ellipse cx="215" cy="82" rx="15" ry="31"/>
+    <ellipse cx="222" cy="82" rx="15" ry="31"/>
+    <ellipse cx="229" cy="82" rx="15" ry="31"/>
+    <ellipse cx="236" cy="82" rx="15" ry="31"/>
+    <ellipse cx="243" cy="82" rx="15" ry="31"/>
+    <ellipse cx="250" cy="82" rx="15" ry="31"/>
+  </g>
+  <path class="signal" d="M42 142h15c14 0 21-23 34-23 11 0 18 23 31 23h44c14 0 20 23 34 23 12 0 21-23 33-23h46" fill="none" stroke-width="2"/>
+</svg>
