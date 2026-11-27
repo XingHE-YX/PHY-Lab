@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180">
+  <style>
+    svg { color-scheme: light dark; }
+    .paper { fill: light-dark(#fafafa,#101113); }
+    .rail { stroke: light-dark(#ccd0d8,#474d58); }
+    .left { fill: light-dark(#315fb8,#6a95e7); }
+    .right { fill: light-dark(#a45c36,#bf805a); }
+    .wheel { fill: light-dark(#262b34,#c2c9d4); }
+    .arrow-a { stroke: light-dark(#315fb8,#6a95e7); }
+    .arrow-b { stroke: light-dark(#a45c36,#bf805a); }
+  </style>
+  <path class="paper" d="M0 0h320v180H0z"/>
+  <path class="rail" d="M35 122h250" fill="none" stroke-width="2"/>
+  <rect class="left" x="72" y="87" width="54" height="27" rx="3"/>
+  <rect class="right" x="194" y="87" width="54" height="27" rx="3"/>
+  <path class="arrow-a" d="M90 68h42l-6-5m6 5-6 5" stroke-width="2.5" fill="none"/>
+  <path class="arrow-b" d="M230 68h-24l6-5m-6 5 6 5" stroke-width="2.5" fill="none"/>
+  <g class="wheel"><circle cx="84" cy="116" r="5"/><circle cx="114" cy="116" r="5"/><circle cx="206" cy="116" r="5"/><circle cx="236" cy="116" r="5"/></g>
+  <g fill="white" font-family="monospace" font-size="13" text-anchor="middle"><text x="99" y="105">A</text><text x="221" y="105">B</text></g>
+</svg>

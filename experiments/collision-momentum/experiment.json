@@ -1,0 +1,26 @@
+{
+  "id": "collision-momentum",
+  "version": "0.1.0",
+  "apiVersion": 2,
+  "apiRevision": 0,
+  "stateVersion": 1,
+  "title": { "zh-CN": "碰撞与动量守恒", "en": "Collisions and momentum" },
+  "description": {
+    "zh-CN": "调节两个滑块的质量和初速度，对比弹性与完全非弹性碰撞中的总动量和总动能。",
+    "en": "Set two carts’ masses and initial velocities and compare total momentum and kinetic energy in elastic and perfectly inelastic collisions."
+  },
+  "author": [{ "name": "XingHE-YX" }],
+  "catagory": {
+    "id": "mechanics",
+    "title": { "zh-CN": "力学", "en": "Mechanics" }
+  },
+  "tags": {
+    "zh-CN": ["动量守恒", "弹性碰撞", "完全非弹性碰撞", "动能"],
+    "en": [
+      "Momentum conservation",
+      "Elastic collision",
+      "Perfectly inelastic collision",
+      "Kinetic energy"
+    ]
+  }
+}
