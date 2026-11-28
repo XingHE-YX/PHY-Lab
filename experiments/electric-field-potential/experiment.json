@@ -9,6 +9,10 @@
     "zh-CN": "拖动点电荷与探针，比较电场方向、等势线和零电势处的读数。",
     "en": "Drag point charges and a probe to compare electric field direction, equipotentials, and the readings at zero potential."
   },
+  "thumbnail": {
+    "light": "assets/thumbnail-light.svg",
+    "dark": "assets/thumbnail-dark.svg"
+  },
   "author": [{ "name": "XingHE-YX" }],
   "catagory": {
     "id": "electromagnetism",
