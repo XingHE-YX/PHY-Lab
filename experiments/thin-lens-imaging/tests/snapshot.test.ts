@@ -6,7 +6,9 @@ test("restores exact focal placement and independent display choices", () => {
   const snapshot: Snapshot = {
     parameters: { object: 13.5, focal: 13.5 },
     observation: "compare",
+    support: "explore",
     extensions: false,
+    guides: false,
   };
   expect(normalizeSnapshot(JSON.parse(JSON.stringify(snapshot)))).toEqual(
     snapshot,
@@ -18,12 +20,16 @@ test("invalid values cannot produce negative focal length or undefined geometry"
     normalizeSnapshot({
       parameters: { focal: -1, object: 1000000 },
       extensions: "false",
+      guides: "no",
       observation: 99,
+      support: "bad",
     }),
   ).toEqual({
     parameters: { focal: 8, object: 72 },
     extensions: true,
+    guides: true,
     observation: "reading",
+    support: "formula",
   });
   expect(
     normalizeSnapshot({ parameters: { focal: NaN, object: "12" } }).parameters,

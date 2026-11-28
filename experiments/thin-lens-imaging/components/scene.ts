@@ -67,10 +67,24 @@ function arrow(x: number, height: number) {
   return `M ${screenX} ${origin.y} V ${tip} M ${screenX - Math.abs(head) * 0.8} ${tip + head} L ${screenX} ${tip} L ${screenX + Math.abs(head) * 0.8} ${tip + head}`;
 }
 
+function ruler(x1: number, x2: number, y: number, label: string, cls: string) {
+  const left = Math.min(x1, x2);
+  const right = Math.max(x1, x2);
+  if (right - left < 10) return svg``;
+  const mid = (left + right) / 2;
+  return svg`<g class=${`ruler ${cls}`} aria-hidden="true">
+    <line x1=${left} x2=${left} y1=${y - 4} y2=${y + 4} class="ruler-tick" />
+    <line x1=${right} x2=${right} y1=${y - 4} y2=${y + 4} class="ruler-tick" />
+    <line x1=${left} x2=${right} y1=${y} y2=${y} class="ruler-line" />
+    <text x=${mid} y=${y + 13} text-anchor="middle" class="ruler-label">${label}</text>
+  </g>`;
+}
+
 export function scene(
   parameters: Parameters,
   optics: Optics,
   extensions: boolean,
+  guides: boolean,
   drag: Drag,
   t: Messages,
 ) {
@@ -86,8 +100,10 @@ export function scene(
   const shapeBottom = viewY(-aperture);
   const objectX = viewX(-object);
   const objectTip = viewY(objectHeight);
-  return svg`<svg class="ray-scene" viewBox="0 0 600 326" aria-label=${t.scene}>
-    <rect class="optical-board" x=${board.left} y=${board.top} width=${board.right - board.left} height=${board.bottom - board.top} />
+  const show2F = guides && 2 * focal <= frame.x;
+
+  return svg`<svg class="ray-scene" viewBox="0 0 600 314" aria-label=${t.scene}>
+    <rect class="optical-board" x=${board.left} y=${board.top} width=${board.right - board.left} height=${board.bottom - board.top} rx="3" />
     <text x="28" y="25" class="scene-note">${t.scaleNote}</text>
     <defs>
       <linearGradient id="lens-glass"><stop class="glass-edge" /><stop offset="52%" class="glass-light" /><stop offset="100%" class="glass-edge" /></linearGradient>
@@ -96,12 +112,12 @@ export function scene(
       (
         tick,
       ) => svg`<line x1=${viewX(tick)} x2=${viewX(tick)} y1=${board.top} y2=${board.bottom} class="grid-line" />
-      <text x=${viewX(tick)} y="286" class="axis-label" text-anchor="middle">${tick}</text>`,
+      <text x=${viewX(tick)} y="284" class="axis-label" text-anchor="middle">${tick}</text>`,
     )}
     ${[-8, -4, 4, 8].map((tick) => svg`<line x1=${board.left} x2=${board.right} y1=${viewY(tick)} y2=${viewY(tick)} class="grid-line" />`)}
     <line x1=${board.left} x2=${board.right} y1=${origin.y} y2=${origin.y} class="optical-axis" />
-    <text x=${viewX(frame.x)} y="304" text-anchor="end" class="axis-label">x (cm)</text>
-    <path d=${`M 300 ${shapeTop} Q 322 ${origin.y} 300 ${shapeBottom} Q 278 ${origin.y} 300 ${shapeTop} Z`} class="lens-glass" />
+    <text x=${viewX(frame.x)} y="302" text-anchor="end" class="axis-label">x (cm)</text>
+    <path d=${`M 300 ${shapeTop} Q 320 ${origin.y} 300 ${shapeBottom} Q 280 ${origin.y} 300 ${shapeTop} Z`} class="lens-glass" />
     <line x1="300" x2="300" y1=${shapeTop} y2=${shapeBottom} class="lens-plane" />
     ${(
       [
@@ -110,9 +126,42 @@ export function scene(
       ] as const
     ).map(
       ([position, title]) => svg`
-      <circle cx=${viewX(position)} cy=${origin.y} r="3" class="focus-dot" />
-      <text x=${viewX(position)} y=${origin.y + 22} class="focus-label" text-anchor="middle">${title}</text>`,
+      <circle cx=${viewX(position)} cy=${origin.y} r="3.2" class="focus-dot" />
+      <text x=${viewX(position)} y=${origin.y + 18} class="focus-label" text-anchor="middle">${title}</text>`,
     )}
+    ${
+      show2F
+        ? (
+            [
+              [-2 * focal, "2F₁"],
+              [2 * focal, "2F₂"],
+            ] as const
+          ).map(
+            ([position, title]) => svg`<g class="marker-2f">
+              <circle cx=${viewX(position)} cy=${origin.y} r="3.2" class="double-focus-dot" />
+              <text x=${viewX(position)} y=${origin.y + 18} class="focus-label secondary" text-anchor="middle">${title}</text>
+            </g>`,
+          )
+        : svg``
+    }
+    ${
+      guides
+        ? svg`<g class="distance-rulers">
+            ${ruler(objectX, origin.x, origin.y + 62, `u = ${object.toFixed(1)} cm`, "object-ruler")}
+            ${
+              imageInView(image) && image.distance !== null
+                ? ruler(
+                    origin.x,
+                    viewX(image.distance),
+                    image.distance < 0 ? origin.y + 84 : origin.y + 62,
+                    `v = ${image.distance > 0 ? "+" : ""}${image.distance.toFixed(1)} cm`,
+                    "image-ruler",
+                  )
+                : svg``
+            }
+          </g>`
+        : svg``
+    }
     ${
       extensions
         ? rays.map((ray) => {
@@ -137,7 +186,7 @@ export function scene(
         ? svg`
       <g class=${`image ${image.kind}`} data-image=${image.kind} data-distance=${image.distance} data-height=${image.height}>
         <path d=${arrow(image.distance, image.height)} class="image-arrow" />
-        <text x=${viewX(image.distance)} y=${viewY(image.height) + (image.height > 0 ? -9 : 17)}
+        <text x=${viewX(image.distance)} y=${viewY(image.height) + (image.height > 0 ? -9 : 16)}
           class="object-label" text-anchor="middle">${t.imageTag}</text>
       </g>`
         : svg``
@@ -149,7 +198,8 @@ export function scene(
       @pointercancel=${drag.end} @lostpointercapture=${drag.end} @keydown=${drag.key}>
       <rect x=${objectX - 12} y=${objectTip - 9} width="24" height=${origin.y - objectTip + 16} rx="3" class="object-hit" />
       <path d=${arrow(-object, objectHeight)} class="object-arrow" />
-      <text x=${objectX} y=${objectTip - 13} class="object-label" text-anchor="middle">${t.objectTag}</text>
+      <circle cx=${objectX} cy=${origin.y} r="3.4" class="object-grip" />
+      <text x=${objectX} y=${objectTip - 12} class="object-label" text-anchor="middle">${t.objectTag}</text>
     </g>
   </svg>`;
 }

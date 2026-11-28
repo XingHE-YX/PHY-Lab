@@ -11,6 +11,44 @@ export const aperture = 8;
 export const scenarios = ["outside", "inside", "atFocus"] as const;
 export type Scenario = (typeof scenarios)[number];
 
+export interface ExplorePreset {
+  id: "camera" | "equal" | "projector" | "magnifier";
+  parameters: Parameters;
+  observation: "reading" | "compare";
+}
+
+export const explorePresets: readonly ExplorePreset[] = [
+  {
+    id: "camera",
+    parameters: { focal: 16, object: 48 },
+    observation: "reading",
+  },
+  {
+    id: "equal",
+    parameters: { focal: 16, object: 32 },
+    observation: "compare",
+  },
+  {
+    id: "projector",
+    parameters: { focal: 16, object: 24 },
+    observation: "reading",
+  },
+  {
+    id: "magnifier",
+    parameters: { focal: 16, object: 10 },
+    observation: "reading",
+  },
+];
+
+export type Zone = "beyond2f" | "at2f" | "between" | "atFocus" | "insideFocus";
+
+export function zoneFor({ focal, object }: Parameters): Zone {
+  if (Math.abs(object - focal) < 1e-9) return "atFocus";
+  if (object < focal) return "insideFocus";
+  if (Math.abs(object - 2 * focal) < 1e-9) return "at2f";
+  return object > 2 * focal ? "beyond2f" : "between";
+}
+
 export type Image =
   | { kind: "afocal"; distance: null; magnification: null; height: null }
   | {

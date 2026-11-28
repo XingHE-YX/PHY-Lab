@@ -71,7 +71,7 @@ test("at focus, outgoing rays are mutually parallel and no finite image is fabri
   expect(errors).toEqual([]);
 });
 
-test("dragging and arrow keys move the object through focus without changing focal length", async ({
+test("dragging, arrow keys, curve scrubbing, guides toggle, and explore presets work cleanly", async ({
   page,
 }) => {
   await open(page);
@@ -102,9 +102,37 @@ test("dragging and arrow keys move the object through focus without changing foc
   await handle.press("ArrowLeft");
   await expect(page.locator('[data-regime="afocal"]')).toBeVisible();
   await expect(read(page, "focal")).toHaveText("16.0 cm");
+
+  // Dragging along the v(u) curve adjusts u
+  const curveBox = await page.locator(".curve-chart").boundingBox();
+  expect(curveBox).not.toBeNull();
+  await page.mouse.click(
+    curveBox!.x + curveBox!.width * 0.72,
+    curveBox!.y + curveBox!.height * 0.5,
+  );
+  expect(Number(await handle.getAttribute("aria-valuenow"))).toBeGreaterThan(
+    35,
+  );
+
+  // Guides toggle hides/shows 2F markers and distance rulers
+  await expect(page.locator(".distance-rulers")).toBeVisible();
+  await page
+    .getByRole("checkbox", { name: "2F 与距标尺", exact: true })
+    .uncheck();
+  await expect(page.locator(".distance-rulers")).toHaveCount(0);
+  await expect(page.locator(".marker-2f")).toHaveCount(0);
+
+  // Explore scenario loads cleanly and returns to Formula view
+  await page.getByRole("tab", { name: "探索", exact: true }).click();
+  await page.locator('[data-explore="camera"]').click();
+  await expect(read(page, "object")).toHaveText("48.0 cm");
+  await expect(read(page, "distance")).toHaveText("+24.00 cm");
+  await expect(
+    page.getByRole("tab", { name: "公式", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
 });
 
-test("offscreen images retain finite values and the state survives reload", async ({
+test("offscreen images retain finite values, comparison rows jump, and state survives reload", async ({
   page,
 }) => {
   await open(page);
@@ -134,6 +162,10 @@ test("offscreen images retain finite values and the state survives reload", asyn
   await objectHandle(page).press("ArrowLeft");
   await expect(read(page, "distance")).toHaveText("+528.00 cm");
   await expect(read(page, "magnification")).toHaveText("-32.00 ×");
+  // Clicking a comparison row jumps straight to that case
+  await page.locator('[data-scenario="outside"]').click();
+  await expect(read(page, "object")).toHaveText("32.0 cm");
+  await expect(read(page, "distance")).toHaveText("+32.00 cm");
 });
 
 for (const viewport of [
@@ -149,7 +181,7 @@ for (const viewport of [
     const scene = page.locator(".scene-wrap");
     const bounds = await scene.boundingBox();
     const keys = page.locator(
-      '.heading, .panel, .parameters, .presets, .footer, .scene-wrap, .legend, .notice, .readouts, .detail-card, .comparison-panel, .model-formula, phy-math [part="formula"]',
+      '.heading, .panel, .parameters, .derived-metrics, .parameter-footer, .scene-wrap, .layer-controls, .readouts, .shortcuts, .reading-panel, .detail-card, .curve-wrap, .comparison-panel, .model-formula, phy-math [part="formula"]',
     );
     for (const language of ["zh", "en"]) {
       if (language === "en")

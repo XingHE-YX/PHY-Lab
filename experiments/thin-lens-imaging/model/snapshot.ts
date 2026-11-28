@@ -1,10 +1,13 @@
 import { parameterValue, type Parameters } from "./optics";
 
 export type Observation = "reading" | "compare";
+export type Support = "formula" | "explore";
 export interface Snapshot {
   parameters: Parameters;
   observation: Observation;
+  support: Support;
   extensions: boolean;
+  guides: boolean;
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -22,6 +25,8 @@ export function normalizeSnapshot(value: unknown): Snapshot {
       object: parameterValue("object", settings.object),
     },
     observation: raw.observation === "compare" ? "compare" : "reading",
+    support: raw.support === "explore" ? "explore" : "formula",
     extensions: raw.extensions !== false,
+    guides: raw.guides !== false,
   };
 }
