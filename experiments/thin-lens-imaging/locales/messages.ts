@@ -1,0 +1,188 @@
+import type { Locale } from "../../../src/infra/platform/protocols/v2";
+import type { ExplorePreset, Zone } from "../model/optics";
+
+const en = {
+  title: "Thin-lens imaging",
+  subtitle: "Watch what changes as the object crosses the focal point",
+  modelNote: "Ideal converging thin lens in air · Paraxial approximation",
+  settings: "Optical setup",
+  zones: {
+    beyond2f: "u > 2f",
+    at2f: "u = 2f",
+    between: "f < u < 2f",
+    atFocus: "u = f",
+    insideFocus: "u < f",
+  } satisfies Record<Zone, string>,
+  focal: "Focal length f",
+  object: "Object distance u",
+  objectHandle: "Object position",
+  objectKeys:
+    "Drag horizontally or use the arrow keys to adjust object distance.",
+  objectHeightLabel: "Object hₒ",
+  imageHeightLabel: "Image hᵢ",
+  powerLabel: "Power 1/f",
+  ratioLabel: "Ratio u/f",
+  outside: "Outside focus · 2f",
+  inside: "Inside focus",
+  atFocus: "At focus",
+  reset: "Reset experiment",
+  help: "Model & controls",
+  footerHint: "Drag the object on the axis or scrub the v(u) curve.",
+  scene: "Principal rays",
+  extensions: "Virtual extensions",
+  guides: "2F & rulers",
+  scaleNote: "Vertical scale is enlarged · distances in cm",
+  drag: "Drag the object along the optical axis.",
+  parallel: "Parallel ray",
+  center: "Centre ray",
+  frontFocus: "Front-focus",
+  objectTag: "Object",
+  imageTag: "Image",
+  imageDistance: "Image v",
+  magnification: "Mag. M",
+  imageHeight: "Height hᵢ",
+  observe: "Observation",
+  reading: "Image details",
+  compare: "Three cases",
+  location: "Location",
+  oppositeSide: "Opposite side",
+  objectSide: "Object side",
+  real: "Inverted real image",
+  virtual: "Upright virtual image",
+  afocal: "Parallel outgoing rays",
+  realHint: "The outgoing rays intersect on the far side of the lens.",
+  virtualHint: "Only the backward extensions intersect on the object side.",
+  afocalHint:
+    "The outgoing rays are parallel to each other. There is no finite image or magnification.",
+  offscreen: "Image outside the frame. The values remain valid.",
+  limitedRay: "The front-focus ray falls outside the displayed aperture.",
+  curveHint: "Drag along the v(u) hyperbola to slide the object distance u.",
+  comparisonHint: "Click any row to jump; all cases use the current f.",
+  supportLabel: "Formula and explore",
+  formulaTab: "Formula",
+  exploreTab: "Explore",
+  exploreHint:
+    "Load a classic optical setup to compare real and virtual imaging regimes.",
+  loadScenario: "Load scenario",
+  exploreScenarios: {
+    camera: {
+      title: "Camera lens (u > 2f, reduced real)",
+      detail:
+        "At u = 48 cm (3f), a diminished inverted real image forms at v = +24 cm with M = −0.50×.",
+    },
+    equal: {
+      title: "Equal-size real image (u = 2f)",
+      detail:
+        "At u = 32 cm (2f), the inverted real image lands symmetrically at v = +32 cm with M = −1.00×.",
+    },
+    projector: {
+      title: "Projector (f < u < 2f, magnified real)",
+      detail:
+        "At u = 24 cm (1.5f), the inverted real image enlarges to M = −2.00× at v = +48 cm.",
+    },
+    magnifier: {
+      title: "Magnifying glass (u < f, upright virtual)",
+      detail:
+        "Inside the focus at u = 10 cm, outgoing rays diverge; backward extensions form an upright virtual image at v = −26.67 cm.",
+    },
+  } satisfies Record<ExplorePreset["id"], { title: string; detail: string }>,
+  helpBody: [
+    "This is an ideal converging thin lens in air. Light travels from left to right; the lens is at x = 0. The object distance is positive. Positive image distance means the opposite side, negative means the object side. Negative magnification denotes inversion.",
+    "A parallel incident ray leaves through the far focus. A ray through the centre is undeviated. The front-focus ray exits horizontally; when the object is inside the focus, its incident line passes through the near focus only if extended backwards. The third ray is omitted when it cannot reach the lens or lies outside the drawn aperture.",
+    "At u = f, the outgoing rays from the object tip are parallel to each other, not necessarily to the optical axis. A finite image and finite magnification do not exist here.",
+    "Drag the object on the axis, scrub the v(u) curve, or use the quick position buttons below the readouts. The scene uses fixed limits and an enlarged vertical scale; aberrations and light-travel time are not simulated.",
+  ],
+};
+
+const zh: typeof en = {
+  title: "薄透镜成像",
+  subtitle: "让物体通过焦点，观察成像如何改变",
+  modelNote: "空气中理想会聚薄透镜 · 近轴光学近似",
+  settings: "光学条件",
+  zones: {
+    beyond2f: "u > 2f",
+    at2f: "u = 2f",
+    between: "f < u < 2f",
+    atFocus: "u = f",
+    insideFocus: "u < f",
+  },
+  focal: "焦距 f",
+  object: "物距 u",
+  objectHandle: "物体位置",
+  objectKeys: "沿水平方向拖动，或按方向键调节物距。",
+  objectHeightLabel: "物高 hₒ",
+  imageHeightLabel: "像高 hᵢ",
+  powerLabel: "焦度 1/f",
+  ratioLabel: "物焦比 u/f",
+  outside: "焦点外 · 2f",
+  inside: "焦点内",
+  atFocus: "恰在焦点",
+  reset: "重置实验",
+  help: "模型与操作",
+  footerHint: "可在光轴拖动物体，或拖动 v(u) 曲线调物距。",
+  scene: "主光线",
+  extensions: "虚像延长线",
+  guides: "2F 与距标尺",
+  scaleNote: "纵向放大示意 · 距离单位 cm",
+  drag: "沿主光轴拖动物体。",
+  parallel: "平行入射线",
+  center: "过光心线",
+  frontFocus: "物方焦点线",
+  objectTag: "物体",
+  imageTag: "像",
+  imageDistance: "像距 v",
+  magnification: "放大率 M",
+  imageHeight: "像高 hᵢ",
+  observe: "观察方式",
+  reading: "成像读数",
+  compare: "三种情况",
+  location: "成像位置",
+  oppositeSide: "透镜另一侧",
+  objectSide: "与物体同侧",
+  real: "倒立实像",
+  virtual: "正立虚像",
+  afocal: "平行出射光",
+  realHint: "出射光线在透镜另一侧实际相交。",
+  virtualHint: "只有出射光线的反向延长线在物体同侧相交。",
+  afocalHint: "出射光线彼此平行，没有有限的像或放大率。",
+  offscreen: "像超出画面，读数仍有效。",
+  limitedRay: "物方焦点线落在图示口径之外。",
+  curveHint: "拖动 v(u) 双曲线可直接沿光轴调节物距 u。",
+  comparisonHint: "点击任一行即可跳转；三种情况均使用当前焦距。",
+  supportLabel: "公式与探索",
+  formulaTab: "公式",
+  exploreTab: "探索",
+  exploreHint: "选择一个典型光学应用情境一键载入，对比不同物距分区的成像特点。",
+  loadScenario: "载入此情境",
+  exploreScenarios: {
+    camera: {
+      title: "照相机原理（u > 2f，缩小实像）",
+      detail:
+        "物距 u = 48 cm（3f）时，在像方 24 cm 处形成倒立缩小实像，放大率 M = −0.50×。",
+    },
+    equal: {
+      title: "等大倒立实像（u = 2f）",
+      detail:
+        "物距恰好等于二倍焦距 32 cm 时，像距对称落在 +32 cm，放大率 M = −1.00×。",
+    },
+    projector: {
+      title: "投影仪原理（f < u < 2f，放大实像）",
+      detail:
+        "物距 u = 24 cm（1.5f）时，在 +48 cm 处形成倒立放大实像，放大率 M = −2.00×。",
+    },
+    magnifier: {
+      title: "放大镜原理（u < f，正立虚像）",
+      detail:
+        "物体移入焦点内 u = 10 cm，出射光发散，反向延长线在物侧 −26.67 cm 处成正立放大虚像。",
+    },
+  },
+  helpBody: [
+    "这是空气中的理想会聚薄透镜。光从左向右，透镜位于 x = 0。物距取正；像距为正时在透镜另一侧，为负时在物体同侧。负放大率表示倒立。",
+    "平行入射线经像方焦点，过光心线不偏折。物方焦点线折射后平行于主光轴；物体在焦点内时，只有该入射线的反向延长线通过物方焦点。若第三条线不能到达透镜，或超出图示口径，则不绘制。",
+    "物距等于焦距时，来自物体顶端的出射光线彼此平行，但不一定平行于主光轴。此时不存在有限像距或放大率。",
+    "在光轴上拖动物体、聚焦后按方向键、拖动右侧 v(u) 曲线或点击底栏快捷位置均可切换物距。场景范围固定，纵向放大示意；不模拟像差或光传播时间。",
+  ],
+};
+
+export type Messages = typeof en;
+export const messages = (locale: Locale) => (locale === "en" ? en : zh);
