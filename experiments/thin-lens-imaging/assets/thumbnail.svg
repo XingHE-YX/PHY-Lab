@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180">
+  <style>
+    svg { color-scheme: light dark; }
+    .paper { fill: light-dark(#fafafa,#101113); }
+    .axis { stroke: light-dark(#c9cdd6,#505866); }
+    .lens { fill: light-dark(#e8f0fe,#1a2946); stroke: light-dark(#245edb,#7ca4ff); }
+    .parallel { stroke: light-dark(#245edb,#7ca4ff); }
+    .center { stroke: light-dark(#96602f,#e5a972); }
+    .object { stroke: light-dark(#252830,#e3e7ee); }
+    .image { stroke: light-dark(#b74840,#ef8585); }
+  </style>
+  <path class="paper" d="M0 0h320v180H0z"/>
+  <path class="axis" d="M26 90h268" fill="none"/>
+  <path class="lens" d="M160 28Q184 90 160 152Q136 90 160 28Z"/>
+  <path class="parallel" d="M80 62H160L280 146" fill="none" stroke-width="1.8"/>
+  <path class="center" d="M80 62L280 132" fill="none" stroke-width="1.8"/>
+  <circle cx="120" cy="90" r="2.5" fill="currentColor"/><circle cx="200" cy="90" r="2.5" fill="currentColor"/>
+  <path class="object" d="M80 90V62l-5 7m5-7 5 7" fill="none" stroke-width="2.5"/>
+  <path class="image" d="M240 90v28l-5-7m5 7 5-7" fill="none" stroke-width="2.5"/>
+</svg>

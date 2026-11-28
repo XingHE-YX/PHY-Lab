@@ -1,0 +1,26 @@
+{
+  "id": "thin-lens-imaging",
+  "version": "0.1.0",
+  "apiVersion": 2,
+  "apiRevision": 0,
+  "stateVersion": 1,
+  "title": { "zh-CN": "薄透镜成像", "en": "Thin-lens imaging" },
+  "description": {
+    "zh-CN": "拖动物体通过会聚透镜的焦点，对比实像、虚像与平行出射光。",
+    "en": "Move an object across the focal point of a converging lens and compare real images, virtual images, and parallel outgoing rays."
+  },
+  "author": [{ "name": "XingHE-YX" }],
+  "catagory": {
+    "id": "optics",
+    "title": { "zh-CN": "光学", "en": "Optics" }
+  },
+  "tags": {
+    "zh-CN": ["几何光学", "薄透镜", "会聚透镜", "实像与虚像"],
+    "en": [
+      "Geometric optics",
+      "Thin lens",
+      "Converging lens",
+      "Real and virtual images"
+    ]
+  }
+}
