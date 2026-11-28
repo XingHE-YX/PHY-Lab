@@ -7,12 +7,18 @@ const read = (page: Page, key: string) =>
   page.locator(`[data-readout="${key}"]`);
 const probe = (page: Page) =>
   page.getByRole("group", { name: "探针 P", exact: true });
-const preset = (page: Page) =>
-  page.getByRole("combobox", { name: "载入对照预设", exact: true });
 
 async function open(page: Page) {
   await page.goto(route);
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
+}
+
+async function loadScenario(page: Page, id: string) {
+  await page.getByRole("tab", { name: "探索", exact: true }).click();
+  await page.locator(`[data-scenario="${id}"]`).click();
+  await expect(
+    page.getByRole("tab", { name: "公式", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
 }
 
 async function center(handle: Locator) {
@@ -59,6 +65,7 @@ test("catalog opens the dipole and reverses the lesson with equal positive charg
   await expect(read(page, "strength")).toHaveText(`${strength.toFixed(2)} V/m`);
   await expect(page.locator('[data-case="zeroPotential"]')).toBeVisible();
   await expect(page.locator('.contour[data-level="0"]')).toHaveCount(1);
+  await expect(page.locator(".component-arrow")).toHaveCount(2);
   await expect(
     page.locator('[data-contribution="first"] [data-component="potential"]'),
   ).toHaveText("25.68");
@@ -71,15 +78,16 @@ test("catalog opens the dipole and reverses the lesson with equal positive charg
   const along = measure({ x: 0, y: 0.5 }, presets.dipole)!.magnitude;
   await expect(read(page, "strength")).toHaveText(`${along.toFixed(2)} V/m`);
   expect(along).toBeLessThan(strength);
-  await preset(page).selectOption("like");
+  await loadScenario(page, "like");
   await expect(page.locator('[data-case="zeroField"]')).toBeVisible();
   await expect(read(page, "potential")).toHaveText("51.36 V");
   await expect(read(page, "strength")).toHaveText("0.00 V/m");
   await expect(page.locator(".probe-arrow")).toHaveCount(0);
+  await expect(page.locator(".component-arrow")).toHaveCount(2);
   expect(errors).toEqual([]);
 });
 
-test("drag both charges, update the geometry and recover the tilted zero line at their midpoint", async ({
+test("drag both charges, update geometry, recover tilted zero line, and drag slice chart", async ({
   page,
 }) => {
   await open(page);
@@ -106,6 +114,18 @@ test("drag both charges, update the geometry and recover the tilted zero line at
   expect(
     Number(await page.locator(".profile-probe").getAttribute("data-potential")),
   ).toBeCloseTo(0, 12);
+
+  // Dragging along the potential slice chart moves probe P
+  const chartBox = await page.locator(".slice-chart").boundingBox();
+  expect(chartBox).not.toBeNull();
+  const beforeX = Number(await probe(page).getAttribute("data-world-x"));
+  await page.mouse.click(
+    chartBox!.x + chartBox!.width * 0.78,
+    chartBox!.y + chartBox!.height * 0.5,
+  );
+  expect(
+    Number(await probe(page).getAttribute("data-world-x")),
+  ).not.toBeCloseTo(beforeX, 2);
 });
 
 test("moving the probe onto a charged point masks every readout; a zero source does not mask", async ({
@@ -145,9 +165,11 @@ test("layer toggles and profile persist without moving the probe or changing its
   const potential = await read(page, "potential").textContent();
   await page.getByRole("checkbox", { name: "电场箭头", exact: true }).uncheck();
   await page.getByRole("checkbox", { name: "等势线", exact: true }).uncheck();
+  await page.getByRole("checkbox", { name: "分量矢量", exact: true }).uncheck();
   await page.getByRole("tab", { name: "电势剖面", exact: true }).click();
   await expect(page.locator(".field-arrows")).toHaveCount(0);
   await expect(page.locator(".contour")).toHaveCount(0);
+  await expect(page.locator(".component-arrow")).toHaveCount(0);
   await expect(page.locator(".probe-arrow")).toBeVisible();
   await page.reload();
   await expect(probe(page)).toHaveAttribute("data-world-x", "0.5");
@@ -157,6 +179,9 @@ test("layer toggles and profile persist without moving the probe or changing its
   ).not.toBeChecked();
   await expect(
     page.getByRole("checkbox", { name: "等势线", exact: true }),
+  ).not.toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: "分量矢量", exact: true }),
   ).not.toBeChecked();
   await expect(
     page.getByRole("tab", { name: "电势剖面", exact: true }),
@@ -176,7 +201,7 @@ for (const viewport of [
     const scene = page.locator(".scene-wrap");
     const bounds = await scene.boundingBox();
     const keys = page.locator(
-      '.heading, .panel, .parameters, .presets, .footer, .scene-wrap, .legend, .readouts, .contributions, .slice-panel, .model-formula, phy-math [part="formula"]',
+      '.heading, .panel, .parameters, .derived-metrics, .parameter-footer, .scene-wrap, .layer-controls, .readouts, .shortcuts, .contributions, .superposition-visual, .slice-panel, .model-formula, phy-math [part="formula"]',
     );
     for (const language of ["zh", "en"]) {
       if (language === "en")
@@ -242,7 +267,7 @@ test("first offline visit and reload preserve the selected configuration", async
   await page.getByRole("button", { name: "关闭", exact: true }).click();
   await context.setOffline(true);
   await open(page);
-  await preset(page).selectOption("unequal");
+  await loadScenario(page, "unequal");
   const value = await read(page, "potential").textContent();
   await page.reload();
   await expect(

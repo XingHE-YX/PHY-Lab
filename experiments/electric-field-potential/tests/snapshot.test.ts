@@ -13,7 +13,9 @@ test("restores precise probe position and independent view preferences", () => {
     probe: { x: -0.125, y: 0.5 },
     vectors: false,
     equipotential: true,
+    components: false,
     observation: "profile",
+    support: "explore",
   };
   expect(normalizeSnapshot(JSON.parse(JSON.stringify(snapshot)))).toEqual(
     snapshot,
@@ -28,7 +30,9 @@ test("invalid values are bounded and colliding positions recover without losing 
     ],
     probe: { x: -440, y: NaN },
     equipotential: "false",
+    components: "no",
     observation: "bad",
+    support: "unknown",
   });
   expect(separated(...state.charges)).toBe(true);
   expect(state.charges.map(({ nanoCoulombs }) => nanoCoulombs)).toEqual([
@@ -37,7 +41,9 @@ test("invalid values are bounded and colliding positions recover without losing 
   expect(state.charges[0].x).toBe(presets.dipole[0].x);
   expect(state.probe).toEqual({ x: -board.x, y: 0 });
   expect(state.observation).toBe("contributions");
+  expect(state.support).toBe("formula");
   expect(state.equipotential).toBe(true);
+  expect(state.components).toBe(true);
   expect(
     normalizeSnapshot({ charges: [{ x: -88, y: 98 }] }).charges[0],
   ).toEqual({ x: -chargeBounds.x, y: chargeBounds.y, nanoCoulombs: 4 });

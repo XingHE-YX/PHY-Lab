@@ -10,12 +10,15 @@ import {
 } from "./electrostatics";
 
 export type Observation = "contributions" | "profile";
+export type Support = "formula" | "explore";
 export interface Snapshot {
   charges: Charges;
   probe: Point;
   vectors: boolean;
   equipotential: boolean;
+  components: boolean;
   observation: Observation;
+  support: Support;
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -59,6 +62,8 @@ export function normalizeSnapshot(value: unknown): Snapshot {
     probe: position(raw.probe, { x: 0, y: 0 }, board),
     vectors: raw.vectors !== false,
     equipotential: raw.equipotential !== false,
+    components: raw.components !== false,
     observation: raw.observation === "profile" ? "profile" : "contributions",
+    support: raw.support === "explore" ? "explore" : "formula",
   };
 }

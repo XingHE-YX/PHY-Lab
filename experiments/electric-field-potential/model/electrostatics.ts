@@ -34,6 +34,55 @@ export const presets: Record<Preset, Charges> = {
   ],
 };
 
+export interface ScenarioPreset {
+  id: "dipole" | "like" | "unequal" | "single";
+  charges: Charges;
+  probe: Point;
+  observation: "contributions" | "profile";
+}
+
+export const scenarios: readonly ScenarioPreset[] = [
+  {
+    id: "dipole",
+    charges: presets.dipole,
+    probe: { x: 0, y: 0 },
+    observation: "contributions",
+  },
+  {
+    id: "like",
+    charges: presets.like,
+    probe: { x: 0, y: 0 },
+    observation: "contributions",
+  },
+  {
+    id: "unequal",
+    charges: presets.unequal,
+    probe: { x: 0, y: 0 },
+    observation: "profile",
+  },
+  {
+    id: "single",
+    charges: [
+      { x: -0.8, y: 0, nanoCoulombs: 4 },
+      { x: 2.0, y: 0, nanoCoulombs: 0 },
+    ],
+    probe: { x: 1.0, y: 0 },
+    observation: "profile",
+  },
+];
+
+export type ConfigurationKind =
+  "dipole" | "like" | "single" | "zero" | "asymmetric";
+
+export function configurationKind(charges: Charges): ConfigurationKind {
+  const [a, b] = charges.map((c) => c.nanoCoulombs);
+  if (a === 0 && b === 0) return "zero";
+  if (a === 0 || b === 0) return "single";
+  if (a === -b) return "dipole";
+  if (Math.sign(a) === Math.sign(b)) return "like";
+  return "asymmetric";
+}
+
 export const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 export const distance = (first: Point, second: Point) =>
@@ -141,5 +190,16 @@ export function bisector(charges: Charges) {
   return {
     from: along(origin, direction, start),
     to: along(origin, direction, end),
+  };
+}
+
+export function probeShortcuts(charges: Charges) {
+  const mid = midpoint(charges);
+  const axis = chargeAxis(charges);
+  const perp = { x: -axis.y, y: axis.x };
+  return {
+    midpoint: mid,
+    bisectorPoint: bounded(along(mid, perp, 1.0), board, true),
+    outerPoint: bounded(along(charges[1], axis, 1.0), board, true),
   };
 }

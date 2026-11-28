@@ -4,35 +4,44 @@ import type { DialogHandle } from "../../src/infra/platform/protocols/v2/api/dia
 import type { Locale } from "../../src/infra/platform/protocols/v2/api/environment";
 import type {
   CheckboxElement,
-  SelectElement,
   SliderElement,
   TabsElement,
 } from "../../src/infra/platform/protocols/v2/components";
-import { contributions, display, slice } from "./components/observation";
+import {
+  contributions,
+  display,
+  slice,
+  sliceOffsetFromEvent,
+} from "./components/observation";
 import { scene, staticLayers, worldCoordinate } from "./components/scene";
 import { messages, type Messages } from "./locales/messages";
 import {
+  along,
   board,
   bounded,
+  chargeAxis,
   chargeBounds,
   chargeValue,
+  configurationKind,
+  distance,
   measure,
-  midpoint,
-  presets,
+  probeShortcuts,
   replaceCharge,
+  scenarios,
   separated,
   valueRange,
   zeroTolerance,
   type Item,
   type Point,
-  type Preset,
   type Reading,
+  type ScenarioPreset,
 } from "./model/electrostatics";
 import { profile } from "./model/profile";
 import {
   normalizeSnapshot,
   type Observation,
   type Snapshot,
+  type Support,
 } from "./model/snapshot";
 import { styles } from "./styles/desktop";
 
@@ -54,11 +63,25 @@ function classification(reading: Reading | null) {
 
 export class ElectricFieldExperiment extends LitElement {
   static styles = styles;
-  static properties = { locale: { state: true }, data: { state: true } };
+  static properties = {
+    locale: { state: true },
+    data: { state: true },
+    chartHeight: { state: true },
+  };
   declare locale: Locale;
   declare private data: Snapshot;
+  declare private chartHeight: number;
   private context?: ExperimentContext;
   private drag?: { id: number; item: Item; pointer: Point; origin: Point };
+  private sliceDrag?: {
+    id: number;
+    origin: Point;
+    axis: Point;
+    start: number;
+    end: number;
+  };
+  private chartObserver?: ResizeObserver;
+  private observedChartWrap?: Element;
   private cached?: {
     charges: Snapshot["charges"];
     vectors: boolean;
@@ -72,6 +95,7 @@ export class ElectricFieldExperiment extends LitElement {
     super();
     this.locale = "zh-CN";
     this.data = normalizeSnapshot(null);
+    this.chartHeight = 230;
     this.help.attachShadow({ mode: "open" });
   }
 
@@ -95,6 +119,9 @@ export class ElectricFieldExperiment extends LitElement {
   disconnectedCallback() {
     this.pause();
     this.dialog?.close();
+    this.chartObserver?.disconnect();
+    this.chartObserver = undefined;
+    this.observedChartWrap = undefined;
     render(nothing, this.help.shadowRoot!);
     document.removeEventListener("visibilitychange", this.visibility);
     window.removeEventListener("pagehide", this.onHide);
@@ -103,6 +130,21 @@ export class ElectricFieldExperiment extends LitElement {
 
   protected updated(changed: PropertyValues) {
     if (this.dialog && changed.has("locale")) this.updateHelp();
+    this.syncChartObserver();
+  }
+
+  private syncChartObserver() {
+    const wrap = this.renderRoot.querySelector(".chart-wrap");
+    if (wrap === this.observedChartWrap) return;
+    this.chartObserver?.disconnect();
+    this.observedChartWrap = wrap ?? undefined;
+    if (!wrap) return;
+    this.chartObserver = new ResizeObserver((entries) => {
+      const height = Math.round(entries[0]?.contentRect.height ?? 0);
+      if (height >= 120 && Math.abs(height - this.chartHeight) > 2)
+        this.chartHeight = height;
+    });
+    this.chartObserver.observe(wrap);
   }
 
   private persist() {
@@ -111,6 +153,7 @@ export class ElectricFieldExperiment extends LitElement {
 
   pause() {
     this.drag = undefined;
+    this.sliceDrag = undefined;
     this.persist();
   }
 
@@ -170,6 +213,22 @@ export class ElectricFieldExperiment extends LitElement {
     );
   }
 
+  private loadScenario(preset: ScenarioPreset) {
+    this.drag = undefined;
+    this.sliceDrag = undefined;
+    this.set({
+      charges: [{ ...preset.charges[0] }, { ...preset.charges[1] }] as const,
+      probe: { ...preset.probe },
+      observation: preset.observation,
+      support: "formula",
+    });
+    void this.updateComplete.then(() => {
+      (
+        this.renderRoot.querySelector(".observation-tabs") as HTMLElement | null
+      )?.focus?.();
+    });
+  }
+
   private input = {
     start: (item: Item, event: PointerEvent) => {
       if (event.button !== 0 || this.drag) return;
@@ -223,6 +282,29 @@ export class ElectricFieldExperiment extends LitElement {
       if (event.button !== 0 || this.drag) return;
       const point = worldCoordinate(event);
       if (point) this.move("probe", point);
+    },
+  };
+
+  private sliceScrub = {
+    start: (event: PointerEvent, start: number, end: number) => {
+      if (event.button !== 0 || this.sliceDrag) return;
+      const offset = sliceOffsetFromEvent(event, start, end);
+      if (offset === null) return;
+      const origin = { ...this.data.probe };
+      const axis = chargeAxis(this.data.charges);
+      this.sliceDrag = { id: event.pointerId, origin, axis, start, end };
+      (event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
+      this.move("probe", along(origin, axis, offset), false);
+    },
+    move: (event: PointerEvent) => {
+      const drag = this.sliceDrag;
+      if (!drag || drag.id !== event.pointerId) return;
+      const offset = sliceOffsetFromEvent(event, drag.start, drag.end);
+      if (offset !== null)
+        this.move("probe", along(drag.origin, drag.axis, offset), false);
+    },
+    end: (event: PointerEvent) => {
+      if (this.sliceDrag?.id === event.pointerId) this.pause();
     },
   };
 
@@ -305,11 +387,124 @@ export class ElectricFieldExperiment extends LitElement {
     });
   };
 
+  private observationPanel(t: Messages, reading: Reading | null) {
+    const { charges, probe, observation, support } = this.data;
+    return html`<phy-tabs
+      class="observation-tabs"
+      .label=${t.observe}
+      .value=${observation}
+      .items=${observations.map((value) => ({ value, label: t[value] }))}
+      @change=${(event: Event) => {
+        if (event.target !== event.currentTarget) return;
+        this.set({
+          observation: (event.currentTarget as TabsElement)
+            .value as Observation,
+          support: "formula",
+        });
+      }}
+      @activate=${(event: Event) => {
+        if (event.target !== event.currentTarget) return;
+        if (this.data.support !== "formula") this.set({ support: "formula" });
+      }}
+    >
+      ${
+        support === "formula"
+          ? html`<div class="observation" slot=${observation}>
+              ${
+                observation === "contributions"
+                  ? contributions(reading, charges, t)
+                  : slice(
+                      profile(charges, probe),
+                      reading,
+                      charges,
+                      this.chartHeight,
+                      this.sliceScrub,
+                      t,
+                    )
+              }
+            </div>`
+          : nothing
+      }
+    </phy-tabs>`;
+  }
+
+  private supportPanel(t: Messages, reading: Reading | null) {
+    const { observation, support } = this.data;
+    const special = classification(reading);
+    return html`<phy-tabs
+      class="support support-tabs"
+      variant="segmented"
+      .label=${t.supportLabel}
+      .value=${support}
+      .items=${[
+        { value: "formula", label: t.formulaTab },
+        { value: "explore", label: t.exploreTab },
+      ]}
+      @change=${(event: Event) => {
+        if (event.target !== event.currentTarget) return;
+        this.set({
+          support: (event.currentTarget as TabsElement).value as Support,
+        });
+      }}
+    >
+      <div class="support-body" slot=${support}>
+        ${
+          support === "formula"
+            ? html`<section class="model-formula">
+                <div class="case-note">
+                  ${
+                    special
+                      ? html`<strong data-case=${special}>${t[special]}</strong>
+                          <p>${t[`${special}Hint`]}</p>`
+                      : html`<p>${t.generalHint}</p>`
+                  }
+                </div>
+                <phy-math .source=${formulas[observation]}></phy-math>
+              </section>`
+            : html`<div class="explore-content">
+                <p class="explore-hint">${t.exploreHint}</p>
+                <div class="scenario-grid">
+                  ${scenarios.map((preset) => {
+                    const copy = t.scenarios[preset.id];
+                    return html`<article class="scenario-card">
+                      <h3>${copy.title}</h3>
+                      <p>${copy.detail}</p>
+                      <button
+                        type="button"
+                        data-scenario=${preset.id}
+                        @click=${() => this.loadScenario(preset)}
+                      >
+                        ${t.loadScenario}
+                      </button>
+                    </article>`;
+                  })}
+                </div>
+              </div>`
+        }
+      </div>
+    </phy-tabs>`;
+  }
+
   protected render() {
     const t = messages(this.locale);
-    const { charges, probe, vectors, equipotential, observation } = this.data;
+    const {
+      charges,
+      probe,
+      vectors,
+      equipotential,
+      components,
+      observation,
+      support,
+    } = this.data;
     const reading = measure(probe, charges);
-    const special = classification(reading);
+    const configKind = configurationKind(charges);
+    const spacing = distance(charges[0], charges[1]);
+    const netQ = charges[0].nanoCoulombs + charges[1].nanoCoulombs;
+    const rA = distance(probe, charges[0]);
+    const rB = distance(probe, charges[1]);
+    const shortcuts = probeShortcuts(charges);
+    const nearPoint = (target: Point) => distance(probe, target) < 0.03;
+
     const readouts = [
       {
         key: "potential",
@@ -328,47 +523,66 @@ export class ElectricFieldExperiment extends LitElement {
     ];
 
     return html`<header class="heading">
-        <h1>${t.title}</h1>
-        <p>${t.subtitle}</p>
+        <div class="heading-main">
+          <h1>${t.title}</h1>
+          <span class="subtitle">${t.subtitle}</span>
+        </div>
+        <span class="model-note">${t.modelNote}</span>
       </header>
       <div class="lab">
         <phy-box class="panel" role="complementary" aria-label=${t.settings}>
-          <div class="panel-heading"><h2>${t.settings}</h2></div>
+          <div class="panel-heading">
+            <h2>${t.settings}</h2>
+            <span class="status">${t.configKinds[configKind]}</span>
+          </div>
           <div class="parameters">
-            <p>${t.note}</p>
             ${this.parameter(0, t)}${this.parameter(1, t)}
           </div>
-          <div class="presets">
-            <phy-select
-              .label=${t.preset}
-              .value=${""}
-              .options=${[{ value: "", label: t.preset, disabled: true }, ...(Object.keys(presets) as Preset[]).map((key) => ({ value: key, label: t[key] }))]}
-              @change=${(event: Event) => {
-                const control = event.currentTarget as SelectElement;
-                const selection = presets[control.value as Preset];
-                if (selection)
-                  this.set({ charges: selection, probe: midpoint(selection) });
-                control.value = "";
-              }}
-            ></phy-select>
-            <phy-button @click=${() => this.set({ probe: midpoint(charges) })}
-              >${t.midpoint}</phy-button
-            >
+          <div class="derived-metrics">
+            <div>
+              <span>${t.separation}</span
+              ><output>${spacing.toFixed(2)} m</output>
+            </div>
+            <div>
+              <span>${t.netCharge}</span
+              ><output>${netQ > 0 ? "+" : ""}${netQ.toFixed(1)} nC</output>
+            </div>
+            <div>
+              <span>${t.distA}</span><output>${rA.toFixed(2)} m</output>
+            </div>
+            <div>
+              <span>${t.distB}</span><output>${rB.toFixed(2)} m</output>
+            </div>
           </div>
-          <div class="footer">
+          <div class="parameter-footer">
             <phy-button @click=${() => this.set(normalizeSnapshot(null))}
               >${t.reset}</phy-button
             >
             <phy-button @click=${this.openHelp}>${t.help}</phy-button>
+            <small>${t.note}</small>
           </div>
         </phy-box>
-        <phy-box class="panel" role="region" aria-label=${t.map}>
+        <phy-box class="panel center" role="region" aria-label=${t.map}>
           <div class="panel-heading">
             <h2>${t.map}</h2>
-            <small class="coordinates"
+            <small class="coordinates mono"
               >P (${probe.x.toFixed(2)}, ${probe.y.toFixed(2)}) m</small
             >
-            <div class="switches">
+          </div>
+          <div class="scene-wrap">
+            ${scene(
+              this.layers,
+              charges,
+              probe,
+              reading,
+              observation === "profile",
+              components,
+              this.input,
+              t,
+            )}
+          </div>
+          <div class="layer-controls">
+            <div class="layer-switches">
               <phy-checkbox
                 .checked=${vectors}
                 @change=${(event: Event) => this.set({ vectors: (event.currentTarget as CheckboxElement).checked })}
@@ -379,16 +593,17 @@ export class ElectricFieldExperiment extends LitElement {
                 @change=${(event: Event) => this.set({ equipotential: (event.currentTarget as CheckboxElement).checked })}
                 >${t.equipotential}</phy-checkbox
               >
+              <phy-checkbox
+                .checked=${components}
+                @change=${(event: Event) => this.set({ components: (event.currentTarget as CheckboxElement).checked })}
+                >${t.components}</phy-checkbox
+              >
             </div>
-          </div>
-          <div class="scene-wrap">
-            ${scene(this.layers, charges, probe, reading, observation === "profile", this.input, t)}
-          </div>
-          <div class="legend">
-            <span class="positive">${t.positive}</span
-            ><span class="zero">${t.zeroLine}</span>
-            <span class="negative">${t.negative}</span
-            ><span class="arrow-note">${t.arrowNote}</span>
+            <div class="legend" aria-hidden="true">
+              <span class="positive">${t.positive}</span>
+              <span class="zero">${t.zeroLine}</span>
+              <span class="negative">${t.negative}</span>
+            </div>
           </div>
           <div class="readouts" aria-label=${t.probe}>
             ${readouts.map(
@@ -401,34 +616,45 @@ export class ElectricFieldExperiment extends LitElement {
                 </div>`,
             )}
           </div>
+          <div class="shortcuts">
+            <button
+              type="button"
+              class=${nearPoint(shortcuts.midpoint) ? "selected" : ""}
+              @click=${() => this.set({ probe: shortcuts.midpoint })}
+            >
+              ${t.midpoint}<small aria-hidden="true"
+                >(${shortcuts.midpoint.x.toFixed(1)},
+                ${shortcuts.midpoint.y.toFixed(1)})</small
+              >
+            </button>
+            <button
+              type="button"
+              class=${nearPoint(shortcuts.bisectorPoint) ? "selected" : ""}
+              @click=${() => this.set({ probe: shortcuts.bisectorPoint })}
+            >
+              ${t.bisectorPoint}<small aria-hidden="true"
+                >(${shortcuts.bisectorPoint.x.toFixed(1)},
+                ${shortcuts.bisectorPoint.y.toFixed(1)})</small
+              >
+            </button>
+            <button
+              type="button"
+              class=${nearPoint(shortcuts.outerPoint) ? "selected" : ""}
+              @click=${() => this.set({ probe: shortcuts.outerPoint })}
+            >
+              ${t.outerPoint}<small aria-hidden="true"
+                >(${shortcuts.outerPoint.x.toFixed(1)},
+                ${shortcuts.outerPoint.y.toFixed(1)})</small
+              >
+            </button>
+          </div>
         </phy-box>
-        <phy-box class="panel" role="region" aria-label=${t.observe}>
-          <phy-tabs
-            class="observation-tabs"
-            .label=${t.observe}
-            .value=${observation}
-            .items=${observations.map((value) => ({ value, label: t[value] }))}
-            @change=${(event: Event) => {
-              if (event.target === event.currentTarget)
-                this.set({
-                  observation: (event.currentTarget as TabsElement)
-                    .value as Observation,
-                });
-            }}
-          >
-            <div class="observation" slot=${observation}>
-              ${observation === "contributions" ? contributions(reading, t) : slice(profile(charges, probe), reading, t)}
-              <section class="model-formula">
-                ${
-                  special
-                    ? html`<strong data-case=${special}>${t[special]}</strong>
-                        <p>${t[`${special}Hint`]}</p>`
-                    : nothing
-                }
-                <phy-math .source=${formulas[observation]}></phy-math>
-              </section>
-            </div>
-          </phy-tabs>
+        <phy-box
+          class=${"panel right" + (support === "explore" ? " exploring" : "")}
+          role="region"
+          aria-label=${t.observe}
+        >
+          ${this.observationPanel(t, reading)} ${this.supportPanel(t, reading)}
         </phy-box>
       </div>`;
   }
