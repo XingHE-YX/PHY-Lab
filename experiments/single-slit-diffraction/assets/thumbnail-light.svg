@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 320">
+  <defs>
+    <linearGradient id="narrow" gradientUnits="userSpaceOnUse" x1="84" x2="516" y1="0" y2="0">
+      <stop offset="0.0000" stop-color="#a5f26d" stop-opacity="0.000"/>
+      <stop offset="0.0208" stop-color="#a5f26d" stop-opacity="0.042"/>
+      <stop offset="0.0417" stop-color="#a5f26d" stop-opacity="0.082"/>
+      <stop offset="0.0625" stop-color="#a5f26d" stop-opacity="0.112"/>
+      <stop offset="0.0833" stop-color="#a5f26d" stop-opacity="0.127"/>
+      <stop offset="0.1042" stop-color="#a5f26d" stop-opacity="0.124"/>
+      <stop offset="0.1250" stop-color="#a5f26d" stop-opacity="0.100"/>
+      <stop offset="0.1458" stop-color="#a5f26d" stop-opacity="0.057"/>
+      <stop offset="0.1667" stop-color="#a5f26d" stop-opacity="0.000"/>
+      <stop offset="0.1875" stop-color="#a5f26d" stop-opacity="0.065"/>
+      <stop offset="0.2083" stop-color="#a5f26d" stop-opacity="0.129"/>
+      <stop offset="0.2292" stop-color="#a5f26d" stop-opacity="0.181"/>
+      <stop offset="0.2500" stop-color="#a5f26d" stop-opacity="0.212"/>
+      <stop offset="0.2708" stop-color="#a5f26d" stop-opacity="0.214"/>
+      <stop offset="0.2917" stop-color="#a5f26d" stop-opacity="0.180"/>
+      <stop offset="0.3125" stop-color="#a5f26d" stop-opacity="0.108"/>
+      <stop offset="0.3333" stop-color="#a5f26d" stop-opacity="0.000"/>
+      <stop offset="0.3542" stop-color="#a5f26d" stop-opacity="0.139"/>
+      <stop offset="0.3750" stop-color="#a5f26d" stop-opacity="0.300"/>
+      <stop offset="0.3958" stop-color="#a5f26d" stop-opacity="0.471"/>
+      <stop offset="0.4167" stop-color="#a5f26d" stop-opacity="0.637"/>
+      <stop offset="0.4375" stop-color="#a5f26d" stop-opacity="0.784"/>
+      <stop offset="0.4583" stop-color="#a5f26d" stop-opacity="0.900"/>
+      <stop offset="0.4792" stop-color="#a5f26d" stop-opacity="0.974"/>
+      <stop offset="0.5000" stop-color="#a5f26d" stop-opacity="1.000"/>
+      <stop offset="0.5208" stop-color="#a5f26d" stop-opacity="0.974"/>
+      <stop offset="0.5417" stop-color="#a5f26d" stop-opacity="0.900"/>
+      <stop offset="0.5625" stop-color="#a5f26d" stop-opacity="0.784"/>
+      <stop offset="0.5833" stop-color="#a5f26d" stop-opacity="0.637"/>
+      <stop offset="0.6042" stop-color="#a5f26d" stop-opacity="0.471"/>
+      <stop offset="0.6250" stop-color="#a5f26d" stop-opacity="0.300"/>
+      <stop offset="0.6458" stop-color="#a5f26d" stop-opacity="0.139"/>
+      <stop offset="0.6667" stop-color="#a5f26d" stop-opacity="0.000"/>
+      <stop offset="0.6875" stop-color="#a5f26d" stop-opacity="0.108"/>
+      <stop offset="0.7083" stop-color="#a5f26d" stop-opacity="0.180"/>
+      <stop offset="0.7292" stop-color="#a5f26d" stop-opacity="0.214"/>
+      <stop offset="0.7500" stop-color="#a5f26d" stop-opacity="0.212"/>
+      <stop offset="0.7708" stop-color="#a5f26d" stop-opacity="0.181"/>
+      <stop offset="0.7917" stop-color="#a5f26d" stop-opacity="0.129"/>
+      <stop offset="0.8125" stop-color="#a5f26d" stop-opacity="0.065"/>
+      <stop offset="0.8333" stop-color="#a5f26d" stop-opacity="0.000"/>
+      <stop offset="0.8542" stop-color="#a5f26d" stop-opacity="0.057"/>
+      <stop offset="0.8750" stop-color="#a5f26d" stop-opacity="0.100"/>
+      <stop offset="0.8958" stop-color="#a5f26d" stop-opacity="0.124"/>
+      <stop offset="0.9167" stop-color="#a5f26d" stop-opacity="0.127"/>
+      <stop offset="0.9375" stop-color="#a5f26d" stop-opacity="0.112"/>
+      <stop offset="0.9583" stop-color="#a5f26d" stop-opacity="0.082"/>
+      <stop offset="0.9792" stop-color="#a5f26d" stop-opacity="0.042"/>
+      <stop offset="1.0000" stop-color="#a5f26d" stop-opacity="0.000"/>
+    </linearGradient>
+    <linearGradient id="wide" href="#narrow" x1="192" x2="408"/>
+  </defs>
+  <path fill="#f3f4f6" d="M0 0h600v320H0z"/>
+  <rect x="80" y="62" width="440" height="35" rx="2" fill="#10141b"/>
+  <rect x="80" y="62" width="440" height="35" rx="2" fill="url(#narrow)"/>
+  <rect x="80" y="111" width="440" height="35" rx="2" fill="#10141b"/>
+  <rect x="80" y="111" width="440" height="35" rx="2" fill="url(#wide)"/>
+  <path d="M80 178v68h440m-440 0v7m110-7v7m110-7v7m110-7v7m110-7v7" fill="none" stroke="#8a929f"/>
+  <path d="M300 168v78" stroke="#8a929f" fill="none" stroke-dasharray="3 4"/>
+  <polyline points="80,245.98 85,246.00 90,245.95 95,245.86 100,245.79 105,245.79 110,245.86 115,245.95 120,246.00 125,245.95 130,245.82 135,245.70 140,245.67 145,245.76 150,245.90 155,246.00 160,245.95 165,245.76 170,245.55 175,245.45 180,245.55 185,245.78 190,245.98 195,245.95 200,245.64 205,245.21 210,244.93 215,245.01 220,245.44 225,245.90 230,245.95 235,245.33 240,244.19 245,243.16 250,242.94 255,243.86 260,245.37 265,245.95 270,243.59 275,236.70 280,224.99 285,210.06 290,195.14 295,184.08 300,180.00 305,184.08 310,195.14 315,210.06 320,224.99 325,236.70 330,243.59 335,245.95 340,245.37 345,243.86 350,242.94 355,243.16 360,244.19 365,245.33 370,245.95 375,245.90 380,245.44 385,245.01 390,244.93 395,245.21 400,245.64 405,245.95 410,245.98 415,245.78 420,245.55 425,245.45 430,245.55 435,245.76 440,245.95 445,246.00 450,245.90 455,245.76 460,245.67 465,245.70 470,245.82 475,245.95 480,246.00 485,245.95 490,245.86 495,245.79 500,245.79 505,245.86 510,245.95 515,246.00 520,245.98" fill="none" stroke="#8a929f" stroke-width="2" stroke-dasharray="5 4"/>
+  <polyline points="80,245.98 85,246.00 90,245.95 95,245.82 100,245.64 105,245.43 110,245.21 115,245.03 120,244.93 125,244.92 130,245.01 135,245.20 140,245.44 145,245.69 150,245.90 155,246.00 160,245.95 165,245.72 170,245.33 175,244.79 180,244.19 185,243.62 190,243.16 195,242.91 200,242.94 205,243.27 210,243.86 215,244.61 220,245.37 225,245.90 230,245.95 235,245.26 240,243.59 245,240.77 250,236.70 255,231.39 260,224.99 265,217.75 270,210.06 275,202.36 280,195.14 285,188.90 290,184.08 295,181.04 300,180.00 305,181.04 310,184.08 315,188.90 320,195.14 325,202.36 330,210.06 335,217.75 340,224.99 345,231.39 350,236.70 355,240.77 360,243.59 365,245.26 370,245.95 375,245.90 380,245.37 385,244.61 390,243.86 395,243.27 400,242.94 405,242.91 410,243.16 415,243.62 420,244.19 425,244.79 430,245.33 435,245.72 440,245.95 445,246.00 450,245.90 455,245.69 460,245.44 465,245.20 470,245.01 475,244.92 480,244.93 485,245.03 490,245.21 495,245.43 500,245.64 505,245.82 510,245.95 515,246.00 520,245.98" fill="none" stroke="#245edb" stroke-width="2.4" stroke-linejoin="round"/>
+</svg>

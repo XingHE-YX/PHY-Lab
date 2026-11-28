@@ -1,0 +1,25 @@
+{
+  "id": "single-slit-diffraction",
+  "version": "0.1.0",
+  "apiVersion": 2,
+  "apiRevision": 0,
+  "stateVersion": 1,
+  "title": { "zh-CN": "单缝衍射", "en": "Single-slit diffraction" },
+  "description": {
+    "zh-CN": "改变缝宽、波长和屏距，对比衍射条纹、光强和中央亮纹宽度。",
+    "en": "Adjust slit width, wavelength, and screen distance, then compare fringes, intensity, and the width of the central maximum."
+  },
+  "author": [{ "name": "XingHE-YX" }],
+  "thumbnail": {
+    "light": "assets/thumbnail-light.svg",
+    "dark": "assets/thumbnail-dark.svg"
+  },
+  "catagory": {
+    "id": "optics",
+    "title": { "zh-CN": "光学", "en": "Optics" }
+  },
+  "tags": {
+    "zh-CN": ["衍射", "夫琅禾费衍射", "光强", "单缝"],
+    "en": ["Diffraction", "Fraunhofer diffraction", "Intensity", "Single slit"]
+  }
+}
