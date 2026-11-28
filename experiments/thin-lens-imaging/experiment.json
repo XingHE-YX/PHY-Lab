@@ -9,6 +9,10 @@
     "zh-CN": "拖动物体通过会聚透镜的焦点，对比实像、虚像与平行出射光。",
     "en": "Move an object across the focal point of a converging lens and compare real images, virtual images, and parallel outgoing rays."
   },
+  "thumbnail": {
+    "light": "assets/thumbnail-light.svg",
+    "dark": "assets/thumbnail-dark.svg"
+  },
   "author": [{ "name": "XingHE-YX" }],
   "catagory": {
     "id": "optics",
