@@ -1,0 +1,186 @@
+import type { Locale } from "../../../src/infra/platform/protocols/v2";
+import type { ScenarioPreset } from "../model/physics";
+
+const en = {
+  title: "Collisions and momentum",
+  subtitle: "What stays the same when two carts collide?",
+  modelNote: "Frictionless 1D track · Zero net external force",
+  parameters: "Trial settings",
+  running: "Running",
+  paused: "Paused",
+  mode: "Collision type",
+  elastic: "Elastic",
+  inelastic: "Inelastic",
+  cartLeft: "Cart A",
+  cartRight: "Cart B",
+  leftMass: "Mass mₐ",
+  rightMass: "Mass mᵦ",
+  leftVelocity: "Initial uₐ",
+  rightVelocity: "Initial uᵦ",
+  dragLeft: "Cart A: initial velocity",
+  dragRight: "Cart B: initial velocity",
+  dragKeys: "Use left and right arrows to adjust the velocity.",
+  restoreDefaults: "Reset defaults",
+  help: "Model & controls",
+  scene: "One-dimensional track",
+  vectors: "Velocity arrows",
+  centerOfMass: "Center of mass",
+  before: "Before",
+  initial: "Initial",
+  after: "After",
+  noContact: "No contact",
+  coupled: "Moving together",
+  groundFrame:
+    "View follows the carts’ midpoint · values are relative to the ground",
+  dragHint: "Drag arrows at start to set velocity",
+  dragLocked: "Return to start to drag arrows",
+  momentum: "Momentum",
+  kinetic: "Kinetic energy",
+  totalP: "Total p",
+  totalK: "Total K",
+  transfer: "Kinetic energy converted",
+  total: "Total",
+  compare: "Before / after",
+  observe: "Observe",
+  play: "Play",
+  pause: "Pause",
+  reset: "Return to start",
+  rate: "Playback speed",
+  timeline: "Replay time",
+  beforeContact: "Before contact",
+  afterContact: "After contact",
+  end: "End of trial",
+  chartHint: "Click or drag across the plot to scrub replay time.",
+  supportLabel: "Formula and explore",
+  formulaTab: "Formula",
+  exploreTab: "Explore",
+  exploreHint:
+    "Load a preset to verify momentum conservation and kinetic energy conversion.",
+  loadScenario: "Load scenario",
+  scenarios: {
+    headOn: {
+      title: "Elastic head-on collision",
+      detail:
+        "Carts A (1.5 kg, +2.5 m/s) and B (1.0 kg, −1.0 m/s) bounce cleanly: both total momentum (2.75 kg·m/s) and kinetic energy (5.19 J) stay constant.",
+    },
+    stickyHeadOn: {
+      title: "Perfectly inelastic sticking",
+      detail:
+        "Same initial state, now sticking together at v_cm = 1.10 m/s: momentum stays 2.75 kg·m/s while 3.68 J of kinetic energy converts into internal energy.",
+    },
+    exchange: {
+      title: "Equal-mass velocity exchange",
+      detail:
+        "With mₐ = mᵦ = 1.0 kg and B at rest, an elastic hit stops A completely and transfers all +2.50 m/s to B.",
+    },
+    tandem: {
+      title: "Same velocity, no contact",
+      detail:
+        "When uₐ ≤ uᵦ (+1.50 m/s each), the gap never closes and no collision or post-contact state occurs.",
+    },
+  } satisfies Record<ScenarioPreset["id"], { title: string; detail: string }>,
+  elasticHint:
+    "The carts separate; total momentum and kinetic energy stay the same.",
+  inelasticHint:
+    "The carts stick. Momentum stays the same; some kinetic energy becomes internal energy.",
+  noContactHint:
+    "A does not close the gap. There is no after-collision reading.",
+  resetHint: "Settings apply from the start. Rightward is positive.",
+  helpBody: [
+    "Two finite-width carts move on a straight frictionless track. The net external horizontal force is zero. The model uses instantaneous contact, so positions stay continuous but velocities can jump.",
+    "Cart A starts to the left of B. If A’s signed velocity is no greater than B’s, the gap never closes. Otherwise, for the elastic mode the carts reverse their relative velocity; for the perfectly inelastic mode they stick and share the centre-of-mass velocity.",
+    "Total momentum is the signed sum of m·v. Total kinetic energy is the sum of ½m·v². The drop shown for sticking represents energy converted into internal forms, not a loss of total energy.",
+    "At the start, drag an arrow or focus it and use the arrow keys. Use the replay slider, drag the momentum/energy chart, or click before/after buttons to inspect the collision.",
+  ],
+};
+
+const zh: typeof en = {
+  title: "碰撞与动量守恒",
+  subtitle: "两个滑块碰撞时，什么保持不变？",
+  modelNote: "无摩擦水平直轨 · 合外力为零 · 瞬时接触",
+  parameters: "实验条件",
+  running: "运行中",
+  paused: "已暂停",
+  mode: "碰撞类型",
+  elastic: "弹性碰撞",
+  inelastic: "完全非弹性",
+  cartLeft: "滑块 A",
+  cartRight: "滑块 B",
+  leftMass: "质量 mₐ",
+  rightMass: "质量 mᵦ",
+  leftVelocity: "初速度 uₐ",
+  rightVelocity: "初速度 uᵦ",
+  dragLeft: "滑块 A 的初速度",
+  dragRight: "滑块 B 的初速度",
+  dragKeys: "按左右方向键调整初速度。",
+  restoreDefaults: "恢复默认",
+  help: "模型与操作",
+  scene: "一维轨道",
+  vectors: "显示速度箭头",
+  centerOfMass: "质心 CM",
+  before: "碰撞前",
+  initial: "初始",
+  after: "碰撞后",
+  noContact: "不会相撞",
+  coupled: "粘在一起",
+  groundFrame: "镜头跟随两车中点 · 读数以地面为参考",
+  dragHint: "在起点拖动箭头可调初速度",
+  dragLocked: "回到起点可拖动速度箭头",
+  momentum: "动量",
+  kinetic: "动能",
+  totalP: "总动量 p",
+  totalK: "总动能 K",
+  transfer: "转化的动能",
+  total: "合计",
+  compare: "碰撞前后",
+  observe: "观察方式",
+  play: "播放",
+  pause: "暂停",
+  reset: "回到起点",
+  rate: "播放速度",
+  timeline: "回看时间",
+  beforeContact: "接触前",
+  afterContact: "接触后",
+  end: "实验终点",
+  chartHint: "点击或拖动图面可连续回看碰撞前后状态。",
+  supportLabel: "公式与探索",
+  formulaTab: "公式",
+  exploreTab: "探索",
+  exploreHint: "选择一个典型情境一键载入，验证动量守恒与动能转化规律。",
+  loadScenario: "载入此情境",
+  scenarios: {
+    headOn: {
+      title: "迎面弹性碰撞",
+      detail:
+        "A（1.5 kg, +2.5 m/s）与 B（1.0 kg, −1.0 m/s）相撞弹开：总动量 2.75 kg·m/s 与总动能 5.19 J 均守恒。",
+    },
+    stickyHeadOn: {
+      title: "完全非弹性粘连",
+      detail:
+        "同一初态下粘在一起以质心速度 1.10 m/s 运动：总动量仍为 2.75 kg·m/s，3.68 J 动能转化为内能。",
+    },
+    exchange: {
+      title: "等质量速度交换",
+      detail:
+        "mₐ = mᵦ = 1.0 kg 且 B 静止时，弹性碰撞后 A 瞬间静止，B 完整接走 +2.50 m/s。",
+    },
+    tandem: {
+      title: "同速不相撞",
+      detail:
+        "两车均以 +1.50 m/s 前进（uₐ ≤ uᵦ），间距不缩小，无碰撞时刻与碰撞后状态。",
+    },
+  },
+  elasticHint: "碰撞后滑块分开，系统的总动量和总动能都不变。",
+  inelasticHint: "碰撞后滑块粘在一起。总动量不变，部分动能转化为内能。",
+  noContactHint: "A 无法缩小间距，因此没有碰撞后读数。",
+  resetHint: "改动设置会回到起点并暂停；向右为正。",
+  helpBody: [
+    "两个有宽度的滑块在一条无摩擦直线上运动，系统水平方向合外力为零。模型把接触视为瞬时事件，位置连续，速度可以跃变。",
+    "A 的起点在 B 左侧。若 A 的有符号速度不大于 B，间距不会缩小。弹性碰撞后相对速度反向；完全非弹性碰撞后两车粘在一起，共用质心速度。",
+    "总动量是各滑块 m·v 的有符号和；总动能是各滑块 ½m·v² 的和。粘连时减少的动能转化为内部形式，并不是系统总能量消失。",
+    "在起点可拖动箭头，也可聚焦箭头并按方向键。用时间滑块、拖动右侧曲线或接触前后按钮回看。质心 CM 标记始终以恒定速度运动。",
+  ],
+};
+
+export type Messages = typeof en;
+export const messages = (locale: Locale) => (locale === "en" ? en : zh);
