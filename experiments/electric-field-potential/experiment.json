@@ -1,0 +1,30 @@
+{
+  "id": "electric-field-potential",
+  "version": "0.1.0",
+  "apiVersion": 2,
+  "apiRevision": 0,
+  "stateVersion": 1,
+  "title": { "zh-CN": "电场与电势", "en": "Electric field & potential" },
+  "description": {
+    "zh-CN": "拖动点电荷与探针，比较电场方向、等势线和零电势处的读数。",
+    "en": "Drag point charges and a probe to compare electric field direction, equipotentials, and the readings at zero potential."
+  },
+  "thumbnail": {
+    "light": "assets/thumbnail-light.svg",
+    "dark": "assets/thumbnail-dark.svg"
+  },
+  "author": [{ "name": "XingHE-YX" }],
+  "catagory": {
+    "id": "electromagnetism",
+    "title": { "zh-CN": "电磁学", "en": "Electromagnetism" }
+  },
+  "tags": {
+    "zh-CN": ["静电场", "等势线", "电场叠加", "电偶极子"],
+    "en": [
+      "Electrostatics",
+      "Equipotentials",
+      "Field superposition",
+      "Electric dipole"
+    ]
+  }
+}
