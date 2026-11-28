@@ -1,0 +1,78 @@
+import type { Locale } from "../../../src/infra/platform/protocols/v2";
+
+const en = {
+  title: "Single-slit diffraction",
+  model: "Fraunhofer diffraction",
+  settings: "Optical setup",
+  slit: "Slit width a",
+  wavelength: "Wavelength λ",
+  distance: "Screen distance L",
+  narrow: "Narrow slit",
+  wide: "Wide slit",
+  setReference: "Set current width as reference",
+  referenceWidth: "Reference slit",
+  reset: "Reset experiment",
+  help: "Model & controls",
+  screen: "Screen fringes",
+  guides: "Mark first minima",
+  current: "Current",
+  reference: "Reference",
+  stripeHint:
+    "Shared screen scale. Weak fringes are brightened for visibility.",
+  position: "Screen point x",
+  axis: "Centre",
+  firstDark: "First dark fringe",
+  currentIntensity: "Current I/I₀",
+  referenceIntensity: "Reference I/I₀",
+  analysis: "Relative intensity",
+  width: "Central bright width",
+  ratio: "Current / reference",
+  widthNote: "Width is measured between the first dark fringes on either side.",
+  lesson:
+    "At the same wavelength and distance, a narrower slit gives a wider central fringe.",
+  helpBody: [
+    "Coherent monochromatic light illuminates a uniform single slit. The screen shows the Fraunhofer (far-field) intensity. The positive first minimum is at x₁ = L tan(arcsin(λ/a)); the central width is 2x₁.",
+    "The two strips and the curve use the same millimetre scale and probe. Drag in the strips or plot, or use the screen-position slider and the centre / first-dark buttons.",
+    "Only the slit width differs in the reference. Changing the wavelength or distance applies to both. Choose Narrow / Wide, or pin the current width as a reference before adjusting it.",
+    "The curve plots linear I/I₀, normalised to each pattern’s own central peak. The strips use approximate colour and a square-root display boost for weak fringes; equal displayed peaks do not imply equal absolute brightness or transmitted power.",
+  ],
+};
+
+const zh: typeof en = {
+  title: "单缝衍射",
+  model: "夫琅禾费衍射",
+  settings: "光学条件",
+  slit: "缝宽 a",
+  wavelength: "波长 λ",
+  distance: "屏距 L",
+  narrow: "窄缝",
+  wide: "宽缝",
+  setReference: "将当前缝宽设为参照",
+  referenceWidth: "参照缝宽",
+  reset: "重置实验",
+  help: "模型与操作",
+  screen: "屏上条纹",
+  guides: "标记第一暗纹",
+  current: "当前",
+  reference: "参照",
+  stripeHint: "两条使用相同屏幕刻度，弱条纹做了显示增强。",
+  position: "屏上位置 x",
+  axis: "中央",
+  firstDark: "第一暗纹",
+  currentIntensity: "当前 I/I₀",
+  referenceIntensity: "参照 I/I₀",
+  analysis: "相对光强",
+  width: "中央亮纹宽度",
+  ratio: "当前 / 参照",
+  widthNote: "宽度取中央两侧第一暗纹之间的距离。",
+  lesson: "波长和屏距相同时，缝越窄，中央亮纹越宽。",
+  helpBody: [
+    "相干单色光均匀照射单缝，接收屏显示夫琅禾费远场光强。正侧第一暗纹位于 x₁ = L tan(arcsin(λ/a))，中央亮纹宽度是 2x₁。",
+    "两组条纹和曲线共用毫米横坐标与探针。可拖动条纹或曲线，也可用位置滑块及「中央」「第一暗纹」按钮定位。",
+    "参照只固定缝宽。更改波长或屏距会同时作用于当前和参照。可选窄缝或宽缝，也可先固定当前缝宽再改变它。",
+    "曲线的 I/I₀ 按各自中心峰归一化，并以线性比例显示。屏上条纹使用近似颜色和平方根显示增强以便看见弱条纹；中心画得一样亮，不代表实际亮度或透过光功率相等。",
+  ],
+};
+
+export type Messages = typeof en;
+export const messages = (locale: Locale) => (locale === "en" ? en : zh);
